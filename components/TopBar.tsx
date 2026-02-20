@@ -1,12 +1,19 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { Bell, Leaf } from "lucide-react";
 
-interface TopBarProps {
-  breadcrumb: string;
+function buildBreadcrumb(pathname: string): string {
+  const segments = pathname.replace(/^\//, "").split("/");
+  return segments
+    .map((s) => s.charAt(0).toUpperCase() + s.slice(1).replace(/-/g, " "))
+    .join(" / ");
 }
 
-export default function TopBar({ breadcrumb }: TopBarProps) {
+export default function TopBar() {
+  const pathname = usePathname();
+  const breadcrumb = buildBreadcrumb(pathname);
+
   return (
     <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-white/10 bg-[#0a1a0f]/80 backdrop-blur px-6">
       <span className="text-sm text-gray-400">{breadcrumb}</span>

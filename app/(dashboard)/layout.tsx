@@ -16,7 +16,7 @@ export default function DashboardLayout({
 
       {/* Main content */}
       <div className="md:pl-60">
-        <TopBar breadcrumb="Dashboard / Overview" />
+        <TopBar />
         <main className="p-6 pb-20 md:pb-6">{children}</main>
       </div>
 
