@@ -20,7 +20,7 @@ const cloudAgents = [
     specialization: "Wildlife Monitoring",
     activeZones: 1,
     accuracy: 95,
-    description: "Specialized in wildlife movement tracking and encroachment detection.",
+    description: "Specialised in wildlife movement tracking and encroachment detection.",
   },
   {
     id: "agent-03",
