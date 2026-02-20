@@ -1,10 +1,9 @@
 import type { Metadata } from 'next'
 import './globals.css'
-import { Providers } from './providers'
 
 export const metadata: Metadata = {
-  title: 'BoundaryTruth — Verified Boundary Inspection Evidence',
-  description: 'Tamper-proof forest and plantation boundary inspection evidence infrastructure powered by Hedera Consensus Service.',
+  title: 'Cairn — Forest Boundary Intelligence',
+  description: 'Blockchain-anchored forest boundary inspection and evidence management',
 }
 
 export default function RootLayout({
@@ -13,9 +12,9 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body>
-        <Providers>{children}</Providers>
+    <html lang="en">
+      <body className="antialiased">
+        {children}
       </body>
     </html>
   )

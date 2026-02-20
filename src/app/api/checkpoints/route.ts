@@ -1,29 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
-
-const mockCheckpoints: Record<string, unknown>[] = []
+import { DEMO_ZONES } from '@/lib/placeholder'
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const zoneId = searchParams.get('zoneId')
-  
-  const filtered = zoneId
-    ? mockCheckpoints.filter((c) => c.zoneId === zoneId)
-    : mockCheckpoints
-  
-  return NextResponse.json(filtered)
-}
 
-export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json()
-    const checkpoint = {
-      id: crypto.randomUUID(),
-      ...body,
-      createdAt: new Date().toISOString(),
-    }
-    mockCheckpoints.push(checkpoint)
-    return NextResponse.json(checkpoint, { status: 201 })
-  } catch {
-    return NextResponse.json({ error: 'Failed to create checkpoint' }, { status: 500 })
+  if (!zoneId) {
+    const all = DEMO_ZONES.flatMap(z => z.checkpoints)
+    return NextResponse.json({ checkpoints: all, total: all.length })
   }
+
+  const zone = DEMO_ZONES.find(z => z.id === zoneId)
+  if (!zone) {
+    return NextResponse.json({ error: 'Zone not found' }, { status: 404 })
+  }
+
+  return NextResponse.json({ checkpoints: zone.checkpoints, total: zone.checkpoints.length })
 }
