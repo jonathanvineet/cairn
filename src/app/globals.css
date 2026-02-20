@@ -1,26 +1,46 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: 20 14 4;
+    --foreground: 240 235 220;
+    --surface-1: 28 20 10;
+    --surface-2: 36 28 16;
+    --surface-3: 48 38 24;
+    --primary: 71 132 72;
+    --primary-dark: 45 90 46;
+    --primary-light: 120 180 90;
+    --intact: 71 132 72;
+    --anomaly: 200 140 40;
+    --breach: 180 60 40;
+    --inactive: 80 80 80;
+    --accent-gold: 180 140 60;
+    --accent-teal: 40 140 130;
+    --border: 60 50 35;
+    --border-subtle: 40 35 25;
+    --text-primary: 240 235 220;
+    --text-secondary: 180 170 150;
+    --text-muted: 120 110 95;
   }
 }
 
+.status-intact   { @apply bg-green-900/40 text-green-300 border border-green-700/50; }
+.status-anomaly  { @apply bg-amber-900/40 text-amber-300 border border-amber-700/50; }
+.status-breach   { @apply bg-red-900/40 text-red-300 border border-red-700/50; }
+.status-inactive { @apply bg-zinc-900/40 text-zinc-400 border border-zinc-700/50; }
+.status-anchored { @apply bg-teal-900/40 text-teal-300 border border-teal-700/50; }
+.status-pending  { @apply bg-yellow-900/40 text-yellow-300 border border-yellow-700/50; }
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: rgb(20, 14, 4);
+  color: rgb(240, 235, 220);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
 }
