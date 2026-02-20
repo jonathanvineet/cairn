@@ -1,25 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { verifyEvidenceHash } from '@/lib/hedera/hcs'
+import { verifyRecordInHCS } from '@/lib/hedera/hcs'
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
+  const hash = searchParams.get('hash')
   const topicId = searchParams.get('topicId')
-  const evidenceHash = searchParams.get('evidenceHash')
 
-  if (!topicId || !evidenceHash) {
-    return NextResponse.json(
-      { error: 'topicId and evidenceHash are required' },
-      { status: 400 }
-    )
+  if (!hash || !topicId) {
+    return NextResponse.json({ error: 'Missing hash or topicId query parameter' }, { status: 400 })
   }
 
   try {
-    const result = await verifyEvidenceHash(topicId, evidenceHash)
-    return NextResponse.json(result)
+    const result = await verifyRecordInHCS(hash, topicId)
+    return NextResponse.json({ verified: result.verified, transactionId: result.transactionId, consensusTimestamp: result.consensusTimestamp })
   } catch {
-    return NextResponse.json(
-      { error: 'Failed to verify evidence hash' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Verification failed' }, { status: 500 })
   }
 }

@@ -1,13 +1,13 @@
 'use client'
-
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
+import type { HCSInspectionPayload } from '@/types'
 
 export function useHCS() {
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const submitToHCS = async (payload: Record<string, unknown>) => {
-    setIsSubmitting(true)
+  const submitInspection = useCallback(async (payload: HCSInspectionPayload) => {
+    setSubmitting(true)
     setError(null)
     try {
       const response = await fetch('/api/hedera/submit-inspection', {
@@ -15,21 +15,19 @@ export function useHCS() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       })
-      if (!response.ok) throw new Error('Failed to submit to HCS')
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error ?? 'Submission failed')
+      }
       return await response.json()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error')
+      const message = err instanceof Error ? err.message : 'Unknown error'
+      setError(message)
       throw err
     } finally {
-      setIsSubmitting(false)
+      setSubmitting(false)
     }
-  }
+  }, [])
 
-  const verifyHash = async (topicId: string, evidenceHash: string) => {
-    const response = await fetch(`/api/hedera/verify-record?topicId=${topicId}&evidenceHash=${evidenceHash}`)
-    if (!response.ok) throw new Error('Failed to verify hash')
-    return await response.json()
-  }
-
-  return { submitToHCS, verifyHash, isSubmitting, error }
+  return { submitInspection, submitting, error }
 }

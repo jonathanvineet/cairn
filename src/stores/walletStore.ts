@@ -1,33 +1,28 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import type { WalletState } from '@/types'
 
-interface WalletState {
-  isConnected: boolean
-  accountId: string | null
-  walletAddress: string | null
-  network: string
-  balance: number | null
-  sessionTopic: string | null
-  connect: (accountId: string, address?: string) => void
+interface WalletStore extends WalletState {
+  setStatus: (status: WalletState['status'], error?: string) => void
+  setConnected: (accountId: string, balance: number, network: 'testnet' | 'mainnet') => void
   disconnect: () => void
   setBalance: (balance: number) => void
 }
 
-export const useWalletStore = create<WalletState>()(
+export const useWalletStore = create<WalletStore>()(
   persist(
     (set) => ({
-      isConnected: false,
       accountId: null,
-      walletAddress: null,
-      network: process.env.NEXT_PUBLIC_HEDERA_NETWORK || 'testnet',
       balance: null,
-      sessionTopic: null,
-      connect: (accountId, address) =>
-        set({ isConnected: true, accountId, walletAddress: address || null }),
+      network: null,
+      status: 'NOT_CONNECTED',
+      setStatus: (status, error) => set({ status, error }),
+      setConnected: (accountId, balance, network) =>
+        set({ accountId, balance, network, status: 'CONNECTED', error: undefined }),
       disconnect: () =>
-        set({ isConnected: false, accountId: null, walletAddress: null, balance: null }),
+        set({ accountId: null, balance: null, network: null, status: 'NOT_CONNECTED', error: undefined }),
       setBalance: (balance) => set({ balance }),
     }),
-    { name: 'boundary-truth-wallet' }
+    { name: 'cairn-wallet' }
   )
 )

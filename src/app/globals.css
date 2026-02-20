@@ -1,46 +1,58 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
-@layer base {
-  :root {
-    --background: 20 14 4;
-    --foreground: 240 235 220;
-    --surface-1: 28 20 10;
-    --surface-2: 36 28 16;
-    --surface-3: 48 38 24;
-    --primary: 71 132 72;
-    --primary-dark: 45 90 46;
-    --primary-light: 120 180 90;
-    --intact: 71 132 72;
-    --anomaly: 200 140 40;
-    --breach: 180 60 40;
-    --inactive: 80 80 80;
-    --accent-gold: 180 140 60;
-    --accent-teal: 40 140 130;
-    --border: 60 50 35;
-    --border-subtle: 40 35 25;
-    --text-primary: 240 235 220;
-    --text-secondary: 180 170 150;
-    --text-muted: 120 110 95;
-  }
+@theme {
+  --color-forest-50: #f0f7f0;
+  --color-forest-100: #d9eeda;
+  --color-forest-200: #b5ddb7;
+  --color-forest-300: #84c386;
+  --color-forest-400: #54a457;
+  --color-forest-500: #358337;
+  --color-forest-600: #276929;
+  --color-forest-700: #1f5420;
+  --color-forest-800: #1a4319;
+  --color-forest-900: #163718;
+
+  --color-earth-50: #f7f4f0;
+  --color-earth-100: #ede5d9;
+  --color-earth-200: #dac9b3;
+  --color-earth-300: #c4a882;
+  --color-earth-400: #b08a5c;
+  --color-earth-500: #9a7040;
+  --color-earth-600: #7d5a32;
+  --color-earth-700: #63462a;
+  --color-earth-800: #4e3622;
+  --color-earth-900: #3d2b1b;
+
+  --color-breach: #b83c28;
+  --color-breach-light: #e05540;
+  --color-breach-dark: #8b2d1e;
+  --color-anomaly: #c88c28;
+  --color-anomaly-light: #e5a832;
+  --color-anomaly-dark: #9a6b1e;
+  --color-intact: #478c48;
+  --color-intact-light: #5aaa5c;
+  --color-intact-dark: #356836;
+  --color-hedera: #28b4c8;
+  --color-hedera-light: #3dd0e8;
+  --color-hedera-dark: #1e8a99;
 }
 
-.status-intact   { @apply bg-green-900/40 text-green-300 border border-green-700/50; }
-.status-anomaly  { @apply bg-amber-900/40 text-amber-300 border border-amber-700/50; }
-.status-breach   { @apply bg-red-900/40 text-red-300 border border-red-700/50; }
-.status-inactive { @apply bg-zinc-900/40 text-zinc-400 border border-zinc-700/50; }
-.status-anchored { @apply bg-teal-900/40 text-teal-300 border border-teal-700/50; }
-.status-pending  { @apply bg-yellow-900/40 text-yellow-300 border border-yellow-700/50; }
-
-* {
-  box-sizing: border-box;
-  padding: 0;
-  margin: 0;
+:root {
+  --background: #f8f9fa;
+  --foreground: #1a1a1a;
 }
 
 body {
-  background-color: rgb(20, 14, 4);
-  color: rgb(240, 235, 220);
-  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+@layer utilities {
+  .condition-intact { @apply bg-green-100 text-green-800 border border-green-200; }
+  .condition-anomaly { @apply bg-amber-100 text-amber-800 border border-amber-200; }
+  .condition-breach { @apply bg-red-100 text-red-800 border border-red-200; }
+  .anchor-anchored { @apply bg-teal-100 text-teal-800 border border-teal-200; }
+  .anchor-pending { @apply bg-amber-100 text-amber-800 border border-amber-200; }
+  .anchor-failed { @apply bg-red-100 text-red-800 border border-red-200; }
 }

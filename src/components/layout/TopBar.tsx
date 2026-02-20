@@ -1,39 +1,42 @@
 'use client'
-
-import { Bell, Wallet } from 'lucide-react'
+import { Bell, User } from 'lucide-react'
 import Link from 'next/link'
 import { useWalletStore } from '@/stores/walletStore'
-import { useAlertStore } from '@/stores/alertStore'
+import { formatHBAR } from '@/lib/utils/format'
 
-export function TopBar() {
-  const { isConnected, accountId } = useWalletStore()
-  const { unreadCount } = useAlertStore()
+interface TopBarProps {
+  title?: string
+}
+
+export function TopBar({ title }: TopBarProps) {
+  const { accountId, balance, status } = useWalletStore()
 
   return (
-    <header className="h-14 border-b border-[#3C3223] bg-[#1C140A] px-6 flex items-center justify-between">
-      <div className="text-sm text-[#786E5F]">
-        Forest Boundary Inspection Evidence System
+    <header className="h-14 bg-white border-b border-gray-200 flex items-center justify-between px-6">
+      <div className="flex items-center gap-3">
+        {title && <h1 className="font-semibold text-gray-900">{title}</h1>}
       </div>
       <div className="flex items-center gap-3">
-        <Link href="/alerts" className="relative p-2 text-[#B4AA96] hover:text-[#F0EBDC] transition-colors">
-          <Bell className="w-5 h-5" />
-          {unreadCount > 0 && (
-            <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white text-[10px] rounded-full flex items-center justify-center font-bold">
-              {unreadCount}
-            </span>
-          )}
+        {status === 'CONNECTED' && accountId ? (
+          <div className="flex items-center gap-2 bg-teal-50 border border-teal-200 rounded-full px-3 py-1">
+            <div className="w-2 h-2 rounded-full bg-teal-500" />
+            <span className="text-xs font-medium text-teal-700">{accountId}</span>
+            {balance !== null && (
+              <span className="text-xs text-teal-600">{formatHBAR(balance)}</span>
+            )}
+          </div>
+        ) : (
+          <Link href="/wallet" className="text-xs text-gray-500 hover:text-gray-700 border border-gray-200 rounded-full px-3 py-1">
+            Connect Wallet
+          </Link>
+        )}
+        <Link href="/alerts" className="p-2 rounded-full hover:bg-gray-100 text-gray-500 relative">
+          <Bell size={18} />
+          <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
         </Link>
-        <Link
-          href="/wallet"
-          className="flex items-center gap-2 text-sm border border-[#3C3223] hover:border-green-700/60 rounded px-3 py-1.5 text-[#B4AA96] hover:text-[#F0EBDC] transition-colors"
-        >
-          <Wallet className="w-4 h-4" />
-          {isConnected ? (
-            <span className="text-green-400 font-mono text-xs">{accountId}</span>
-          ) : (
-            <span>Connect</span>
-          )}
-        </Link>
+        <button className="p-2 rounded-full hover:bg-gray-100 text-gray-500">
+          <User size={18} />
+        </button>
       </div>
     </header>
   )

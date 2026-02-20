@@ -1,36 +1,43 @@
 import { create } from 'zustand'
-import { Mission, InspectionRecord } from '@/types/inspection.types'
+import { persist } from 'zustand/middleware'
+import type { Mission } from '@/types'
 
-interface PatrolState {
+interface PatrolStore {
   activeMission: Mission | null
-  currentCheckpointIndex: number
-  capturedRecords: InspectionRecord[]
-  pendingAnchors: string[]
-  startMission: (mission: Mission) => void
-  completeMission: () => void
+  setActiveMission: (mission: Mission | null) => void
   advanceCheckpoint: () => void
-  addRecord: (record: InspectionRecord) => void
-  markAnchored: (recordId: string, txId: string) => void
+  completeMission: () => void
 }
 
-export const usePatrolStore = create<PatrolState>((set) => ({
-  activeMission: null,
-  currentCheckpointIndex: 0,
-  capturedRecords: [],
-  pendingAnchors: [],
-  startMission: (mission) =>
-    set({ activeMission: mission, currentCheckpointIndex: 0, capturedRecords: [] }),
-  completeMission: () =>
-    set({ activeMission: null, currentCheckpointIndex: 0 }),
-  advanceCheckpoint: () =>
-    set((state) => ({ currentCheckpointIndex: state.currentCheckpointIndex + 1 })),
-  addRecord: (record) =>
-    set((state) => ({
-      capturedRecords: [...state.capturedRecords, record],
-      pendingAnchors: [...state.pendingAnchors, record.id],
-    })),
-  markAnchored: (recordId) =>
-    set((state) => ({
-      pendingAnchors: state.pendingAnchors.filter((id) => id !== recordId),
-    })),
-}))
+export const usePatrolStore = create<PatrolStore>()(
+  persist(
+    (set, get) => ({
+      activeMission: null,
+      setActiveMission: (mission) => set({ activeMission: mission }),
+      advanceCheckpoint: () => {
+        const { activeMission } = get()
+        if (!activeMission) return
+        const next = (activeMission.currentCheckpointIndex ?? 0) + 1
+        set({
+          activeMission: {
+            ...activeMission,
+            currentCheckpointIndex: next,
+            completedCheckpoints: next,
+          },
+        })
+      },
+      completeMission: () => {
+        const { activeMission } = get()
+        if (!activeMission) return
+        set({
+          activeMission: {
+            ...activeMission,
+            status: 'COMPLETED',
+            completedAt: new Date().toISOString(),
+          },
+        })
+      },
+    }),
+    { name: 'cairn-patrol' }
+  )
+)

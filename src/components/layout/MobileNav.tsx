@@ -1,37 +1,35 @@
 'use client'
-
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, MapPin, Navigation, AlertTriangle, FileText } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
+import { Map, Shield, Camera, Archive, AlertTriangle } from 'lucide-react'
 
-const mobileNav = [
-  { href: '/dashboard', label: 'Home', icon: LayoutDashboard },
-  { href: '/zones', label: 'Zones', icon: MapPin },
-  { href: '/patrol', label: 'Patrol', icon: Navigation },
-  { href: '/incidents', label: 'Incidents', icon: AlertTriangle },
-  { href: '/evidence', label: 'Evidence', icon: FileText },
+const mobileNavItems = [
+  { href: '/zones', label: 'Zones', icon: Map },
+  { href: '/patrol', label: 'Patrol', icon: Shield },
+  { href: '/checkpoints/submit', label: 'Capture', icon: Camera },
+  { href: '/evidence', label: 'Evidence', icon: Archive },
+  { href: '/alerts', label: 'Alerts', icon: AlertTriangle },
 ]
 
 export function MobileNav() {
   const pathname = usePathname()
-
   return (
-    <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-[#1C140A] border-t border-[#3C3223] z-50">
-      <div className="grid grid-cols-5">
-        {mobileNav.map(({ href, label, icon: Icon }) => {
-          const isActive = pathname === href || pathname.startsWith(href + '/')
+    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 md:hidden z-50">
+      <div className="flex">
+        {mobileNavItems.map(({ href, label, icon: Icon }) => {
+          const active = pathname === href || pathname.startsWith(href + '/') && (pathname.length === href.length || pathname[href.length] === '/')
           return (
             <Link
               key={href}
               href={href}
               className={cn(
-                'flex flex-col items-center gap-1 py-3 text-[10px] font-medium transition-colors',
-                isActive ? 'text-green-400' : 'text-[#786E5F]'
+                'flex-1 flex flex-col items-center py-2 text-xs',
+                active ? 'text-forest-700' : 'text-gray-500'
               )}
             >
-              <Icon className="w-5 h-5" />
-              {label}
+              <Icon size={20} />
+              <span className="mt-0.5">{label}</span>
             </Link>
           )
         })}

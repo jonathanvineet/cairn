@@ -1,28 +1,23 @@
-import { Client, AccountId, PrivateKey } from '@hashgraph/sdk'
+// SERVER-SIDE ONLY — never import in client components
+// This module is for API routes only
 
-let client: Client | null = null
+export interface HederaClientConfig {
+  operatorAccountId: string
+  operatorPrivateKey: string
+  network: 'testnet' | 'mainnet'
+}
 
-export function getHederaClient(): Client {
-  if (client) return client
+export function getServerHederaConfig(): HederaClientConfig {
+  const operatorAccountId = process.env.HEDERA_OPERATOR_ACCOUNT_ID ?? '0.0.0'
+  const operatorPrivateKey = process.env.HEDERA_OPERATOR_PRIVATE_KEY ?? ''
+  const network = (process.env.HEDERA_NETWORK ?? 'testnet') as 'testnet' | 'mainnet'
+  return { operatorAccountId, operatorPrivateKey, network }
+}
 
-  const network = process.env.NEXT_PUBLIC_HEDERA_NETWORK || 'testnet'
-  const operatorId = process.env.HEDERA_OPERATOR_ID
-  const operatorKey = process.env.HEDERA_OPERATOR_PRIVATE_KEY
+export function getInspectionTopicId(): string {
+  return process.env.HEDERA_INSPECTION_TOPIC_ID ?? '0.0.0'
+}
 
-  if (!operatorId || !operatorKey) {
-    throw new Error('Hedera operator credentials not configured')
-  }
-
-  if (network === 'mainnet') {
-    client = Client.forMainnet()
-  } else {
-    client = Client.forTestnet()
-  }
-
-  client.setOperator(
-    AccountId.fromString(operatorId),
-    PrivateKey.fromString(operatorKey)
-  )
-
-  return client
+export function getAlertTopicId(): string {
+  return process.env.HEDERA_ALERT_TOPIC_ID ?? '0.0.0'
 }
