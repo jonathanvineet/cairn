@@ -1,6 +1,6 @@
 import { InspectionRecord } from '@/types/inspection.types'
 import { BoundaryZone } from '@/types/zone.types'
-import { formatDateTime } from './format'
+import { formatTimestamp as formatDateTime } from './format'
 
 export interface CertificateData {
   zone: BoundaryZone
