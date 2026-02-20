@@ -34,23 +34,29 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0a1a0f] flex flex-col items-center justify-center px-4">
+    <div className="min-h-screen bg-gradient-to-br from-[#0a1a0f] via-[#0d1f13] to-[#0a1a0f] flex flex-col items-center justify-center px-4 relative overflow-hidden">
+      {/* Animated background gradient orbs */}
+      <div className="absolute top-0 left-1/4 w-96 h-96 bg-green-500/10 rounded-full blur-3xl animate-pulse" />
+      <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}} />
       {/* Logo */}
-      <Link href="/" className="flex items-center gap-2 mb-8">
-        <Leaf className="h-7 w-7 text-green-400" />
-        <span className="text-xl font-bold text-white tracking-tight">BoundaryTruth</span>
+      <Link href="/" className="flex items-center gap-2 mb-8 relative z-10 group">
+        <div className="p-2 rounded-xl bg-gradient-to-br from-green-400 to-emerald-500 shadow-lg shadow-green-500/20 group-hover:shadow-green-500/40 transition-all duration-300">
+          <Leaf className="h-6 w-6 text-black" />
+        </div>
+        <span className="text-2xl font-bold text-white tracking-tight bg-gradient-to-r from-white to-green-100 bg-clip-text text-transparent">BoundaryTruth</span>
       </Link>
 
       {/* Card */}
-      <div className="w-full max-w-md rounded-2xl border border-white/10 bg-white/5 p-8">
-        <h1 className="text-2xl font-bold text-white text-center mb-8">
+      <div className="w-full max-w-md rounded-2xl border border-white/20 bg-gradient-to-b from-white/10 to-white/5 backdrop-blur-xl p-8 shadow-2xl shadow-black/50 relative z-10">
+        <h1 className="text-3xl font-bold text-white text-center mb-2 bg-gradient-to-r from-white via-green-50 to-white bg-clip-text text-transparent">
           Sign In to BoundaryTruth
         </h1>
+        <p className="text-center text-gray-400 text-sm mb-8">Connect your wallet or use email to continue</p>
 
         {/* HashPack button */}
         <button
           onClick={openWalletFlow}
-          className="w-full flex items-center justify-center gap-3 rounded-xl bg-green-500 py-3.5 text-base font-semibold text-black hover:bg-green-400 transition mb-6"
+          className="w-full flex items-center justify-center gap-3 rounded-xl bg-gradient-to-r from-green-500 to-emerald-500 py-4 text-base font-semibold text-black hover:from-green-400 hover:to-emerald-400 transition-all duration-300 shadow-lg shadow-green-500/30 hover:shadow-green-500/50 hover:scale-[1.02] mb-6"
         >
           <Leaf className="h-5 w-5" />
           Connect HashPack Wallet
@@ -68,16 +74,16 @@ export default function LoginPage() {
           <input
             type="email"
             placeholder="Email address"
-            className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+            className="w-full rounded-xl border border-white/20 bg-white/5 backdrop-blur-sm px-4 py-3.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500/50 transition-all duration-200"
           />
           <input
             type="password"
             placeholder="Password"
-            className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+            className="w-full rounded-xl border border-white/20 bg-white/5 backdrop-blur-sm px-4 py-3.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500/50 transition-all duration-200"
           />
           <button
             type="submit"
-            className="w-full rounded-lg bg-white/10 py-3 text-sm font-semibold text-white hover:bg-white/20 transition"
+            className="w-full rounded-xl bg-white/10 border border-white/20 py-3.5 text-sm font-semibold text-white hover:bg-white/20 hover:border-white/30 transition-all duration-200 hover:scale-[1.01]"
           >
             Sign In
           </button>
@@ -91,8 +97,8 @@ export default function LoginPage() {
 
       {/* Wallet Connection Modal */}
       {walletStep && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-          <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-[#0f2016] p-6 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm px-4 animate-in fade-in duration-200">
+          <div className="w-full max-w-sm rounded-2xl border border-white/20 bg-gradient-to-b from-[#0f2016] to-[#0a1812] backdrop-blur-xl p-6 shadow-2xl shadow-black/50 animate-in slide-in-from-bottom-4 duration-300">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-lg font-semibold text-white">
                 {walletStep === "choose" && "Choose Wallet"}
@@ -127,41 +133,48 @@ export default function LoginPage() {
               <div className="space-y-3">
                 <button
                   onClick={() => handleChooseWallet("HashPack")}
-                  className="w-full flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white hover:bg-white/10 transition"
+                  className="w-full flex items-center justify-between rounded-xl border border-white/20 bg-gradient-to-r from-white/10 to-white/5 px-4 py-4 text-white hover:from-white/20 hover:to-white/10 hover:border-green-500/50 transition-all duration-200 hover:scale-[1.02] group"
                 >
                   <div className="flex items-center gap-3">
-                    <Leaf className="h-5 w-5 text-green-400" />
-                    <span className="font-medium">HashPack</span>
+                    <div className="p-1.5 rounded-lg bg-gradient-to-br from-green-400 to-emerald-500">
+                      <Leaf className="h-5 w-5 text-black" />
+                    </div>
+                    <span className="font-semibold">HashPack</span>
                   </div>
-                  <ChevronRight className="h-4 w-4 text-gray-400" />
+                  <ChevronRight className="h-4 w-4 text-gray-400 group-hover:text-green-400 transition-colors" />
                 </button>
                 <button
                   onClick={() => handleChooseWallet("WalletConnect")}
-                  className="w-full flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white hover:bg-white/10 transition"
+                  className="w-full flex items-center justify-between rounded-xl border border-white/20 bg-gradient-to-r from-white/10 to-white/5 px-4 py-4 text-white hover:from-white/20 hover:to-white/10 hover:border-blue-500/50 transition-all duration-200 hover:scale-[1.02] group"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="h-5 w-5 rounded-full bg-blue-400" />
-                    <span className="font-medium">WalletConnect</span>
+                    <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold text-xs">
+                      WC
+                    </div>
+                    <span className="font-semibold">WalletConnect</span>
                   </div>
-                  <ChevronRight className="h-4 w-4 text-gray-400" />
+                  <ChevronRight className="h-4 w-4 text-gray-400 group-hover:text-blue-400 transition-colors" />
                 </button>
               </div>
             )}
 
             {walletStep === "approve" && (
               <div className="text-center">
-                <div className="mb-4 text-gray-400 text-sm">
+                <div className="mb-6 text-gray-300 text-sm">
                   Approve the connection request in your{" "}
-                  <span className="text-white font-medium">{selectedWallet}</span> wallet
+                  <span className="text-white font-semibold bg-gradient-to-r from-green-400 to-emerald-400 bg-clip-text text-transparent">{selectedWallet}</span> wallet
                 </div>
                 <div className="mb-6 flex justify-center">
-                  <div className="h-16 w-16 rounded-full bg-green-500/15 flex items-center justify-center animate-pulse">
-                    <Leaf className="h-8 w-8 text-green-400" />
+                  <div className="relative">
+                    <div className="h-20 w-20 rounded-full bg-gradient-to-br from-green-500/20 to-emerald-500/20 flex items-center justify-center animate-pulse">
+                      <Leaf className="h-10 w-10 text-green-400" />
+                    </div>
+                    <div className="absolute inset-0 rounded-full border-2 border-green-500/30 animate-ping" />
                   </div>
                 </div>
                 <button
                   onClick={handleApprove}
-                  className="w-full rounded-lg bg-green-500 py-3 text-sm font-semibold text-black hover:bg-green-400 transition"
+                  className="w-full rounded-xl bg-gradient-to-r from-green-500 to-emerald-500 py-3.5 text-sm font-semibold text-black hover:from-green-400 hover:to-emerald-400 transition-all duration-200 shadow-lg shadow-green-500/30 hover:shadow-green-500/50"
                 >
                   Simulate Approval
                 </button>
@@ -170,12 +183,16 @@ export default function LoginPage() {
 
             {walletStep === "confirm" && (
               <div className="text-center">
-                <CheckCircle className="h-12 w-12 text-green-400 mx-auto mb-4" />
-                <p className="text-gray-400 text-sm mb-2">Connected Hedera Account</p>
-                <p className="text-xl font-mono font-bold text-white mb-6">{accountId}</p>
+                <div className="inline-flex p-3 rounded-full bg-gradient-to-br from-green-500/20 to-emerald-500/20 mb-4">
+                  <CheckCircle className="h-12 w-12 text-green-400" />
+                </div>
+                <p className="text-gray-300 text-sm mb-2">Connected Hedera Account</p>
+                <div className="bg-white/5 rounded-xl border border-white/20 p-4 mb-6">
+                  <p className="text-xl font-mono font-bold text-white">{accountId}</p>
+                </div>
                 <button
                   onClick={handleConfirm}
-                  className="w-full rounded-lg bg-green-500 py-3 text-sm font-semibold text-black hover:bg-green-400 transition"
+                  className="w-full rounded-xl bg-gradient-to-r from-green-500 to-emerald-500 py-3.5 text-sm font-semibold text-black hover:from-green-400 hover:to-emerald-400 transition-all duration-200 shadow-lg shadow-green-500/30 hover:shadow-green-500/50"
                 >
                   Continue to Dashboard →
                 </button>
