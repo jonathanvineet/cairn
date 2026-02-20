@@ -19,6 +19,7 @@ import {
   Users,
   Wallet,
   LogOut,
+  Bot,
 } from "lucide-react";
 
 const user = { name: "Arjun Mehta", role: "SUPER_ADMIN", avatar: "AM" };
@@ -59,6 +60,7 @@ const navSections: NavSection[] = [
       { href: "/dashboard/patrol/active", icon: <Navigation className="h-4 w-4" />, label: "Active Patrol" },
       { href: "/dashboard/patrol/history", icon: <History className="h-4 w-4" />, label: "Patrol History" },
       { href: "/dashboard/checkpoints", icon: <MapPin className="h-4 w-4" />, label: "Checkpoints" },
+      { href: "/dashboard/delegate", icon: <Bot className="h-4 w-4" />, label: "Delegate" },
     ],
   },
   {
