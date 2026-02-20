@@ -12,7 +12,7 @@ export interface CertificateData {
 export function generateCertificateNumber(): string {
   // "65B" references Section 65B of the Indian Evidence Act, 1872 — the legal basis for electronic evidence admissibility
   const timestamp = Date.now().toString(36).toUpperCase()
-  const random = Math.random().toString(36).slice(2, 6).toUpperCase()
+  const random = crypto.randomUUID().replace(/-/g, '').slice(0, 6).toUpperCase()
   return `BT-65B-${timestamp}-${random}`
 }
 
