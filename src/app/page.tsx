@@ -1,78 +1,114 @@
 import Link from 'next/link'
-import { Shield, Map, Archive, BarChart2, CheckCircle } from 'lucide-react'
+import { Shield, Camera, FileCheck } from 'lucide-react'
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen bg-forest-900 text-white">
-      <header className="px-8 py-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">cairn</h1>
-          <p className="text-forest-300 text-sm">Forest Boundary Intelligence</p>
+    <main className="min-h-screen bg-[#140E04] text-[#F0EBDC]">
+      {/* Header */}
+      <header className="border-b border-[#3C3223] px-6 py-4">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Shield className="w-8 h-8 text-green-500" />
+            <span className="text-xl font-bold tracking-tight">BOUNDARY TRUTH</span>
+          </div>
+          <Link
+            href="/dashboard"
+            className="bg-green-700 hover:bg-green-600 text-white px-4 py-2 rounded text-sm font-medium transition-colors"
+          >
+            Enter Dashboard
+          </Link>
         </div>
-        <Link
-          href="/dashboard"
-          className="bg-forest-600 hover:bg-forest-500 text-white px-5 py-2 rounded-lg text-sm font-medium transition-colors"
-        >
-          Enter Dashboard
-        </Link>
       </header>
 
-      <main className="px-8 py-16 max-w-5xl mx-auto">
-        <div className="text-center mb-16">
-          <h2 className="text-5xl font-bold mb-4">Tamper-proof forest boundary evidence</h2>
-          <p className="text-forest-300 text-xl max-w-2xl mx-auto">
-            Field-captured inspection evidence anchored immutably to the Hedera blockchain.
-            Section 65B compliant certificates for legal enforcement.
+      {/* Hero */}
+      <section className="max-w-7xl mx-auto px-6 py-24">
+        <div className="max-w-3xl">
+          <div className="inline-flex items-center gap-2 bg-green-900/30 border border-green-700/40 text-green-400 text-xs font-medium px-3 py-1.5 rounded-full mb-6">
+            <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
+            Hedera Consensus Service — Testnet Active
+          </div>
+          <h1 className="text-5xl font-bold leading-tight mb-6">
+            Verified Boundary<br />
+            <span className="text-green-500">Inspection Evidence</span><br />
+            Infrastructure
+          </h1>
+          <p className="text-[#B4AA96] text-lg leading-relaxed mb-8">
+            Tamper-proof, blockchain-anchored inspection evidence for forest and 
+            plantation boundary zones. Every patrol checkpoint is cryptographically 
+            hashed and anchored to Hedera — creating an immutable audit trail for 
+            dispute resolution and insurance claims.
           </p>
-          <div className="mt-8 flex gap-4 justify-center">
+          <div className="flex items-center gap-4">
             <Link
               href="/dashboard"
-              className="bg-forest-600 hover:bg-forest-500 text-white px-8 py-3 rounded-lg font-semibold transition-colors"
+              className="bg-green-700 hover:bg-green-600 text-white px-6 py-3 rounded font-medium transition-colors"
             >
               Open Dashboard
             </Link>
             <Link
-              href="/patrol"
-              className="border border-forest-600 text-forest-300 hover:bg-forest-800 px-8 py-3 rounded-lg font-semibold transition-colors"
+              href="/wallet"
+              className="border border-[#3C3223] hover:border-green-700/60 text-[#B4AA96] hover:text-[#F0EBDC] px-6 py-3 rounded font-medium transition-colors"
             >
-              Start Patrol
+              Connect Wallet
             </Link>
           </div>
         </div>
+      </section>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+      {/* Features */}
+      <section className="max-w-7xl mx-auto px-6 py-16 border-t border-[#3C3223]">
+        <h2 className="text-2xl font-bold mb-12">How It Works</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {[
-            { icon: Map, label: 'Boundary Zones', desc: 'Monitor all assigned zones' },
-            { icon: Shield, label: 'Field Patrol', desc: 'Mobile-first capture UI' },
-            { icon: Archive, label: 'Evidence Vault', desc: 'Hedera-anchored records' },
-            { icon: BarChart2, label: 'Analytics', desc: 'Risk trends & insights' },
-          ].map(({ icon: Icon, label, desc }) => (
-            <div key={label} className="bg-forest-800 rounded-xl p-5">
-              <Icon className="text-forest-300 mb-3" size={28} />
-              <div className="font-semibold">{label}</div>
-              <div className="text-forest-400 text-sm mt-1">{desc}</div>
+            {
+              icon: Camera,
+              title: 'Field Capture',
+              desc: 'Drone operators capture GPS-tagged photos at each checkpoint along the boundary route.',
+            },
+            {
+              icon: Shield,
+              title: 'HCS Anchoring',
+              desc: 'Each inspection record is hashed and submitted to Hedera Consensus Service for immutable timestamping.',
+            },
+            {
+              icon: FileCheck,
+              title: 'Evidence Certificate',
+              desc: 'Generate Section 65B-compliant evidence certificates for legal proceedings and insurance claims.',
+            },
+          ].map(({ icon: Icon, title, desc }) => (
+            <div key={title} className="bg-[#1C140A] border border-[#3C3223] rounded-lg p-6">
+              <div className="w-10 h-10 bg-green-900/40 rounded-lg flex items-center justify-center mb-4">
+                <Icon className="w-5 h-5 text-green-500" />
+              </div>
+              <h3 className="font-semibold mb-2">{title}</h3>
+              <p className="text-[#B4AA96] text-sm leading-relaxed">{desc}</p>
             </div>
           ))}
         </div>
+      </section>
 
-        <div className="mt-16 bg-forest-800 rounded-2xl p-8">
-          <h3 className="text-xl font-bold mb-4">How it works</h3>
-          <div className="space-y-3">
-            {[
-              'Operator captures checkpoint photo within 10m GPS radius',
-              'Image hashed locally with SHA-256 — never altered',
-              'Evidence record submitted to Hedera Consensus Service',
-              'Immutable consensus timestamp proves when inspection occurred',
-              'Section 65B certificate generated from anchored record',
-            ].map((step, i) => (
-              <div key={i} className="flex items-center gap-3">
-                <CheckCircle size={16} className="text-forest-400 shrink-0" />
-                <span className="text-forest-200 text-sm">{step}</span>
-              </div>
-            ))}
-          </div>
+      {/* Status indicators */}
+      <section className="max-w-7xl mx-auto px-6 py-16">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[
+            { label: 'Boundary Zones', value: '—', status: 'active' },
+            { label: 'Inspections Anchored', value: '—', status: 'anchored' },
+            { label: 'Active Incidents', value: '—', status: 'breach' },
+            { label: 'Evidence Records', value: '—', status: 'intact' },
+          ].map(({ label, value }) => (
+            <div key={label} className="bg-[#1C140A] border border-[#3C3223] rounded-lg p-4 text-center">
+              <div className="text-2xl font-bold text-green-400">{value}</div>
+              <div className="text-[#B4AA96] text-xs mt-1">{label}</div>
+            </div>
+          ))}
         </div>
-      </main>
-    </div>
+      </section>
+
+      <footer className="border-t border-[#3C3223] px-6 py-8 mt-8">
+        <div className="max-w-7xl mx-auto text-center text-[#786E5F] text-sm">
+          BoundaryTruth — Forest Boundary Inspection Evidence Platform · Powered by Hedera Consensus Service
+        </div>
+      </footer>
+    </main>
   )
 }

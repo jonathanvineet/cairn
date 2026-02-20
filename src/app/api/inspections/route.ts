@@ -1,20 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { DEMO_RECORDS } from '@/lib/placeholder'
+
+const mockInspections: Record<string, unknown>[] = []
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const zoneId = searchParams.get('zoneId')
-  const condition = searchParams.get('condition')
-
-  let records = [...DEMO_RECORDS]
-  if (zoneId) records = records.filter(r => r.zoneId === zoneId)
-  if (condition) records = records.filter(r => r.condition === condition)
-
-  records.sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime())
-
-  return NextResponse.json({ records, total: records.length })
+  
+  const filtered = zoneId
+    ? mockInspections.filter((r) => r.zoneId === zoneId)
+    : mockInspections
+  
+  return NextResponse.json(filtered)
 }
 
 export async function POST(request: NextRequest) {
-  return NextResponse.json({ error: 'Not implemented — database integration pending' }, { status: 501 })
+  try {
+    const body = await request.json()
+    const record = {
+      id: crypto.randomUUID(),
+      ...body,
+      anchorStatus: 'PENDING',
+      createdAt: new Date().toISOString(),
+    }
+    mockInspections.push(record)
+    return NextResponse.json(record, { status: 201 })
+  } catch {
+    return NextResponse.json({ error: 'Failed to create inspection record' }, { status: 500 })
+  }
 }

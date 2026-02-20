@@ -1,18 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { DEMO_INCIDENTS } from '@/lib/placeholder'
 
-export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url)
-  const zoneId = searchParams.get('zoneId')
-  const status = searchParams.get('status')
+const mockIncidents: Record<string, unknown>[] = []
 
-  let incidents = [...DEMO_INCIDENTS]
-  if (zoneId) incidents = incidents.filter(i => i.zoneId === zoneId)
-  if (status) incidents = incidents.filter(i => i.status === status)
-
-  return NextResponse.json({ incidents, total: incidents.length })
+export async function GET() {
+  return NextResponse.json(mockIncidents)
 }
 
 export async function POST(request: NextRequest) {
-  return NextResponse.json({ error: 'Not implemented — database integration pending' }, { status: 501 })
+  try {
+    const body = await request.json()
+    const incident = {
+      id: crypto.randomUUID(),
+      ...body,
+      status: 'OPEN',
+      linkedInspectionIds: [],
+      linkedEvidenceIds: [],
+      reportedAt: new Date().toISOString(),
+    }
+    mockIncidents.push(incident)
+    return NextResponse.json(incident, { status: 201 })
+  } catch {
+    return NextResponse.json({ error: 'Failed to create incident' }, { status: 500 })
+  }
 }

@@ -1,78 +1,76 @@
-import { DEMO_ZONES, DEMO_ALERTS, DEMO_RECORDS, DEMO_INCIDENTS } from '@/lib/placeholder'
-import { ZoneStatusBadge } from '@/components/ui/Badge'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
-import { formatRelativeTime } from '@/lib/utils/format'
-import Link from 'next/link'
-import { Map, AlertTriangle, Shield, Archive } from 'lucide-react'
+import { PageHeader } from '@/components/layout/PageHeader'
+import { StatCard } from '@/components/analytics/StatCard'
+import { Shield, MapPin, Navigation, AlertTriangle, FileText, Activity } from 'lucide-react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 
 export default function DashboardPage() {
-  const activeBreaches = DEMO_ZONES.filter(z => z.status === 'BREACH').length
-  const openAlerts = DEMO_ALERTS.filter(a => !a.acknowledged).length
-  const pendingRecords = DEMO_RECORDS.filter(r => r.anchorStatus === 'PENDING').length
-  const totalPatrols = DEMO_ZONES.reduce((sum, z) => sum + z.patrolsThisWeek, 0)
-
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-gray-500 text-sm mt-1">Forest boundary monitoring overview</p>
+      <PageHeader
+        title="Dashboard"
+        description="Overview of boundary inspection evidence system"
+      />
+
+      {/* Stats */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard title="Boundary Zones" value="—" icon={MapPin} variant="green" />
+        <StatCard title="Active Missions" value="—" icon={Navigation} variant="teal" />
+        <StatCard title="Open Incidents" value="—" icon={AlertTriangle} variant="amber" />
+        <StatCard title="Evidence Records" value="—" icon={FileText} variant="default" />
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {[
-          { label: 'Active Breaches', value: activeBreaches, icon: AlertTriangle, color: 'text-red-600 bg-red-50', href: '/zones' },
-          { label: 'Open Alerts', value: openAlerts, icon: AlertTriangle, color: 'text-amber-600 bg-amber-50', href: '/alerts' },
-          { label: 'Patrols This Week', value: totalPatrols, icon: Shield, color: 'text-green-600 bg-green-50', href: '/patrol' },
-          { label: 'Pending Anchors', value: pendingRecords, icon: Archive, color: 'text-teal-600 bg-teal-50', href: '/evidence' },
-        ].map(({ label, value, icon: Icon, color, href }) => (
-          <Link key={label} href={href}>
-            <Card className="hover:shadow-md transition-shadow cursor-pointer">
-              <CardContent className="pt-4">
-                <div className={`w-10 h-10 rounded-lg ${color} flex items-center justify-center mb-3`}>
-                  <Icon size={20} />
-                </div>
-                <div className="text-2xl font-bold text-gray-900">{value}</div>
-                <div className="text-xs text-gray-500 mt-0.5">{label}</div>
-              </CardContent>
-            </Card>
-          </Link>
-        ))}
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Recent Activity */}
         <Card>
           <CardHeader>
-            <CardTitle>Zone Status</CardTitle>
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <Activity className="w-4 h-4 text-green-500" />
+              Recent Activity
+            </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
-            {DEMO_ZONES.map(zone => (
-              <Link key={zone.id} href={`/zones/${zone.id}`} className="flex items-center justify-between py-2 hover:bg-gray-50 rounded px-1 -mx-1">
-                <div>
-                  <div className="text-sm font-medium text-gray-900">{zone.name}</div>
-                  <div className="text-xs text-gray-500">{zone.region}, {zone.state}</div>
+          <CardContent>
+            <div className="space-y-3">
+              {[
+                { label: 'No recent activity', sub: 'Start by creating a boundary zone', type: 'info' },
+              ].map((item, i) => (
+                <div key={i} className="flex items-start gap-3 py-2 border-b border-[#241808] last:border-0">
+                  <div className="w-1.5 h-1.5 rounded-full bg-[#786E5F] mt-2 flex-shrink-0" />
+                  <div>
+                    <div className="text-sm text-[#B4AA96]">{item.label}</div>
+                    <div className="text-xs text-[#786E5F]">{item.sub}</div>
+                  </div>
                 </div>
-                <ZoneStatusBadge status={zone.status} />
-              </Link>
-            ))}
+              ))}
+            </div>
           </CardContent>
         </Card>
 
+        {/* HCS Status */}
         <Card>
           <CardHeader>
-            <CardTitle>Recent Alerts</CardTitle>
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <Shield className="w-4 h-4 text-teal-500" />
+              Hedera Consensus Service
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {DEMO_ALERTS.filter(a => !a.acknowledged).slice(0, 5).map(alert => (
-              <div key={alert.id} className="flex items-start gap-2 py-2 border-b border-gray-50 last:border-0">
-                <span className="text-lg mt-0.5">
-                  {alert.type === 'BREACH' ? '🔴' : alert.type === 'ANOMALY' ? '🟡' : alert.type === 'MISSED_PATROL' ? '⚪' : '🔵'}
-                </span>
-                <div>
-                  <div className="text-sm text-gray-800">{alert.message}</div>
-                  <div className="text-xs text-gray-400 mt-0.5">{formatRelativeTime(alert.timestamp)}</div>
-                </div>
-              </div>
-            ))}
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-[#786E5F]">Network</span>
+              <Badge variant="teal">Testnet</Badge>
+            </div>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-[#786E5F]">Inspection Topic</span>
+              <span className="font-mono text-xs text-[#B4AA96]">Not configured</span>
+            </div>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-[#786E5F]">Alert Topic</span>
+              <span className="font-mono text-xs text-[#B4AA96]">Not configured</span>
+            </div>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-[#786E5F]">Wallet</span>
+              <Badge variant="secondary">Not connected</Badge>
+            </div>
           </CardContent>
         </Card>
       </div>

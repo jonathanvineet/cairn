@@ -1,71 +1,79 @@
 'use client'
+
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { cn } from '@/lib/utils/cn'
-import {
-  Map, Shield, Camera, Archive, AlertTriangle,
-  BarChart2, Wallet, Home, ChevronLeft, ChevronRight
+import { 
+  Shield, 
+  LayoutDashboard, 
+  MapPin, 
+  Navigation, 
+  AlertTriangle, 
+  FileText, 
+  Scale, 
+  BarChart3, 
+  Bell, 
+  Wallet, 
+  Settings,
+  ChevronRight
 } from 'lucide-react'
-import { useState } from 'react'
+import { cn } from '@/lib/utils/cn'
 
 const navItems = [
-  { href: '/dashboard', label: 'Dashboard', icon: Home },
-  { href: '/zones', label: 'Zones', icon: Map },
-  { href: '/patrol', label: 'Patrol', icon: Shield },
-  { href: '/checkpoints/submit', label: 'Capture', icon: Camera },
-  { href: '/evidence', label: 'Evidence', icon: Archive },
+  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/zones', label: 'Boundary Zones', icon: MapPin },
+  { href: '/patrol', label: 'Patrol Missions', icon: Navigation },
   { href: '/incidents', label: 'Incidents', icon: AlertTriangle },
-  { href: '/alerts', label: 'Alerts', icon: AlertTriangle },
-  { href: '/analytics', label: 'Analytics', icon: BarChart2 },
-  { href: '/wallet', label: 'Wallet', icon: Wallet },
+  { href: '/evidence', label: 'Evidence Vault', icon: FileText },
+  { href: '/disputes', label: 'Disputes', icon: Scale },
+  { href: '/analytics', label: 'Analytics', icon: BarChart3 },
+  { href: '/alerts', label: 'Alerts', icon: Bell },
+  { href: '/wallet', label: 'Wallet / HCS', icon: Wallet },
+  { href: '/settings', label: 'Settings', icon: Settings },
 ]
 
 export function Sidebar() {
   const pathname = usePathname()
-  const [collapsed, setCollapsed] = useState(false)
 
   return (
-    <aside className={cn(
-      'h-screen bg-forest-900 text-white flex flex-col transition-all duration-200 hidden md:flex',
-      collapsed ? 'w-16' : 'w-56'
-    )}>
-      <div className="flex items-center justify-between p-4 border-b border-forest-800">
-        {!collapsed && (
-          <div>
-            <span className="font-bold text-white text-lg">cairn</span>
-            <p className="text-forest-300 text-xs">Forest Boundary Intelligence</p>
-          </div>
-        )}
-        <button onClick={() => setCollapsed(!collapsed)} className="p-1 rounded hover:bg-forest-800 text-forest-300">
-          {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
-        </button>
+    <aside className="hidden lg:flex flex-col w-64 bg-[#1C140A] border-r border-[#3C3223] min-h-screen">
+      {/* Logo */}
+      <div className="flex items-center gap-3 px-6 py-5 border-b border-[#3C3223]">
+        <Shield className="w-7 h-7 text-green-500 flex-shrink-0" />
+        <div>
+          <div className="font-bold text-sm tracking-wide text-[#F0EBDC]">BOUNDARY TRUTH</div>
+          <div className="text-[10px] text-[#786E5F] uppercase tracking-wider">Evidence Infrastructure</div>
+        </div>
       </div>
-      <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
+
+      {/* Nav */}
+      <nav className="flex-1 px-3 py-4 space-y-0.5">
         {navItems.map(({ href, label, icon: Icon }) => {
-          const active = pathname === href || pathname.startsWith(href + '/') && (pathname.length === href.length || pathname[href.length] === '/')
+          const isActive = pathname === href || pathname.startsWith(href + '/')
           return (
             <Link
               key={href}
               href={href}
               className={cn(
-                'flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors',
-                active
-                  ? 'bg-forest-700 text-white'
-                  : 'text-forest-300 hover:bg-forest-800 hover:text-white'
+                'flex items-center gap-3 px-3 py-2.5 rounded text-sm transition-colors',
+                isActive
+                  ? 'bg-green-900/40 text-green-300 font-medium'
+                  : 'text-[#B4AA96] hover:bg-[#241808] hover:text-[#F0EBDC]'
               )}
             >
-              <Icon size={18} className="shrink-0" />
-              {!collapsed && <span>{label}</span>}
+              <Icon className="w-4 h-4 flex-shrink-0" />
+              <span>{label}</span>
+              {isActive && <ChevronRight className="w-3 h-3 ml-auto opacity-60" />}
             </Link>
           )
         })}
       </nav>
-      <div className="p-3 border-t border-forest-800">
-        {!collapsed && (
-          <div className="text-xs text-forest-400 text-center">
-            Hedera Testnet
-          </div>
-        )}
+
+      {/* Network indicator */}
+      <div className="px-4 py-3 border-t border-[#3C3223]">
+        <div className="flex items-center gap-2 text-xs text-[#786E5F]">
+          <span className="w-1.5 h-1.5 bg-teal-400 rounded-full animate-pulse" />
+          Hedera Testnet
+        </div>
       </div>
     </aside>
   )

@@ -1,15 +1,26 @@
 'use client'
-import { useState, useEffect } from 'react'
-import { DEMO_ZONES } from '@/lib/placeholder'
-import type { Zone } from '@/types'
+
+import { useQuery } from '@tanstack/react-query'
+import axios from 'axios'
+import { BoundaryZone } from '@/types/zone.types'
 
 export function useZones() {
-  const [zones, setZones] = useState<Zone[]>(DEMO_ZONES)
-  const [loading, setLoading] = useState(false)
-  return { zones, loading }
+  return useQuery<BoundaryZone[]>({
+    queryKey: ['zones'],
+    queryFn: async () => {
+      const { data } = await axios.get('/api/zones')
+      return data
+    },
+  })
 }
 
 export function useZone(zoneId: string) {
-  const zone = DEMO_ZONES.find(z => z.id === zoneId) ?? null
-  return { zone, loading: false }
+  return useQuery<BoundaryZone>({
+    queryKey: ['zones', zoneId],
+    queryFn: async () => {
+      const { data } = await axios.get(`/api/zones/${zoneId}`)
+      return data
+    },
+    enabled: !!zoneId,
+  })
 }

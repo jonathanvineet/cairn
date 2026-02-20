@@ -1,34 +1,27 @@
 'use client'
+
 import { useWalletStore } from '@/stores/walletStore'
-import { fetchHBARBalance } from '@/lib/hedera/wallet'
-import { useCallback } from 'react'
 
 export function useWallet() {
-  const store = useWalletStore()
+  const { isConnected, accountId, walletAddress, network, balance, connect, disconnect, setBalance } = useWalletStore()
 
-  const connect = useCallback(async () => {
-    store.setStatus('CONNECTING')
-    try {
-      store.setStatus('AWAITING_APPROVAL')
-      // In production: use @hashgraph/hedera-wallet-connect dAppConnector
-      await new Promise(resolve => setTimeout(resolve, 1500))
-      const demoAccountId = '0.0.3456789'
-      const balance = await fetchHBARBalance(demoAccountId, 'testnet').catch(() => 2.41)
-      store.setConnected(demoAccountId, balance || 2.41, 'testnet')
-    } catch {
-      store.setStatus('ERROR', 'Failed to connect')
-    }
-  }, [store])
+  const connectWallet = async () => {
+    // Mock wallet connection for development
+    connect('0.0.123456', '0x1234...abcd')
+  }
 
-  const refreshBalance = useCallback(async () => {
-    if (!store.accountId || !store.network) return
-    const balance = await fetchHBARBalance(store.accountId, store.network).catch(() => null)
-    if (balance !== null) store.setBalance(balance)
-  }, [store])
+  const disconnectWallet = () => {
+    disconnect()
+  }
 
   return {
-    ...store,
-    connect,
-    refreshBalance,
+    isConnected,
+    accountId,
+    walletAddress,
+    network,
+    balance,
+    connectWallet,
+    disconnectWallet,
+    setBalance,
   }
 }
