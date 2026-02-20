@@ -53,7 +53,13 @@ export function EvidenceCard({ record, checkpointName, zoneName }: EvidenceCardP
             <div className="flex items-center gap-1 text-xs text-gray-400 mt-1">
               <span className="font-mono">{formatHash(record.hederaTransactionId)}</span>
               <button
-                onClick={() => navigator.clipboard.writeText(record.hederaTransactionId!).catch(console.error)}
+                onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(record.hederaTransactionId!)
+                    } catch {
+                      // clipboard not available
+                    }
+                  }}
                 className="hover:text-gray-600"
               >
                 <Copy size={10} />

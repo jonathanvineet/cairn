@@ -18,7 +18,7 @@ export function ConnectWallet() {
       
       // Demo: use a placeholder account
       const demoAccountId = '0.0.3456789'
-      const demoBalance = await fetchHBARBalance(demoAccountId, 'testnet').catch((err) => { console.error('Failed to fetch balance:', err); return 0 })
+      const demoBalance = await fetchHBARBalance(demoAccountId, 'testnet').catch(() => 0)
       setConnected(demoAccountId, demoBalance ?? 0, 'testnet')
     } catch {
       setStatus('ERROR', 'Failed to connect wallet')

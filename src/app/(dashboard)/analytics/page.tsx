@@ -1,7 +1,7 @@
 'use client'
 import { BREACH_TREND_DATA, PATROL_FREQUENCY_DATA, CONDITION_BREAKDOWN_DATA, DEMO_ZONES } from '@/lib/placeholder'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
-import { getRiskLabel, getRiskColour } from '@/lib/utils/format'
+import { getRiskLabel, getRiskColor } from '@/lib/utils/format'
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   BarChart, Bar, PieChart, Pie, Cell, Legend
@@ -128,7 +128,7 @@ export default function AnalyticsPage() {
                       </div>
                     </td>
                     <td className="py-2">
-                      <span className={`text-xs font-semibold px-1.5 py-0.5 rounded ${getRiskColour(zone.riskScore)}`}>
+                      <span className={`text-xs font-semibold px-1.5 py-0.5 rounded ${getRiskColor(zone.riskScore)}`}>
                         {getRiskLabel(zone.riskScore)}
                       </span>
                     </td>
