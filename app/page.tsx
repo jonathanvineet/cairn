@@ -69,23 +69,18 @@ export default function LandingPage() {
 
   return (
     <ScrollProvider>
-      <div className="relative min-h-screen bg-forest-900 text-white overflow-x-hidden">
+      <div className="relative min-h-screen text-white overflow-x-hidden">
         <CursorTrail />
         <ScrollProgress />
+
+        {/* 3D Canvas background - Full Page */}
+        <HeroScene />
 
         {/* HERO SECTION - Full viewport with 3D */}
         <section
           ref={heroRef}
-          className="relative min-h-screen flex flex-col snap-section"
+          className="relative z-1 min-h-screen flex flex-col snap-section"
         >
-          {/* 3D Canvas background */}
-          <div className="absolute inset-0 z-0">
-            <HeroScene />
-          </div>
-
-          {/* Gradient overlay */}
-          <div className="absolute inset-0 z-10 bg-gradient-to-b from-transparent via-forest-900/30 to-forest-900" />
-
           {/* Nav */}
           <nav className="relative z-20 flex items-center justify-between px-6 sm:px-8 py-5 glass-dark">
             <motion.div
@@ -182,7 +177,7 @@ export default function LandingPage() {
         </section>
 
         {/* PROBLEM STATS - Emerge from ground */}
-        <section className="isolated-section section-spacing py-16 border-y border-white/10 bg-forest-800">
+        <section className="relative z-1 isolated-section section-spacing py-16 border-y border-white/10">
           <div className="mx-auto max-w-6xl px-6 sm:px-8">
             <motion.h2
               initial={{ opacity: 0, y: 20 }}
@@ -221,7 +216,7 @@ export default function LandingPage() {
                   transition={{ delay: i * 0.15, duration: 0.6 }}
                   className="opacity-100"
                 >
-                  <Card className="stat-card glass-strong glow-green text-center p-8 transform hover:scale-105 transition-transform duration-300 bg-forest-900/80 backdrop-blur-xl border-2 border-green-500/20">
+                  <Card className="stat-card glass-strong glow-green text-center p-8 transform hover:scale-105 transition-transform duration-300 border-2 border-green-500/20 relative z-1">
                     <CardContent className="p-0 space-y-4">
                       <div className="flex justify-center">{item.icon}</div>
                       <span className={`text-5xl font-extrabold ${item.color} block`}>
@@ -237,7 +232,7 @@ export default function LandingPage() {
         </section>
 
         {/* HOW IT WORKS - Sequential reveal */}
-        <section className="isolated-section section-spacing py-24 bg-forest-900">
+        <section className="relative z-1 isolated-section section-spacing py-24">
           <div className="mx-auto max-w-6xl px-6 sm:px-8">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -283,7 +278,7 @@ export default function LandingPage() {
                   className="opacity-100"
                 >
                   <MagneticHover strength={0.2}>
-                    <Card className="step-card glass-strong glow-green h-full group hover:glow-green-strong transition-all duration-500 bg-forest-800/80 backdrop-blur-xl border-2 border-green-500/30">
+                    <Card className="step-card glass-strong glow-green h-full group hover:glow-green-strong transition-all duration-500 border-2 border-green-500/30 relative z-1">
                       <CardContent className="p-8 space-y-6">
                         <div className="flex items-center justify-between">
                           <span className="text-6xl font-extrabold text-green-400/40 group-hover:text-green-400/60 transition-colors">
@@ -313,7 +308,7 @@ export default function LandingPage() {
         </section>
 
         {/* WHO IT SERVES */}
-        <section className="isolated-section section-spacing py-24 bg-forest-800">
+        <section className="relative z-1 isolated-section section-spacing py-24">
           <div className="mx-auto max-w-6xl px-6 sm:px-8">
             <motion.h2
               initial={{ opacity: 0, y: 20 }}
@@ -354,7 +349,7 @@ export default function LandingPage() {
                   transition={{ delay: i * 0.1, duration: 0.5 }}
                 >
                   <MagneticHover strength={0.15}>
-                    <Card className="glass h-full group hover:glass-strong hover:glow-green transition-all duration-300 bg-forest-900/60 backdrop-blur-xl border border-green-500/10 hover:border-green-500/30">
+                    <Card className="glass h-full group hover:glass-strong hover:glow-green transition-all duration-300 border border-green-500/10 hover:border-green-500/30 relative z-1">
                       <CardContent className="p-6 space-y-4 text-center">
                         <div className="flex justify-center text-green-400 group-hover:scale-110 transition-transform">
                           {card.icon}
@@ -377,7 +372,7 @@ export default function LandingPage() {
         {/* FINAL CTA - Portal effect */}
         <section
           ref={ctaRef}
-          className="isolated-section section-spacing py-32 bg-forest-900"
+          className="relative z-1 isolated-section section-spacing py-32"
         >
           <div className="mx-auto max-w-4xl px-6 sm:px-8 text-center">
             <motion.div
@@ -385,7 +380,7 @@ export default function LandingPage() {
               whileInView={{ opacity: 1, scale: 1 }}
               viewport={{ once: true }}
               transition={{ duration: 0.8 }}
-              className="glass-strong glow-green-strong rounded-3xl p-12 space-y-8"
+              className="glass-strong glow-green-strong rounded-3xl p-12 space-y-8 relative z-1"
             >
               <Badge variant="blockchain" className="gap-1.5">
                 <Zap className="h-4 w-4" />
@@ -422,7 +417,7 @@ export default function LandingPage() {
         </section>
 
         {/* FOOTER */}
-        <footer className="border-t border-white/10 glass-dark px-6 sm:px-8 py-8">
+        <footer className="relative z-1 border-t border-white/10 glass-dark px-6 sm:px-8 py-8">
           <div className="mx-auto flex max-w-6xl flex-col items-center gap-4 text-center text-sm text-gray-500 sm:flex-row sm:justify-between">
             <span>© 2026 BoundaryTruth. All rights reserved.</span>
             <Badge variant="blockchain" className="gap-1">

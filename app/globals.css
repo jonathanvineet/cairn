@@ -27,7 +27,7 @@
 }
 
 :root {
-  --background: #0a1a0f;
+  --background: #020d06;
   --foreground: #f0fdf4;
   --muted: #1a3a1f;
   --muted-foreground: #9ca3af;
@@ -46,8 +46,9 @@
   border-color: var(--color-border);
 }
 
+html,
 body {
-  background: var(--background);
+  background: #020d06;
   color: var(--foreground);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
@@ -99,37 +100,37 @@ body {
 
 /* Glassmorphism utilities - NUCLEAR ENHANCED */
 .glass {
-  background: rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  background: rgba(0, 20, 10, 0.4);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border: 1px solid rgba(255, 255, 255, 0.15);
   transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .glass:hover {
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(0, 20, 10, 0.5);
   border-color: rgba(255, 255, 255, 0.25);
   transform: translateY(-2px);
 }
 
 .glass-strong {
-  background: rgba(255, 255, 255, 0.12);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
+  background: rgba(0, 20, 10, 0.6);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border: 1px solid rgba(255, 255, 255, 0.2);
   transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .glass-strong:hover {
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(0, 20, 10, 0.7);
   border-color: rgba(255, 255, 255, 0.3);
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
 }
 
 .glass-dark {
-  background: rgba(10, 26, 15, 0.85);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
+  background: rgba(0, 20, 10, 0.3);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border: 1px solid rgba(45, 90, 39, 0.3);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
 }
@@ -228,8 +229,8 @@ body {
 /* Prevent text overlap */
 .isolated-section {
   position: relative;
-  z-index: 10;
-  background: var(--color-forest-900);
+  z-index: 1;
+  background: transparent;
 }
 
 /* Magnetic hover effects */

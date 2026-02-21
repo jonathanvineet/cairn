@@ -1,26 +1,88 @@
 "use client";
 
-import { Suspense } from "react";
-import { Canvas } from "@react-three/fiber";
+import { Suspense, useEffect, useRef, useState } from "react";
+import { Canvas, useThree } from "@react-three/fiber";
 import { OrbitControls, PerspectiveCamera, Environment, ScrollControls } from "@react-three/drei";
 import { DroneModel } from "./DroneModel";
 import { FenceShader } from "./FenceShader";
 import { ForestBg } from "./ForestBg";
 import { PerformanceOptimizer } from "./PerformanceOptimizer";
 
+// Component to handle WebGL context loss/restoration
+function ContextLossHandler() {
+  const { gl } = useThree();
+  
+  useEffect(() => {
+    const canvas = gl.domElement;
+    
+    const handleContextLost = (event: Event) => {
+      event.preventDefault();
+      console.log('WebGL context lost - will attempt to restore');
+    };
+    
+    const handleContextRestored = () => {
+      console.log('WebGL context restored');
+      // Force a re-render
+      gl.setPixelRatio(window.devicePixelRatio);
+    };
+    
+    canvas.addEventListener('webglcontextlost', handleContextLost);
+    canvas.addEventListener('webglcontextrestored', handleContextRestored);
+    
+    return () => {
+      canvas.removeEventListener('webglcontextlost', handleContextLost);
+      canvas.removeEventListener('webglcontextrestored', handleContextRestored);
+    };
+  }, [gl]);
+  
+  return null;
+}
+
 export function HeroScene() {
+  const [frameloop, setFrameloop] = useState<'always' | 'demand' | 'never'>('always');
+  
+  useEffect(() => {
+    // Handle page visibility changes
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        setFrameloop('never');
+      } else {
+        setFrameloop('always');
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
+  
   return (
-    <div className="absolute inset-0 w-full h-full">
-      <Canvas
-        shadows
-        dpr={[1, 1.5]}
-        gl={{
-          antialias: true,
-          alpha: true,
-          powerPreference: "high-performance",
-        }}
-      >
+    <Canvas
+      shadows
+      dpr={[1, 1.5]}
+      frameloop={frameloop}
+      gl={{
+        antialias: true,
+        alpha: true,
+        powerPreference: "high-performance",
+        preserveDrawingBuffer: false,
+      }}
+      onCreated={({ gl }) => {
+        gl.setPixelRatio(window.devicePixelRatio);
+      }}
+      style={{ 
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        width: '100vw',
+        height: '100vh',
+        zIndex: 0
+      }}
+    >
         <Suspense fallback={null}>
+          <ContextLossHandler />
           <ScrollControls pages={4} damping={0.2}>
             <PerformanceOptimizer />
             
@@ -50,7 +112,7 @@ export function HeroScene() {
             <Environment preset="forest" />
 
             {/* Fog for depth */}
-            <fog attach="fog" args={["#0a1a0f", 15, 50]} />
+            <fog attach="fog" args={["#020d06", 15, 50]} />
 
             {/* 3D Elements */}
             <ForestBg />
@@ -71,6 +133,5 @@ export function HeroScene() {
           </ScrollControls>
         </Suspense>
       </Canvas>
-    </div>
   );
 }
