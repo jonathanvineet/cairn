@@ -1,4 +1,10 @@
+"use client";
+
+import { useEffect, useRef } from "react";
 import Link from "next/link";
+import { motion } from "framer-motion";
+import gsap from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
 import {
   Leaf,
   Clock,
@@ -10,177 +16,433 @@ import {
   TreePine,
   Scale,
   Briefcase,
+  Lock,
+  Rocket,
+  Eye,
+  ArrowRight,
+  Zap,
+  CheckCircle2,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import { WalletConnect } from "@/components/WalletConnect";
+import { Demozone, useDemozone } from "@/components/Demozone";
+import { MagneticHover } from "@/components/MagneticHover";
+import { ScrollProvider } from "@/components/ScrollProvider";
+import { CursorTrail } from "@/components/CursorTrail";
+import { ScrollProgress } from "@/components/ScrollProgress";
+import dynamic from "next/dynamic";
+
+// Dynamically import 3D scene (client-only)
+const HeroScene = dynamic(
+  () => import("@/components/3d/HeroScene").then((mod) => mod.HeroScene),
+  { ssr: false }
+);
+
+if (typeof window !== "undefined") {
+  gsap.registerPlugin(ScrollTrigger);
+}
 
 export default function LandingPage() {
+  const { open, openDemo, closeDemo } = useDemozone();
+  const heroRef = useRef<HTMLDivElement>(null);
+  const ctaRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    // CTA pulse animation
+    if (ctaRef.current) {
+      gsap.to(ctaRef.current.querySelector(".cta-button"), {
+        scrollTrigger: {
+          trigger: ctaRef.current,
+          start: "top 80%",
+          toggleActions: "play none none reverse",
+        },
+        scale: 1.05,
+        duration: 0.8,
+        repeat: -1,
+        yoyo: true,
+        ease: "sine.inOut",
+      });
+    }
+  }, []);
+
   return (
-    <div className="min-h-screen bg-[#0a1a0f] text-white">
-      {/* Topographic background pattern */}
-      <style>{`
-        .topo-bg {
-          background-color: #0a1a0f;
-          background-image: 
-            repeating-linear-gradient(
-              0deg,
-              transparent,
-              transparent 39px,
-              rgba(34,197,94,0.07) 39px,
-              rgba(34,197,94,0.07) 40px
-            ),
-            repeating-linear-gradient(
-              90deg,
-              transparent,
-              transparent 39px,
-              rgba(34,197,94,0.07) 39px,
-              rgba(34,197,94,0.07) 40px
-            );
-        }
-      `}</style>
+    <ScrollProvider>
+      <div className="relative min-h-screen bg-forest-900 text-white overflow-x-hidden">
+        <CursorTrail />
+        <ScrollProgress />
 
-      {/* HERO SECTION */}
-      <section className="topo-bg min-h-screen flex flex-col">
-        {/* Nav */}
-        <nav className="flex items-center justify-between px-8 py-5">
-          <div className="flex items-center gap-2">
-            <Leaf className="h-7 w-7 text-green-400" />
-            <span className="text-xl font-bold tracking-tight">BoundaryTruth</span>
+        {/* HERO SECTION - Full viewport with 3D */}
+        <section
+          ref={heroRef}
+          className="relative min-h-screen flex flex-col snap-section"
+        >
+          {/* 3D Canvas background */}
+          <div className="absolute inset-0 z-0">
+            <HeroScene />
           </div>
-          <div className="flex items-center gap-4">
-            <button className="rounded-lg border border-green-500 px-4 py-2 text-sm font-medium text-green-400 hover:bg-green-500/10 transition">
-              Connect Wallet
-            </button>
-            <Link
-              href="/login"
-              className="text-sm text-gray-300 hover:text-white transition"
+
+          {/* Gradient overlay */}
+          <div className="absolute inset-0 z-10 bg-gradient-to-b from-transparent via-forest-900/30 to-forest-900" />
+
+          {/* Nav */}
+          <nav className="relative z-20 flex items-center justify-between px-6 sm:px-8 py-5 glass-dark">
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.6 }}
+              className="flex items-center gap-2"
             >
-              Sign In
-            </Link>
-          </div>
-        </nav>
-
-        {/* Hero content */}
-        <div className="flex flex-1 flex-col items-center justify-center text-center px-4 pb-24">
-          <h1 className="max-w-3xl text-5xl font-extrabold leading-tight tracking-tight md:text-6xl">
-            Tamper-Proof Evidence for Every Boundary Inspection
-          </h1>
-          <p className="mt-6 max-w-2xl text-lg text-gray-400">
-            Autonomous drone patrols. Hedera-anchored records.
-            <br />
-            Legal-grade evidence for forest and plantation disputes.
-          </p>
-          <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
-            <Link
-              href="/dashboard"
-              className="rounded-lg bg-green-500 px-7 py-3 text-base font-semibold text-black hover:bg-green-400 transition"
+              <Leaf className="h-7 w-7 text-green-400" />
+              <span className="text-xl font-bold tracking-tight">
+                BoundaryTruth
+              </span>
+            </motion.div>
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
             >
-              Start Inspection
-            </Link>
-            <button className="rounded-lg border border-white/20 px-7 py-3 text-base font-semibold text-white hover:bg-white/10 transition">
-              View Demo Zone
-            </button>
-          </div>
-        </div>
-      </section>
+              <WalletConnect />
+            </motion.div>
+          </nav>
 
-      {/* PROBLEM STRIP */}
-      <section className="border-y border-white/10 bg-[#0d1f12]">
-        <div className="mx-auto grid max-w-5xl grid-cols-1 gap-8 px-8 py-14 sm:grid-cols-3">
-          <div className="flex flex-col items-center text-center">
-            <Clock className="h-8 w-8 text-amber-400 mb-3" />
-            <span className="text-4xl font-extrabold text-amber-400">18 months</span>
-            <p className="mt-2 text-sm text-gray-400">average dispute resolution time today</p>
-          </div>
-          <div className="flex flex-col items-center text-center">
-            <FileX className="h-8 w-8 text-red-400 mb-3" />
-            <span className="text-4xl font-extrabold text-red-400">0</span>
-            <p className="mt-2 text-sm text-gray-400">verifiable records in current manual inspection systems</p>
-          </div>
-          <div className="flex flex-col items-center text-center">
-            <DollarSign className="h-8 w-8 text-orange-400 mb-3" />
-            <span className="text-4xl font-extrabold text-orange-400">₹2L per case</span>
-            <p className="mt-2 text-sm text-gray-400">average investigation cost per dispute</p>
-          </div>
-        </div>
-      </section>
-
-      {/* HOW IT WORKS */}
-      <section className="mx-auto max-w-5xl px-8 py-20">
-        <h2 className="mb-12 text-center text-3xl font-bold">How It Works</h2>
-        <div className="grid grid-cols-1 gap-8 sm:grid-cols-3">
-          {[
-            {
-              step: "1",
-              icon: <svg className="h-8 w-8 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>,
-              title: "Drone Patrol",
-              desc: "Scheduled autonomous checkpoint inspection across zone boundaries",
-            },
-            {
-              step: "2",
-              icon: <Camera className="h-8 w-8 text-green-400" />,
-              title: "Evidence Capture",
-              desc: "GPS-tagged photo + condition classification at every checkpoint",
-            },
-            {
-              step: "3",
-              icon: <Shield className="h-8 w-8 text-green-400" />,
-              title: "Hedera Anchoring",
-              desc: "Tamper-proof hash submitted to Hedera Consensus Service (HCS)",
-            },
-          ].map((item) => (
-            <div
-              key={item.step}
-              className="flex flex-col items-center rounded-xl border border-white/10 bg-white/5 p-8 text-center"
-            >
-              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-green-500/15 text-lg font-bold text-green-400">
-                {item.step}
-              </div>
-              {item.icon}
-              <h3 className="mt-4 text-lg font-semibold">{item.title}</h3>
-              <p className="mt-2 text-sm text-gray-400">{item.desc}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* WHO IT SERVES */}
-      <section className="bg-[#0d1f12] px-8 py-20">
-        <h2 className="mb-12 text-center text-3xl font-bold">Who It Serves</h2>
-        <div className="mx-auto grid max-w-5xl grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          {[
-            { icon: <TreePine className="h-8 w-8 text-green-400" />, title: "Forest Department", desc: "Monitor protected zones and generate court-admissible evidence" },
-            { icon: <Building2 className="h-8 w-8 text-green-400" />, title: "Plantation Estate", desc: "Track boundary compliance and resolve encroachment disputes" },
-            { icon: <Briefcase className="h-8 w-8 text-green-400" />, title: "Insurance Company", desc: "Verify claims with immutable on-chain evidence records" },
-            { icon: <Scale className="h-8 w-8 text-green-400" />, title: "Legal Body", desc: "Access tamper-proof inspection records for dispute adjudication" },
-          ].map((card) => (
-            <div
-              key={card.title}
-              className="flex flex-col items-center rounded-xl border border-white/10 bg-white/5 p-6 text-center"
-            >
-              {card.icon}
-              <h3 className="mt-4 font-semibold">{card.title}</h3>
-              <p className="mt-2 text-sm text-gray-400">{card.desc}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* FOOTER */}
-      <footer className="border-t border-white/10 px-8 py-8">
-        <div className="mx-auto flex max-w-5xl flex-col items-center gap-4 text-center text-sm text-gray-500 sm:flex-row sm:justify-between">
-          <span>© 2025 BoundaryTruth. All rights reserved.</span>
-          <span className="rounded-full border border-green-500/40 px-3 py-1 text-xs text-green-400">
-            Hedera Testnet
-          </span>
-          <a
-            href="https://github.com/jonathanvineet/cairn"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hover:text-white transition"
+          {/* Hero content */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, ease: "easeOut" }}
+            className="hero-content relative z-20 flex flex-1 flex-col items-center justify-center text-center px-4 py-24"
           >
-            GitHub →
-          </a>
-        </div>
-      </footer>
-    </div>
+            <Badge variant="blockchain" className="mb-6 gap-1.5 glass glow-green">
+              <Lock className="h-3 w-3" />
+              Blockchain Verified on Hedera
+            </Badge>
+
+            <h1 className="max-w-5xl text-5xl font-extrabold leading-[1.1] tracking-tight sm:text-6xl md:text-7xl lg:text-8xl">
+              <span className="block text-white">BOUNDARY TRUTH</span>
+              <span className="block bg-gradient-to-r from-green-400 via-green-500 to-green-600 bg-clip-text text-transparent mt-2">
+                Legal-Proof Fence Inspections 🛡️
+              </span>
+            </h1>
+
+            <p className="mt-8 max-w-2xl text-base sm:text-lg lg:text-xl text-gray-300 leading-relaxed">
+              Tamper-Proof Evidence Infrastructure. Autonomous drone patrols.
+              <br className="hidden sm:block" />
+              Blockchain-anchored records. Court-admissible inspection data.
+            </p>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.3 }}
+              className="mt-12 flex flex-wrap items-center justify-center gap-6"
+            >
+              <MagneticHover strength={0.4}>
+                <Link href="/dashboard">
+                  <Button size="lg" className="gap-2 glow-green-strong text-lg px-8 py-6">
+                    <Rocket className="h-5 w-5" />
+                    Start Inspection
+                    <ArrowRight className="h-5 w-5" />
+                  </Button>
+                </Link>
+              </MagneticHover>
+
+              <MagneticHover strength={0.3}>
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="gap-2 glass text-lg px-8 py-6"
+                  onClick={openDemo}
+                >
+                  <Eye className="h-5 w-5" />
+                  View Demo Zone
+                </Button>
+              </MagneticHover>
+            </motion.div>
+
+            {/* Live status badge */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.6, duration: 0.6 }}
+              className="mt-12 glass-strong rounded-full px-6 py-3 flex items-center gap-3"
+            >
+              <span className="relative flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-green-400" />
+              </span>
+              <span className="text-sm font-medium">
+                <span className="text-green-400 font-bold">Wayanad Zone:</span>{" "}
+                14/16 Checkpoints ✅
+              </span>
+            </motion.div>
+          </motion.div>
+        </section>
+
+        {/* PROBLEM STATS - Emerge from ground */}
+        <section className="isolated-section section-spacing py-16 border-y border-white/10 bg-forest-800">
+          <div className="mx-auto max-w-6xl px-6 sm:px-8">
+            <motion.h2
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="text-center text-3xl sm:text-4xl font-bold mb-20"
+            >
+              The Problem We Solve
+            </motion.h2>
+            <div className="grid grid-cols-1 gap-8 sm:grid-cols-3">
+              {[
+                {
+                  icon: <Clock className="h-10 w-10 text-amber-400" />,
+                  value: "18 months",
+                  color: "text-amber-400",
+                  desc: "average dispute resolution time",
+                },
+                {
+                  icon: <FileX className="h-10 w-10 text-red-400" />,
+                  value: "0",
+                  color: "text-red-400",
+                  desc: "verifiable records in manual systems",
+                },
+                {
+                  icon: <DollarSign className="h-10 w-10 text-orange-400" />,
+                  value: "₹2L per case",
+                  color: "text-orange-400",
+                  desc: "average investigation cost",
+                },
+              ].map((item, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, y: 50 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: false, amount: 0.3 }}
+                  transition={{ delay: i * 0.15, duration: 0.6 }}
+                  className="opacity-100"
+                >
+                  <Card className="stat-card glass-strong glow-green text-center p-8 transform hover:scale-105 transition-transform duration-300 bg-forest-900/80 backdrop-blur-xl border-2 border-green-500/20">
+                    <CardContent className="p-0 space-y-4">
+                      <div className="flex justify-center">{item.icon}</div>
+                      <span className={`text-5xl font-extrabold ${item.color} block`}>
+                        {item.value}
+                      </span>
+                      <p className="text-sm text-gray-300">{item.desc}</p>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* HOW IT WORKS - Sequential reveal */}
+        <section className="isolated-section section-spacing py-24 bg-forest-900">
+          <div className="mx-auto max-w-6xl px-6 sm:px-8">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="text-center mb-20"
+            >
+              <h2 className="text-3xl sm:text-4xl font-bold mb-4">
+                How It Works
+              </h2>
+              <p className="text-gray-400 max-w-2xl mx-auto">
+                Three simple steps to tamper-proof boundary evidence
+              </p>
+            </motion.div>
+
+            <div className="grid grid-cols-1 gap-8 md:grid-cols-3 relative z-20">
+              {[
+                {
+                  step: "01",
+                  icon: <TreePine className="h-10 w-10 text-green-400" />,
+                  title: "Drone Patrol",
+                  desc: "Scheduled autonomous checkpoint inspection across zone boundaries with GPS precision",
+                },
+                {
+                  step: "02",
+                  icon: <Camera className="h-10 w-10 text-green-400" />,
+                  title: "Evidence Capture",
+                  desc: "GPS-tagged photo + AI condition classification at every checkpoint with timestamps",
+                },
+                {
+                  step: "03",
+                  icon: <Shield className="h-10 w-10 text-green-400" />,
+                  title: "Hedera Anchoring",
+                  desc: "Tamper-proof hash submitted to Hedera Consensus Service for immutable record",
+                },
+              ].map((item, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: false, amount: 0.3 }}
+                  transition={{ delay: i * 0.15, duration: 0.5 }}
+                  className="opacity-100"
+                >
+                  <MagneticHover strength={0.2}>
+                    <Card className="step-card glass-strong glow-green h-full group hover:glow-green-strong transition-all duration-500 bg-forest-800/80 backdrop-blur-xl border-2 border-green-500/30">
+                      <CardContent className="p-8 space-y-6">
+                        <div className="flex items-center justify-between">
+                          <span className="text-6xl font-extrabold text-green-400/40 group-hover:text-green-400/60 transition-colors">
+                            {item.step}
+                          </span>
+                          <div className="transform group-hover:scale-110 group-hover:rotate-6 transition-transform duration-300">
+                            {item.icon}
+                          </div>
+                        </div>
+                        <h3 className="text-xl font-bold text-white">
+                          {item.title}
+                        </h3>
+                        <p className="text-sm text-gray-300 leading-relaxed">
+                          {item.desc}
+                        </p>
+                        <Badge variant="intact" className="gap-1">
+                          <CheckCircle2 className="h-3 w-3" />
+                          {i === 0 ? "Automated" : i === 1 ? "AI-Powered" : "Tamper-Proof"}
+                        </Badge>
+                      </CardContent>
+                    </Card>
+                  </MagneticHover>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* WHO IT SERVES */}
+        <section className="isolated-section section-spacing py-24 bg-forest-800">
+          <div className="mx-auto max-w-6xl px-6 sm:px-8">
+            <motion.h2
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="text-center text-3xl sm:text-4xl font-bold mb-20"
+            >
+              Who It Serves
+            </motion.h2>
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+              {[
+                {
+                  icon: <TreePine className="h-8 w-8" />,
+                  title: "Forest Department",
+                  desc: "Monitor protected zones and generate court-admissible evidence",
+                },
+                {
+                  icon: <Building2 className="h-8 w-8" />,
+                  title: "Plantation Estate",
+                  desc: "Track boundary compliance and resolve encroachment disputes",
+                },
+                {
+                  icon: <Briefcase className="h-8 w-8" />,
+                  title: "Insurance Company",
+                  desc: "Verify claims with immutable on-chain evidence records",
+                },
+                {
+                  icon: <Scale className="h-8 w-8" />,
+                  title: "Legal Body",
+                  desc: "Access tamper-proof inspection records for dispute adjudication",
+                },
+              ].map((card, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, y: 40 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.1, duration: 0.5 }}
+                >
+                  <MagneticHover strength={0.15}>
+                    <Card className="glass h-full group hover:glass-strong hover:glow-green transition-all duration-300 bg-forest-900/60 backdrop-blur-xl border border-green-500/10 hover:border-green-500/30">
+                      <CardContent className="p-6 space-y-4 text-center">
+                        <div className="flex justify-center text-green-400 group-hover:scale-110 transition-transform">
+                          {card.icon}
+                        </div>
+                        <h3 className="font-semibold text-white">
+                          {card.title}
+                        </h3>
+                        <p className="text-xs text-gray-300 leading-relaxed">
+                          {card.desc}
+                        </p>
+                      </CardContent>
+                    </Card>
+                  </MagneticHover>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* FINAL CTA - Portal effect */}
+        <section
+          ref={ctaRef}
+          className="isolated-section section-spacing py-32 bg-forest-900"
+        >
+          <div className="mx-auto max-w-4xl px-6 sm:px-8 text-center">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.8 }}
+              className="glass-strong glow-green-strong rounded-3xl p-12 space-y-8"
+            >
+              <Badge variant="blockchain" className="gap-1.5">
+                <Zap className="h-4 w-4" />
+                Enter the Evidence Network
+              </Badge>
+
+              <h2 className="text-4xl sm:text-5xl font-extrabold leading-tight">
+                Ready to Secure Your
+                <br />
+                <span className="bg-gradient-to-r from-green-400 to-green-600 bg-clip-text text-transparent">
+                  Boundary Truth?
+                </span>
+              </h2>
+
+              <p className="text-gray-300 max-w-2xl mx-auto text-lg">
+                Join forest departments, estates, and legal bodies using
+                blockchain-verified evidence
+              </p>
+
+              <MagneticHover strength={0.5}>
+                <Link href="/dashboard">
+                  <Button
+                    size="lg"
+                    className="cta-button gap-3 text-xl px-12 py-8 glow-green-strong transform hover:scale-110 transition-transform"
+                  >
+                    <Shield className="h-6 w-6" />
+                    Launch Dashboard
+                    <ArrowRight className="h-6 w-6" />
+                  </Button>
+                </Link>
+              </MagneticHover>
+            </motion.div>
+          </div>
+        </section>
+
+        {/* FOOTER */}
+        <footer className="border-t border-white/10 glass-dark px-6 sm:px-8 py-8">
+          <div className="mx-auto flex max-w-6xl flex-col items-center gap-4 text-center text-sm text-gray-500 sm:flex-row sm:justify-between">
+            <span>© 2026 BoundaryTruth. All rights reserved.</span>
+            <Badge variant="blockchain" className="gap-1">
+              <Lock className="h-3 w-3" />
+              Hedera Testnet
+            </Badge>
+            <a
+              href="https://github.com/jonathanvineet/cairn"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-white transition"
+            >
+              GitHub →
+            </a>
+          </div>
+        </footer>
+
+        {/* Demo Modal */}
+        <Demozone open={open} onClose={closeDemo} />
+      </div>
+    </ScrollProvider>
   );
 }
