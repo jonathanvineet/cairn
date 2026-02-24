@@ -40,9 +40,11 @@ export async function createConnector(): Promise<DAppConnector> {
   }
 
   const [
-    { DAppConnector, HederaSessionEvent, HederaJsonRpcMethod, HederaChainId },
+    { DAppConnector, HederaSessionEvent, HederaJsonRpcMethod },
+    { LedgerId },
   ] = await Promise.all([
     import("@hashgraph/hedera-wallet-connect"),
+    import("@hiero-ledger/sdk"),
   ]);
 
   const metadata = {
@@ -57,11 +59,11 @@ export async function createConnector(): Promise<DAppConnector> {
   // DAppConnector creates its own WalletConnectModal in its constructor
   dAppConnector = new DAppConnector(
     metadata,
-    HederaChainId.Testnet,
+    LedgerId.TESTNET,
     projectId,
     Object.values(HederaJsonRpcMethod),
     [HederaSessionEvent.AccountsChanged, HederaSessionEvent.ChainChanged],
-    [HederaChainId.Testnet]
+    ["hedera:testnet"]
   );
 
   await dAppConnector.init({ logger: "error" });
