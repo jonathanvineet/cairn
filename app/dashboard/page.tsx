@@ -10,6 +10,7 @@ import {
   Shield,
   ArrowLeft,
   Lock,
+  Send,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -136,10 +137,18 @@ export default function DashboardPage() {
               Wayanad Wildlife Sanctuary — Zone WY-11
             </p>
           </div>
-          <Badge variant="blockchain" className="hidden sm:flex gap-1">
-            <Lock className="h-3 w-3" />
-            Blockchain Verified
-          </Badge>
+          <div className="flex items-center gap-3">
+            <Link href="/deploy">
+              <Button className="gap-2 bg-green-600 hover:bg-green-700">
+                <Send className="h-4 w-4" />
+                Deploy
+              </Button>
+            </Link>
+            <Badge variant="blockchain" className="hidden sm:flex gap-1">
+              <Lock className="h-3 w-3" />
+              Blockchain Verified
+            </Badge>
+          </div>
         </motion.div>
 
         {/* ROW 1: Zone Overview (4 KPI Cards) */}
