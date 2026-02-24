@@ -4,6 +4,12 @@ import { motion } from "framer-motion";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { MagneticCard } from "@/components/MagneticCard";
 import { Map } from "lucide-react";
+import dynamic from "next/dynamic";
+
+const LeafletTriangleMap = dynamic(
+  () => import("@/components/LeafletTriangleMap").then((m) => m.LeafletTriangleMap),
+  { ssr: false }
+);
 
 export function MapWidget() {
   return (
@@ -21,6 +27,11 @@ export function MapWidget() {
           </CardTitle>
         </CardHeader>
         <CardContent>
+        <div className="flex flex-col md:flex-row gap-4">
+          <div className="md:w-2/5">
+            <LeafletTriangleMap />
+          </div>
+          <div className="md:w-3/5">
         <div className="relative h-52 sm:h-64 rounded-lg bg-forest-800 border border-white/10 overflow-hidden">
           <svg
             viewBox="0 0 400 200"
@@ -128,6 +139,8 @@ export function MapWidget() {
               <text x="124" y="3" fill="#9ca3af" fontSize="8">Breach</text>
             </g>
           </svg>
+        </div>
+        </div>
         </div>
       </CardContent>
     </Card>
