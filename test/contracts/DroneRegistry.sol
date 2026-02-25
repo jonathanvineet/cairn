@@ -8,63 +8,50 @@ pragma solidity ^0.8.18;
 
 contract DroneRegistry {
     struct Drone {
-        string droneId;
-        address owner;
+        string cairnId;
+        address accountId;
+        string zoneId;
+        string model;
         uint256 registeredAt;
         bool isActive;
-        string missionStatus;
     }
+
+    mapping(address => Drone) public drones;
+    mapping(string => address) public cairnIdToAddress;
+    address[] public allDrones;
     
-    mapping(string => Drone) public drones;
-    mapping(address => string[]) public ownerDrones;
-    string[] public allDroneIds;
-    
-    event DroneRegistered(string indexed droneId, address indexed owner);
-    event DroneStatusUpdated(string indexed droneId, string newStatus);
-    event DroneDeactivated(string indexed droneId);
-    
-    function registerDrone(string memory droneId) public returns (bool) {
-        require(bytes(drones[droneId].droneId).length == 0, "Drone already registered");
+    event DroneRegistered(string cairnId, address indexed accountId, string zoneId);
+    event DroneStatusUpdated(address indexed accountId, bool isActive);
+
+    function registerDrone(
+        string memory _cairnId,
+        address _accountId,
+        string memory _zoneId,
+        string memory _model
+    ) public returns (bool) {
+        require(drones[_accountId].accountId == address(0), "Drone already registered");
         
-        Drone memory newDrone = Drone({
-            droneId: droneId,
-            owner: msg.sender,
+        drones[_accountId] = Drone({
+            cairnId: _cairnId,
+            accountId: _accountId,
+            zoneId: _zoneId,
+            model: _model,
             registeredAt: block.timestamp,
-            isActive: true,
-            missionStatus: "idle"
+            isActive: true
         });
         
-        drones[droneId] = newDrone;
-        ownerDrones[msg.sender].push(droneId);
-        allDroneIds.push(droneId);
+        cairnIdToAddress[_cairnId] = _accountId;
+        allDrones.push(_accountId);
         
-        emit DroneRegistered(droneId, msg.sender);
+        emit DroneRegistered(_cairnId, _accountId, _zoneId);
         return true;
     }
-    
-    function updateDroneStatus(string memory droneId, string memory newStatus) public {
-        require(drones[droneId].owner == msg.sender, "Only drone owner can update");
-        require(drones[droneId].isActive, "Drone is not active");
-        
-        drones[droneId].missionStatus = newStatus;
-        emit DroneStatusUpdated(droneId, newStatus);
-    }
-    
-    function deactivateDrone(string memory droneId) public {
-        require(drones[droneId].owner == msg.sender, "Only drone owner can deactivate");
-        drones[droneId].isActive = false;
-        emit DroneDeactivated(droneId);
-    }
-    
-    function getDrone(string memory droneId) public view returns (Drone memory) {
-        return drones[droneId];
-    }
-    
-    function getOwnerDrones(address owner) public view returns (string[] memory) {
-        return ownerDrones[owner];
+
+    function getDrone(address _accountId) public view returns (Drone memory) {
+        return drones[_accountId];
     }
     
     function getTotalDrones() public view returns (uint256) {
-        return allDroneIds.length;
+        return allDrones.length;
     }
 }

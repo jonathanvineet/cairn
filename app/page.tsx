@@ -145,8 +145,21 @@ export default function LandingPage() {
               </MagneticHover>
 
               <MagneticHover strength={0.3}>
+                <Link href="/register">
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    className="gap-2 glass text-lg px-8 py-6"
+                  >
+                    <Shield className="h-5 w-5" />
+                    Register Drone
+                  </Button>
+                </Link>
+              </MagneticHover>
+
+              <MagneticHover strength={0.3}>
                 <Button
-                  variant="outline"
+                  variant="ghost"
                   size="lg"
                   className="gap-2 glass text-lg px-8 py-6"
                   onClick={openDemo}
