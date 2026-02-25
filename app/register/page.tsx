@@ -250,7 +250,7 @@ export default function RegisterDronePage() {
     return (
         <div className="min-h-screen bg-[#020d06] text-white topo-bg py-12 px-4 sm:px-6 lg:px-8">
             <div className="max-w-7xl mx-auto">
-                <header className="mb-12 flex items-center justify-between">
+                <header className="mb-12 flex items-center justify-between relative z-50">
                     <Link href="/" className="flex items-center gap-2 group">
                         <div className="p-2 glass rounded-lg group-hover:glow-green transition-all">
                             <ChevronLeft className="h-5 w-5" />
