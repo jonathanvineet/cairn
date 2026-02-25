@@ -26,18 +26,55 @@ export async function POST(req: Request) {
         // ─────────────────────────────────────────
         // STEP 1: Initialize Hedera client
         // ─────────────────────────────────────────
-        const operatorId = process.env.HEDERA_OPERATOR_ID || "0.0.1234"; // Fallback for demo
+        const operatorId = process.env.HEDERA_OPERATOR_ID;
         const operatorKey = process.env.HEDERA_OPERATOR_PRIVATE_KEY;
-        const encryptionSecret = process.env.ENCRYPTION_SECRET || "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+        const encryptionSecret = process.env.ENCRYPTION_SECRET!;
 
-        if (!operatorKey) {
-            throw new Error("HEDERA_OPERATOR_PRIVATE_KEY is not configured");
+        if (!operatorId || operatorId === "0.0.XXXXXX") {
+            throw new Error(
+                "HEDERA_OPERATOR_ID is not configured. " +
+                "Get your free testnet account at https://portal.hedera.com"
+            );
+        }
+        if (!operatorKey || operatorKey === "YOUR_REAL_PRIVATE_KEY_HERE") {
+            throw new Error(
+                "HEDERA_OPERATOR_PRIVATE_KEY is not configured. " +
+                "Get your free testnet account at https://portal.hedera.com"
+            );
+        }
+
+        // Parse the private key — handle all formats Hedera Portal may give:
+        // • DER hex (302e020100...) → ED25519
+        // • Raw 64-char hex        → ECDSA
+        // • Passphrase-derived     → ED25519
+        let operatorPrivKey: PrivateKey;
+        try {
+            if (operatorKey.startsWith("302e") || operatorKey.startsWith("3030")) {
+                // DER-encoded ED25519 key from Hedera Portal
+                operatorPrivKey = PrivateKey.fromStringED25519(operatorKey);
+            } else if (operatorKey.startsWith("3026") || operatorKey.startsWith("3041")) {
+                // DER-encoded ECDSA key
+                operatorPrivKey = PrivateKey.fromStringECDSA(operatorKey);
+            } else {
+                // Raw hex — try ECDSA first, fallback to ED25519
+                try {
+                    operatorPrivKey = PrivateKey.fromStringECDSA(operatorKey);
+                } catch {
+                    operatorPrivKey = PrivateKey.fromStringED25519(operatorKey);
+                }
+            }
+        } catch (e) {
+            throw new Error(
+                "Could not parse HEDERA_OPERATOR_PRIVATE_KEY. " +
+                "Ensure you copied the full key from portal.hedera.com"
+            );
         }
 
         const client = Client.forTestnet().setOperator(
             AccountId.fromString(operatorId),
-            PrivateKey.fromString(operatorKey)
+            operatorPrivKey
         );
+
 
         // ─────────────────────────────────────────
         // STEP 2: Generate drone's own keypair
@@ -106,15 +143,6 @@ export async function POST(req: Request) {
             certExpiryDate,
             sensorType,
             registeredByOfficerId,
-        });
-
-        // ─────────────────────────────────────────
-        // STEP 7: Update BoundaryZoneRegistry.sol
-        // ─────────────────────────────────────────
-        await registerDroneInSmartContract({
-            droneAccountId,
-            assignedZoneId,
-            operatorClient: client,
         });
 
         client.close();

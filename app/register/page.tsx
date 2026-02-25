@@ -24,6 +24,18 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import Link from "next/link";
+import { WalletConnect } from "@/components/WalletConnect";
+import { useWalletStore } from "@/stores/walletStore";
+import {
+    ContractExecuteTransaction,
+    ContractFunctionParameters,
+    ContractId,
+    AccountId
+} from "@hiero-ledger/sdk";
+import {
+    BOUNDARY_ZONE_REGISTRY_ADDRESS,
+    DRONE_REGISTRY_ADDRESS
+} from "@/lib/contracts";
 
 const DRONE_MODELS = [
     {
@@ -71,7 +83,9 @@ const ZONES = [
     { id: "Anamalai-02", name: "Anamalai AN-02" }
 ];
 
+
 export default function RegisterDronePage() {
+    const { connected, selectedAccount, connect } = useWalletStore();
     const [currentModelIndex, setCurrentModelIndex] = useState(0);
     const [formData, setFormData] = useState({
         serialNumber: "",
@@ -110,46 +124,122 @@ export default function RegisterDronePage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setIsSubmitting(true);
-        setRegistrationStep(1);
 
-        // Simulated processing steps
-        const steps = [
-            "Generating secure keypair...",
-            "Creating Hedera account...",
-            "Funding drone wallet (20 HBAR)...",
-            "Minting DroneCredential NFT...",
-            "Updating BoundaryZoneRegistry smart contract..."
-        ];
-
-        for (let i = 0; i < steps.length; i++) {
-            setProcessingStatus(prev => [...prev, steps[i]]);
-            await new Promise(resolve => setTimeout(resolve, 800 + Math.random() * 500));
+        if (!connected) {
+            alert("Please connect your Hedera wallet first.");
+            return;
         }
 
+        setIsSubmitting(true);
+        setRegistrationStep(1);
+        setProcessingStatus([]);
+
         try {
+            // STEP 1: Backend Registration (Keys, Account, NFT, DB)
+            setProcessingStatus(prev => [...prev, "Initializing drone agent in backend..."]);
             const response = await fetch("/api/drones/register", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     ...formData,
                     model: currentModel.name,
-                    registeredByOfficerId: "OFFICER-001" // Mock officer ID
+                    registeredByOfficerId: selectedAccount?.id || "OFFICER-001"
                 }),
             });
 
             const result = await response.json();
-            if (result.success) {
-                setRegisteredDrone(result.drone);
-                setRegistrationStep(2);
-            } else {
-                alert("Registration failed: " + result.error);
-                setRegistrationStep(0);
-                setProcessingStatus([]);
+            if (!result.success) {
+                throw new Error(result.error || "Backend registration failed");
             }
-        } catch (error) {
-            console.error(error);
-            alert("An error occurred during registration");
+
+            const droneData = result.drone;
+            setRegisteredDrone(droneData);
+
+            // STEP 2: Smart Contract Registration (Officer Pays Gas)
+            const { walletType } = useWalletStore.getState();
+
+            if (walletType === "META_MASK") {
+                // ─────────────────────────────────────────
+                // METAMASK (EVM) FLOW
+                // ─────────────────────────────────────────
+                setProcessingStatus(prev => [...prev, "Initializing EVM provider..."]);
+                const { BrowserProvider, Contract } = await import("ethers");
+                const provider = new BrowserProvider(window.ethereum!);
+                const signer = await provider.getSigner();
+
+                // 2.1 BoundaryZoneRegistry
+                setProcessingStatus(prev => [...prev, "Authorizing zone access (Sign in MetaMask)..."]);
+                const zoneContract = new Contract(
+                    BOUNDARY_ZONE_REGISTRY_ADDRESS,
+                    ["function registerDrone(address _droneAccount, string _zoneId) public returns (bool)"],
+                    signer
+                );
+
+                const tx1 = await zoneContract.registerDrone(droneData.evmAddress, droneData.assignedZoneId);
+                await tx1.wait();
+
+                // 2.2 DroneRegistry
+                setProcessingStatus(prev => [...prev, "Finalizing on-chain record (Sign in MetaMask)..."]);
+                const droneContract = new Contract(
+                    DRONE_REGISTRY_ADDRESS,
+                    ["function registerDrone(string _cairnId, address _accountId, string _zoneId, string _model) public returns (bool)"],
+                    signer
+                );
+                const tx2 = await droneContract.registerDrone(
+                    droneData.cairnDroneId,
+                    droneData.evmAddress,
+                    droneData.assignedZoneId,
+                    droneData.model
+                );
+                await tx2.wait();
+
+            } else {
+                // ─────────────────────────────────────────
+                // HASHPACK (NATIVE) FLOW
+                // ─────────────────────────────────────────
+                setProcessingStatus(prev => [...prev, "Authenticating with Hedera network..."]);
+
+                const { getConnector } = await import("@/lib/hedera-connector");
+                const dapp = getConnector();
+                if (!dapp) throw new Error("Wallet connector not found");
+
+                // 2.1 BoundaryZoneRegistry
+                const zoneTx = new ContractExecuteTransaction()
+                    .setContractId(ContractId.fromEvmAddress(0, 0, BOUNDARY_ZONE_REGISTRY_ADDRESS))
+                    .setGas(250000)
+                    .setFunction(
+                        "registerDrone",
+                        new ContractFunctionParameters()
+                            .addAddress(AccountId.fromString(droneData.hederaAccountId).toEvmAddress())
+                            .addString(droneData.assignedZoneId)
+                    );
+
+                setProcessingStatus(prev => [...prev, "Authorizing zone access (Sign in HashPack)..."]);
+                await dapp.executeTransaction(zoneTx);
+
+                // 2.2 DroneRegistry
+                const droneTx = new ContractExecuteTransaction()
+                    .setContractId(ContractId.fromEvmAddress(0, 0, DRONE_REGISTRY_ADDRESS))
+                    .setGas(300000)
+                    .setFunction(
+                        "registerDrone",
+                        new ContractFunctionParameters()
+                            .addString(droneData.cairnDroneId)
+                            .addAddress(AccountId.fromString(droneData.hederaAccountId).toEvmAddress())
+                            .addString(droneData.assignedZoneId)
+                            .addString(droneData.model)
+                    );
+
+                setProcessingStatus(prev => [...prev, "Finalizing on-chain record (Sign in HashPack)..."]);
+                await dapp.executeTransaction(droneTx);
+            }
+
+            setProcessingStatus(prev => [...prev, "Registration complete!"]);
+            setRegistrationStep(2);
+
+        } catch (error: any) {
+            console.error("Registration flow error:", error);
+            alert("Registration failed: " + (error.message || "Unknown error"));
             setRegistrationStep(0);
             setProcessingStatus([]);
         } finally {
@@ -167,12 +257,13 @@ export default function RegisterDronePage() {
                         </div>
                         <span className="font-semibold text-gray-400 group-hover:text-white transition-colors">Back to Terminal</span>
                     </Link>
-                    <div className="flex items-center gap-3">
-                        <Badge variant="blockchain" className="gap-1.5 glass bg-green-500/10 border-green-500/30">
+                    <div className="flex items-center gap-4">
+                        <Badge variant="blockchain" className="hidden md:flex gap-1.5 glass bg-green-500/10 border-green-500/30">
                             <Shield className="h-3 w-3 text-green-400" />
-                            Officer ID: OFFICER-001
+                            Officer Terminal
                         </Badge>
-                        <Badge variant="outline" className="glass">
+                        <WalletConnect />
+                        <Badge variant="outline" className="hidden sm:flex glass">
                             Hedera Testnet
                         </Badge>
                     </div>

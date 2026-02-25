@@ -8,31 +8,36 @@ import {
   extractAccounts,
   type AccountInfo,
 } from "@/lib/hedera-connector";
+import { connectMetaMask as connectMM, isMetaMaskInstalled } from "@/lib/metamask-connector";
+
+export type WalletType = "HASH_PACK" | "META_MASK";
 
 interface Account {
-  id: string;
+  id: string; // EVM address or Hedera Account ID
   network: string;
   chainId: string;
 }
 
 interface WalletState {
   connected: boolean;
+  walletType: WalletType | null;
   selectedAccount: Account | null;
   accounts: Account[];
-  connect: () => Promise<void>;
+  connect: (type?: WalletType) => Promise<void>;
   disconnect: () => Promise<void>;
   error: string | null;
   isInitializing: boolean;
 }
 
-export const useWalletStore = create<WalletState>((set) => ({
+export const useWalletStore = create<WalletState>((set, get) => ({
   connected: false,
+  walletType: null,
   selectedAccount: null,
   accounts: [],
   error: null,
   isInitializing: false,
 
-  connect: async () => {
+  connect: async (type: WalletType = "HASH_PACK") => {
     if (typeof window === 'undefined') {
       set({ error: 'Wallet connection only available on client side' });
       return;
@@ -41,87 +46,92 @@ export const useWalletStore = create<WalletState>((set) => ({
     try {
       set({ error: null, isInitializing: true });
 
-      console.log('🔵 [1/2] Initializing DAppConnector...');
+      if (type === "META_MASK") {
+        if (!isMetaMaskInstalled()) {
+          throw new Error("MetaMask is not installed");
+        }
+
+        const { address } = await connectMM();
+        const account = {
+          id: address,
+          network: "testnet",
+          chainId: "296"
+        };
+
+        set({
+          connected: true,
+          walletType: "META_MASK",
+          selectedAccount: account,
+          accounts: [account],
+          isInitializing: false,
+          error: null
+        });
+
+        console.log('✅ Connected to MetaMask:', address);
+        return;
+      }
+
+      // Default: HashPack
+      console.log('🔵 [1/2] Initializing DAppConnector (HashPack)...');
       await initializeDAppConnector();
 
       console.log('🔵 [2/2] Opening HashPack connection modal...');
-      console.log('⚠️  Make sure: HashPack is open, set to Testnet, and has accounts imported');
-
-      // Connect to HashPack - opens modal and waits for approval
       const session = await connectHashPack();
 
-      console.log('✅ Session approved:', {
-        topic: session.topic,
-        namespaces: Object.keys(session.namespaces),
-      });
-
-      // Extract accounts from session
       const accounts = extractAccounts(session);
 
       if (accounts.length === 0) {
-        throw new Error(
-          'No Hedera accounts found in approved session.\n\n' +
-          'Checklist:\n' +
-          '✓ HashPack installed and open?\n' +
-          '✓ HashPack set to Testnet (Settings → Network)?\n' +
-          '✓ At least one Testnet account imported?\n' +
-          '✓ You approved the connection in HashPack?'
-        );
+        throw new Error('No Hedera accounts found in approved session.');
       }
-
-      accounts.forEach((acc) => {
-        console.log(`   📱 Account: hedera:${acc.network}:${acc.id}`);
-      });
 
       set({
         connected: true,
+        walletType: "HASH_PACK",
         selectedAccount: accounts[0],
         accounts,
         isInitializing: false,
         error: null,
       });
 
-      console.log('✅ Connected to:', accounts[0].id);
+      console.log('✅ Connected to HashPack:', accounts[0].id);
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('🔴 Connection error:', error);
 
-      let errorMessage = "Failed to connect wallet";
-      if (error instanceof Error) {
-        errorMessage = error.message;
-
-        if (
-          errorMessage.includes("User rejected") ||
-          errorMessage.includes("User closed") ||
-          errorMessage.includes("rejected pairing")
-        ) {
-          errorMessage = "Connection cancelled by user. Please try again.";
-        }
+      let errorMessage = error.message || "Failed to connect wallet";
+      if (errorMessage.includes("User rejected")) {
+        errorMessage = "Connection cancelled by user.";
       }
 
-      resetConnector();
+      if (type === "HASH_PACK") {
+        resetConnector();
+      }
 
       set({
         connected: false,
+        walletType: null,
         selectedAccount: null,
         accounts: [],
         error: errorMessage,
         isInitializing: false,
       });
-
-      console.error('💡 Check console above for details and try again');
       throw error;
     }
   },
 
   disconnect: async () => {
     if (typeof window === 'undefined') return;
+    const { walletType } = get();
 
     try {
-      await disconnectHashPack();
+      if (walletType === "HASH_PACK") {
+        await disconnectHashPack();
+      }
+      // MetaMask disconnection is handled client-side usually by just clearing state
 
       set({
         connected: false,
+        walletType: null,
         selectedAccount: null,
         accounts: [],
         error: null,
@@ -131,7 +141,6 @@ export const useWalletStore = create<WalletState>((set) => ({
     } catch (error) {
       const msg = error instanceof Error ? error.message : "Unknown error";
       set({ error: msg });
-      console.error("Disconnect error:", msg);
     }
   },
 }));

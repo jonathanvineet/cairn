@@ -1,5 +1,5 @@
-// Mock Database Implementation
-// In a real app, this would be Prisma or Supabase client
+// Persistent Database Implementation using Global Singleton pattern for Next.js
+// In production, this should be replaced with Prisma or Supabase
 
 interface Drone {
     id: string;
@@ -23,27 +23,31 @@ interface Drone {
     initialHBARBalance: number;
 }
 
-// In-memory store (volatile)
-let drones: Drone[] = [];
+declare global {
+    var prismaMock: { drones: Drone[] } | undefined;
+}
+
+const memoryDb = global.prismaMock || { drones: [] };
+if (process.env.NODE_ENV !== 'production') global.prismaMock = memoryDb;
 
 export const db = {
     drones: {
         count: async () => {
-            return drones.length;
+            return memoryDb.drones.length;
         },
         create: async (data: any) => {
             const newDrone = {
                 id: Math.random().toString(36).substring(7),
                 ...data,
             };
-            drones.push(newDrone);
+            memoryDb.drones.push(newDrone);
             return newDrone;
         },
         findMany: async () => {
-            return drones;
+            return memoryDb.drones;
         },
         findByAccountId: async (accountId: string) => {
-            return drones.find((d) => d.hederaAccountId === accountId);
+            return memoryDb.drones.find((d) => d.hederaAccountId === accountId);
         },
     },
 };
