@@ -21,7 +21,7 @@ export async function connectMetaMask(): Promise<{
         throw new Error("MetaMask is not installed");
     }
 
-    const provider = new BrowserProvider(window.ethereum);
+    const provider = new BrowserProvider((window as any).ethereum);
 
     // Request account access
     const accounts = await provider.send("eth_requestAccounts", []);

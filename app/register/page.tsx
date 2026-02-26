@@ -164,7 +164,7 @@ export default function RegisterDronePage() {
                 // ─────────────────────────────────────────
                 setProcessingStatus(prev => [...prev, "Initializing EVM provider..."]);
                 const { BrowserProvider, Contract } = await import("ethers");
-                const provider = new BrowserProvider(window.ethereum!);
+                const provider = new BrowserProvider((window as any).ethereum);
                 const signer = await provider.getSigner();
 
                 // 2.1 BoundaryZoneRegistry
@@ -215,7 +215,7 @@ export default function RegisterDronePage() {
                     );
 
                 setProcessingStatus(prev => [...prev, "Authorizing zone access (Sign in HashPack)..."]);
-                await dapp.executeTransaction(zoneTx);
+                await (dapp as any).executeTransaction(zoneTx);
 
                 // 2.2 DroneRegistry
                 const droneTx = new ContractExecuteTransaction()
@@ -231,7 +231,7 @@ export default function RegisterDronePage() {
                     );
 
                 setProcessingStatus(prev => [...prev, "Finalizing on-chain record (Sign in HashPack)..."]);
-                await dapp.executeTransaction(droneTx);
+                await (dapp as any).executeTransaction(droneTx);
             }
 
             setProcessingStatus(prev => [...prev, "Registration complete!"]);
