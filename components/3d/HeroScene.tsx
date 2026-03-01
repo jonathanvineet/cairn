@@ -61,16 +61,18 @@ export function HeroScene() {
   return (
     <Canvas
       shadows
-      dpr={[1, 1.5]}
+      dpr={[0.8, 1.2]}
       frameloop={frameloop}
       gl={{
-        antialias: true,
+        antialias: false,
         alpha: true,
         powerPreference: "high-performance",
         preserveDrawingBuffer: false,
+        stencil: false,
+        depth: true,
       }}
       onCreated={({ gl }) => {
-        gl.setPixelRatio(window.devicePixelRatio);
+        gl.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
       }}
       style={{ 
         position: 'fixed',
@@ -78,7 +80,8 @@ export function HeroScene() {
         left: 0,
         width: '100vw',
         height: '100vh',
-        zIndex: 0
+        zIndex: 0,
+        pointerEvents: 'none'
       }}
     >
         <Suspense fallback={null}>
@@ -95,7 +98,12 @@ export function HeroScene() {
               intensity={1.2}
               color="#4ade80"
               castShadow
-              shadow-mapSize={[1024, 1024]}
+              shadow-mapSize={[512, 512]}
+              shadow-camera-far={50}
+              shadow-camera-left={-10}
+              shadow-camera-right={10}
+              shadow-camera-top={10}
+              shadow-camera-bottom={-10}
             />
             <pointLight position={[0, 5, 0]} intensity={0.8} color="#2D5A27" />
             <pointLight position={[-8, 3, -8]} intensity={0.6} color="#A8D5BA" />
@@ -105,7 +113,7 @@ export function HeroScene() {
               penumbra={1}
               intensity={1.5}
               color="#86efac"
-              castShadow
+              castShadow={false}
             />
 
             {/* Environment for reflections */}
@@ -129,6 +137,7 @@ export function HeroScene() {
               autoRotateSpeed={0.3}
               dampingFactor={0.05}
               enableDamping
+              makeDefault={false}
             />
           </ScrollControls>
         </Suspense>

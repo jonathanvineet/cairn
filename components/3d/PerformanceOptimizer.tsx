@@ -22,7 +22,7 @@ export function PerformanceOptimizer() {
 
     // Optimize shadows
     gl.shadowMap.enabled = true;
-    gl.shadowMap.type = 2; // PCFSoftShadowMap
+    gl.shadowMap.type = 1; // PCFShadowMap (PCFSoftShadowMap is deprecated)
     gl.shadowMap.autoUpdate = false; // Manual updates for static shadows
     gl.shadowMap.needsUpdate = true;
 

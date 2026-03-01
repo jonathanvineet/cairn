@@ -36,12 +36,27 @@ import {
     BOUNDARY_ZONE_REGISTRY_ADDRESS,
     DRONE_REGISTRY_ADDRESS
 } from "@/lib/contracts";
+import dynamic from "next/dynamic";
+
+// Dynamically import 3D selector (client-only, no SSR)
+const DroneSelector3D = dynamic(
+    () => import("@/components/DroneSelector3D").then((mod) => mod.DroneSelector3D),
+    { 
+        ssr: false,
+        loading: () => (
+            <div className="flex items-center justify-center h-full">
+                <Loader2 className="h-8 w-8 animate-spin text-green-400" />
+            </div>
+        )
+    }
+);
 
 const DRONE_MODELS = [
     {
         id: "dji-m30t",
         name: "DJI Matrice 30T",
         image: "/drones/dji-matrice-30t.png",
+        accentColor: "green",
         specs: {
             flightTime: "41 mins",
             range: "15 km",
@@ -54,6 +69,7 @@ const DRONE_MODELS = [
         id: "dji-mavic-3e",
         name: "DJI Mavic 3 Enterprise",
         image: "/drones/dji-mavic-3e.png",
+        accentColor: "blue",
         specs: {
             flightTime: "45 mins",
             range: "15 km",
@@ -66,6 +82,7 @@ const DRONE_MODELS = [
         id: "autel-evo-2",
         name: "Autel Evo II Dual 640T",
         image: "/drones/autel-evo-2.png",
+        accentColor: "orange",
         specs: {
             flightTime: "38 mins",
             range: "9 km",
@@ -73,8 +90,28 @@ const DRONE_MODELS = [
             protection: "Wind resistant"
         },
         sensorTypes: ["8K Optical", "Radiometric Thermal", "Night Vision"]
+    },
+    {
+        id: "skydio-x10",
+        name: "Skydio X10",
+        image: "/drones/skydio-x10.png",
+        accentColor: "purple",
+        specs: {
+            flightTime: "35 mins",
+            range: "12 km",
+            sensor: "AI Autonomy",
+            protection: "Obstacle Avoid"
+        },
+        sensorTypes: ["AI Navigation", "4K Wide", "Night Ops"]
     }
 ];
+
+const ACCENT_CLASSES: Record<string, { badge: string; glow: string; stat: string }> = {
+    green:  { badge: "bg-green-500/20 text-green-400 border-green-500/30",  glow: "shadow-green-500/30",  stat: "text-green-400" },
+    blue:   { badge: "bg-blue-500/20 text-blue-400 border-blue-500/30",    glow: "shadow-blue-500/30",   stat: "text-blue-400" },
+    orange: { badge: "bg-orange-500/20 text-orange-400 border-orange-500/30", glow: "shadow-orange-500/30", stat: "text-orange-400" },
+    purple: { badge: "bg-purple-500/20 text-purple-400 border-purple-500/30", glow: "shadow-purple-500/30", stat: "text-purple-400" },
+};
 
 const ZONES = [
     { id: "Wayanad-11", name: "Wayanad WY-11" },
@@ -96,11 +133,12 @@ export default function RegisterDronePage() {
         maxFlightMinutes: "35",
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [registrationStep, setRegistrationStep] = useState(0); // 0: input, 1: processing, 2: success
+    const [registrationStep, setRegistrationStep] = useState(0);
     const [processingStatus, setProcessingStatus] = useState<string[]>([]);
     const [registeredDrone, setRegisteredDrone] = useState<any>(null);
 
     const currentModel = DRONE_MODELS[currentModelIndex];
+    const accent = ACCENT_CLASSES[currentModel.accentColor];
 
     useEffect(() => {
         setFormData(prev => ({
@@ -108,14 +146,6 @@ export default function RegisterDronePage() {
             sensorType: currentModel.sensorTypes[0]
         }));
     }, [currentModel]);
-
-    const nextModel = () => {
-        setCurrentModelIndex((prev) => (prev + 1) % DRONE_MODELS.length);
-    };
-
-    const prevModel = () => {
-        setCurrentModelIndex((prev) => (prev - 1 + DRONE_MODELS.length) % DRONE_MODELS.length);
-    };
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
@@ -135,7 +165,6 @@ export default function RegisterDronePage() {
         setProcessingStatus([]);
 
         try {
-            // STEP 1: Backend Registration (Keys, Account, NFT, DB)
             setProcessingStatus(prev => [...prev, "Initializing drone agent in backend..."]);
             const response = await fetch("/api/drones/register", {
                 method: "POST",
@@ -155,30 +184,23 @@ export default function RegisterDronePage() {
             const droneData = result.drone;
             setRegisteredDrone(droneData);
 
-            // STEP 2: Smart Contract Registration (Officer Pays Gas)
             const { walletType } = useWalletStore.getState();
 
             if (walletType === "META_MASK") {
-                // ─────────────────────────────────────────
-                // METAMASK (EVM) FLOW
-                // ─────────────────────────────────────────
                 setProcessingStatus(prev => [...prev, "Initializing EVM provider..."]);
                 const { BrowserProvider, Contract } = await import("ethers");
                 const provider = new BrowserProvider((window as any).ethereum);
                 const signer = await provider.getSigner();
 
-                // 2.1 BoundaryZoneRegistry
                 setProcessingStatus(prev => [...prev, "Authorizing zone access (Sign in MetaMask)..."]);
                 const zoneContract = new Contract(
                     BOUNDARY_ZONE_REGISTRY_ADDRESS,
                     ["function registerDrone(address _droneAccount, string _zoneId) public returns (bool)"],
                     signer
                 );
-
                 const tx1 = await zoneContract.registerDrone(droneData.evmAddress, droneData.assignedZoneId);
                 await tx1.wait();
 
-                // 2.2 DroneRegistry
                 setProcessingStatus(prev => [...prev, "Finalizing on-chain record (Sign in MetaMask)..."]);
                 const droneContract = new Contract(
                     DRONE_REGISTRY_ADDRESS,
@@ -194,16 +216,12 @@ export default function RegisterDronePage() {
                 await tx2.wait();
 
             } else {
-                // ─────────────────────────────────────────
-                // HASHPACK (NATIVE) FLOW
-                // ─────────────────────────────────────────
                 setProcessingStatus(prev => [...prev, "Authenticating with Hedera network..."]);
 
                 const { getConnector } = await import("@/lib/hedera-connector");
                 const dapp = getConnector();
                 if (!dapp) throw new Error("Wallet connector not found");
 
-                // 2.1 BoundaryZoneRegistry
                 const zoneTx = new ContractExecuteTransaction()
                     .setContractId(ContractId.fromEvmAddress(0, 0, BOUNDARY_ZONE_REGISTRY_ADDRESS))
                     .setGas(250000)
@@ -217,7 +235,6 @@ export default function RegisterDronePage() {
                 setProcessingStatus(prev => [...prev, "Authorizing zone access (Sign in HashPack)..."]);
                 await (dapp as any).executeTransaction(zoneTx);
 
-                // 2.2 DroneRegistry
                 const droneTx = new ContractExecuteTransaction()
                     .setContractId(ContractId.fromEvmAddress(0, 0, DRONE_REGISTRY_ADDRESS))
                     .setGas(300000)
@@ -249,8 +266,8 @@ export default function RegisterDronePage() {
 
     return (
         <div className="min-h-screen bg-[#020d06] text-white topo-bg py-12 px-4 sm:px-6 lg:px-8">
-            <div className="max-w-7xl mx-auto">
-                <header className="mb-12 flex items-center justify-between relative z-50">
+            <div className="max-w-7xl mx-auto relative z-10">
+                <header className="mb-12 flex items-center justify-between">
                     <Link href="/" className="flex items-center gap-2 group">
                         <div className="p-2 glass rounded-lg group-hover:glow-green transition-all">
                             <ChevronLeft className="h-5 w-5" />
@@ -271,7 +288,7 @@ export default function RegisterDronePage() {
 
                 {registrationStep === 0 && (
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
-                        {/* LEFT SIDE: FORM */}
+                        {/* LEFT SIDE: FORM — unchanged */}
                         <motion.div
                             initial={{ opacity: 0, x: -30 }}
                             animate={{ opacity: 1, x: 0 }}
@@ -413,103 +430,120 @@ export default function RegisterDronePage() {
                             </Card>
                         </motion.div>
 
-                        {/* RIGHT SIDE: MODEL SELECTOR */}
+                        {/* RIGHT SIDE: 3D DRONE CHARACTER SELECTOR */}
                         <motion.div
                             initial={{ opacity: 0, x: 30 }}
                             animate={{ opacity: 1, x: 0 }}
                             transition={{ duration: 0.6, delay: 0.2 }}
-                            className="flex flex-col gap-8"
+                            className="flex flex-col gap-6"
                         >
-                            <div className="relative glass-strong rounded-3xl p-8 border-white/10 overflow-hidden aspect-[4/3] flex items-center justify-center group">
-                                <div className="absolute top-4 left-4 z-10">
-                                    <Badge className="bg-green-500/20 text-green-400 border-green-500/30 px-3 py-1">
-                                        SELECTED MODEL
-                                    </Badge>
+                            {/* Header */}
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-xs text-gray-500 font-bold uppercase tracking-widest mb-1">Select Unit</p>
+                                    <AnimatePresence mode="wait">
+                                        <motion.h2
+                                            key={currentModel.id}
+                                            initial={{ opacity: 0, y: 8 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            exit={{ opacity: 0, y: -8 }}
+                                            transition={{ duration: 0.25 }}
+                                            className="text-2xl font-bold text-white"
+                                        >
+                                            {currentModel.name}
+                                        </motion.h2>
+                                    </AnimatePresence>
                                 </div>
-
-                                {/* Model Navigation */}
-                                <button
-                                    onClick={prevModel}
-                                    className="absolute left-4 z-20 p-3 glass rounded-full hover:glow-green transition-all"
-                                >
-                                    <ChevronLeft className="h-6 w-6" />
-                                </button>
-                                <button
-                                    onClick={nextModel}
-                                    className="absolute right-4 z-20 p-3 glass rounded-full hover:glow-green transition-all"
-                                >
-                                    <ChevronRight className="h-6 w-6" />
-                                </button>
-
-                                <AnimatePresence mode="wait">
-                                    <motion.div
-                                        key={currentModel.id}
-                                        initial={{ opacity: 0, scale: 0.8, rotateY: 30 }}
-                                        animate={{ opacity: 1, scale: 1, rotateY: 0 }}
-                                        exit={{ opacity: 0, scale: 0.8, rotateY: -30 }}
-                                        transition={{ duration: 0.5, ease: "easeOut" }}
-                                        className="relative w-full h-full flex items-center justify-center p-8"
-                                    >
-                                        <img
-                                            src={currentModel.image}
-                                            alt={currentModel.name}
-                                            className="max-w-full max-h-full object-contain drop-shadow-[0_20px_50px_rgba(34,197,94,0.3)] group-hover:drop-shadow-[0_25px_60px_rgba(34,197,94,0.5)] transition-all duration-500"
-                                        />
-                                    </motion.div>
-                                </AnimatePresence>
-
-                                <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2">
-                                    {DRONE_MODELS.map((_, i) => (
-                                        <div
-                                            key={i}
-                                            className={`h-1.5 w-6 rounded-full transition-all duration-300 ${i === currentModelIndex ? 'bg-green-400 w-10' : 'bg-white/10'}`}
-                                        />
-                                    ))}
-                                </div>
+                                <Badge className={`${accent.badge} px-3 py-1 text-xs font-bold`}>
+                                    READY TO DEPLOY
+                                </Badge>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="glass p-5 rounded-2xl flex items-center gap-4 border-white/5">
-                                    <div className="p-3 bg-blue-500/10 rounded-xl">
-                                        <Zap className="h-6 w-6 text-blue-400" />
-                                    </div>
-                                    <div>
-                                        <p className="text-xs text-gray-500 font-medium">FLIGHT TIME</p>
-                                        <p className="font-bold text-lg">{currentModel.specs.flightTime}</p>
-                                    </div>
+                            {/* 3D Viewer Panel */}
+                            <div
+                                className="relative glass-strong rounded-3xl border border-white/10 overflow-hidden"
+                                style={{ height: 320 }}
+                            >
+                                {/* Subtle scanline overlay for sci-fi feel */}
+                                <div
+                                    className="absolute inset-0 pointer-events-none z-10 opacity-[0.03]"
+                                    style={{
+                                        backgroundImage: "repeating-linear-gradient(0deg, transparent, transparent 2px, #fff 2px, #fff 4px)",
+                                    }}
+                                />
+
+                                {/* Corner decorations */}
+                                <div className="absolute top-3 left-3 w-4 h-4 border-t-2 border-l-2 border-green-500/40 z-10" />
+                                <div className="absolute top-3 right-3 w-4 h-4 border-t-2 border-r-2 border-green-500/40 z-10" />
+                                <div className="absolute bottom-3 left-3 w-4 h-4 border-b-2 border-l-2 border-green-500/40 z-10" />
+                                <div className="absolute bottom-3 right-3 w-4 h-4 border-b-2 border-r-2 border-green-500/40 z-10" />
+
+                                {/* Select model label */}
+                                <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10">
+                                    <span className="text-[10px] font-bold tracking-widest text-gray-500 uppercase">
+                                        — SELECT MODEL —
+                                    </span>
                                 </div>
-                                <div className="glass p-5 rounded-2xl flex items-center gap-4 border-white/5">
-                                    <div className="p-3 bg-purple-500/10 rounded-xl">
-                                        <Scan className="h-6 w-6 text-purple-400" />
-                                    </div>
-                                    <div>
-                                        <p className="text-xs text-gray-500 font-medium">RANGE</p>
-                                        <p className="font-bold text-lg">{currentModel.specs.range}</p>
-                                    </div>
-                                </div>
-                                <div className="glass p-5 rounded-2xl flex items-center gap-4 border-white/5">
-                                    <div className="p-3 bg-orange-500/10 rounded-xl">
-                                        <Cpu className="h-6 w-6 text-orange-400" />
-                                    </div>
-                                    <div>
-                                        <p className="text-xs text-gray-500 font-medium">SENSOR</p>
-                                        <p className="font-bold text-sm leading-tight">{currentModel.specs.sensor}</p>
-                                    </div>
-                                </div>
-                                <div className="glass p-5 rounded-2xl flex items-center gap-4 border-white/5">
-                                    <div className="p-3 bg-green-500/10 rounded-xl">
-                                        <Shield className="h-6 w-6 text-green-400" />
-                                    </div>
-                                    <div>
-                                        <p className="text-xs text-gray-500 font-medium">STATUS</p>
-                                        <p className="font-bold text-green-400">READY</p>
-                                    </div>
-                                </div>
+
+                                <DroneSelector3D
+                                    selectedIndex={currentModelIndex}
+                                    onSelect={setCurrentModelIndex}
+                                />
                             </div>
+
+                            {/* Specs Grid */}
+                            <AnimatePresence mode="wait">
+                                <motion.div
+                                    key={currentModel.id}
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: -10 }}
+                                    transition={{ duration: 0.3 }}
+                                    className="grid grid-cols-2 gap-4"
+                                >
+                                    <div className="glass p-5 rounded-2xl flex items-center gap-4 border-white/5">
+                                        <div className="p-3 bg-blue-500/10 rounded-xl">
+                                            <Zap className="h-6 w-6 text-blue-400" />
+                                        </div>
+                                        <div>
+                                            <p className="text-xs text-gray-500 font-medium">FLIGHT TIME</p>
+                                            <p className="font-bold text-lg">{currentModel.specs.flightTime}</p>
+                                        </div>
+                                    </div>
+                                    <div className="glass p-5 rounded-2xl flex items-center gap-4 border-white/5">
+                                        <div className="p-3 bg-purple-500/10 rounded-xl">
+                                            <Scan className="h-6 w-6 text-purple-400" />
+                                        </div>
+                                        <div>
+                                            <p className="text-xs text-gray-500 font-medium">RANGE</p>
+                                            <p className="font-bold text-lg">{currentModel.specs.range}</p>
+                                        </div>
+                                    </div>
+                                    <div className="glass p-5 rounded-2xl flex items-center gap-4 border-white/5">
+                                        <div className="p-3 bg-orange-500/10 rounded-xl">
+                                            <Cpu className="h-6 w-6 text-orange-400" />
+                                        </div>
+                                        <div>
+                                            <p className="text-xs text-gray-500 font-medium">SENSOR</p>
+                                            <p className="font-bold text-sm leading-tight">{currentModel.specs.sensor}</p>
+                                        </div>
+                                    </div>
+                                    <div className="glass p-5 rounded-2xl flex items-center gap-4 border-white/5">
+                                        <div className="p-3 bg-green-500/10 rounded-xl">
+                                            <Shield className="h-6 w-6 text-green-400" />
+                                        </div>
+                                        <div>
+                                            <p className="text-xs text-gray-500 font-medium">STATUS</p>
+                                            <p className="font-bold text-green-400">READY</p>
+                                        </div>
+                                    </div>
+                                </motion.div>
+                            </AnimatePresence>
                         </motion.div>
                     </div>
                 )}
 
+                {/* Processing and Success steps — unchanged */}
                 {registrationStep === 1 && (
                     <div className="max-w-2xl mx-auto py-12">
                         <h2 className="text-3xl font-bold text-center mb-8">Processing Registration</h2>
@@ -532,7 +566,6 @@ export default function RegisterDronePage() {
                                         </span>
                                     </motion.div>
                                 ))}
-
                                 <div className="pt-6">
                                     <Progress value={(processingStatus.length / 5) * 100} className="h-2 bg-white/5" />
                                 </div>

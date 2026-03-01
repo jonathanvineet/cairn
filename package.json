@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "TURBOPACK=0 next dev",
+    "dev": "set TURBOPACK=0 && next dev",
     "dev:turbo": "next dev --turbo",
     "build": "next build",
     "start": "next start",
@@ -12,7 +12,7 @@
   "dependencies": {
     "@hashgraph/hedera-wallet-connect": "^2.0.6",
     "@hiero-ledger/proto": "^2.25.0",
-    "@hiero-ledger/sdk": "2.79.0",
+    "@hiero-ledger/sdk": "^2.79.0",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.5.0",
     "@react-three/postprocessing": "^3.0.4",
