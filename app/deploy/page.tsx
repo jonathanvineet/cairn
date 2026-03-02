@@ -292,7 +292,7 @@ export default function DeployPage() {
         <div className="flex-1">
           <InteractiveMap 
             onBoundaryComplete={handleBoundaryComplete}
-            drones={dronesData || []}
+            drones={dronesData?.drones || []}
           />
         </div>
 
