@@ -51,7 +51,7 @@ export default function SavedZones() {
         throw new Error("MetaMask not available");
       }
 
-      const provider = new ethers.BrowserProvider(window.ethereum);
+      const provider = new ethers.BrowserProvider(window.ethereum as any);
       const contract = new ethers.Contract(
         BOUNDARY_ZONE_REGISTRY_ADDRESS,
         BOUNDARY_ZONE_REGISTRY_ABI,
