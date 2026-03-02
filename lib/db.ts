@@ -21,6 +21,8 @@ interface Drone {
     completionRate: number | null;
     registeredAt: Date;
     initialHBARBalance: number;
+    registrationLat: number;
+    registrationLng: number;
 }
 
 interface Zone {

@@ -6,7 +6,7 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Trash2, Edit2, Save } from "lucide-react";
+import { Trash2, Edit2, Save, Navigation2, Loader2 } from "lucide-react";
 
 const MapContainer = RL.MapContainer as any;
 const TileLayer = RL.TileLayer as any;
@@ -14,6 +14,7 @@ const Marker = RL.Marker as any;
 const Popup = RL.Popup as any;
 const Polygon = RL.Polygon as any;
 const useMapEvents = RL.useMapEvents as any;
+const useMap = RL.useMap as any;
 
 type LatLngTuple = [number, number];
 
@@ -31,6 +32,13 @@ interface Boundary {
 
 interface InteractiveMapProps {
   onBoundaryComplete?: (coordinates: { lat: number; lng: number }[]) => void;
+  drones?: Array<{
+    cairnDroneId: string;
+    registrationLat: number;
+    registrationLng: number;
+    model: string;
+    serialNumber: string;
+  }>;
 }
 
 const WAYANAD_CENTER: LatLngTuple = [11.6, 76.1];
@@ -60,7 +68,16 @@ function MapEventHandler({
   return null;
 }
 
-export function InteractiveMap({ onBoundaryComplete }: InteractiveMapProps = {}) {
+// Component to recenter map when location changes
+function MapRecenter({ center }: { center: LatLngTuple }) {
+  const map = useMap();
+  useEffect(() => {
+    map.setView(center, 16);
+  }, [center, map]);
+  return null;
+}
+
+export function InteractiveMap({ onBoundaryComplete, drones = [] }: InteractiveMapProps = {}) {
   const [isMounted, setIsMounted] = useState(false);
   const [pins, setPins] = useState<Pin[]>([]);
   const [boundaries, setBoundaries] = useState<Boundary[]>([]);
@@ -68,11 +85,50 @@ export function InteractiveMap({ onBoundaryComplete }: InteractiveMapProps = {})
   const [boundaryPoints, setBoundaryPoints] = useState<LatLngTuple[]>([]);
   const [editingPin, setEditingPin] = useState<string | null>(null);
   const [editLabel, setEditLabel] = useState("");
+  const [currentLocation, setCurrentLocation] = useState<LatLngTuple | null>(null);
+  const [ isGettingLocation, setIsGettingLocation] = useState(false);
+  const [mapCenter, setMapCenter] = useState<LatLngTuple>(WAYANAD_CENTER);
 
   // Ensure component only renders on client
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  const getCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      alert("Geolocation is not supported by your browser");
+      return;
+    }
+
+    setIsGettingLocation(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        const newLocation: LatLngTuple = [lat, lng];
+        setCurrentLocation(newLocation);
+        setMapCenter(newLocation);
+        setIsGettingLocation(false);
+        
+        // Optionally add a pin at current location
+        const locationPin: Pin = {
+          id: `current-location-${Date.now()}`,
+          position: newLocation,
+          label: "📍 My Location",
+        };
+        setPins([...pins, locationPin]);
+      },
+      (error) => {
+        setIsGettingLocation(false);
+        alert(`Error getting location: ${error.message}`);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 5000,
+        maximumAge: 0,
+      }
+    );
+  };
 
   const handleMapClick = (lat: number, lng: number) => {
     if (mode === "pin") {
@@ -168,6 +224,25 @@ export function InteractiveMap({ onBoundaryComplete }: InteractiveMapProps = {})
           <div className="flex flex-col gap-2">
             <Button
               size="sm"
+              variant="outline"
+              onClick={getCurrentLocation}
+              disabled={isGettingLocation}
+              className="w-full justify-start bg-blue-600/10 hover:bg-blue-600/20 border-blue-500/30"
+            >
+              {isGettingLocation ? (
+                <>
+                  <Loader2 className="h-3 w-3 mr-2 animate-spin" />
+                  Getting Location...
+                </>
+              ) : (
+                <>
+                  <Navigation2 className="h-3 w-3 mr-2" />
+                  My Location
+                </>
+              )}
+            </Button>
+            <Button
+              size="sm"
               variant={mode === "pin" ? "default" : "outline"}
               onClick={() => setMode(mode === "pin" ? "none" : "pin")}
               className="w-full justify-start"
@@ -238,7 +313,7 @@ export function InteractiveMap({ onBoundaryComplete }: InteractiveMapProps = {})
 
       {/* Map */}
       <MapContainer
-        center={WAYANAD_CENTER}
+        center={mapCenter}
         zoom={13}
         className="h-full w-full"
         zoomControl={true}
@@ -248,6 +323,7 @@ export function InteractiveMap({ onBoundaryComplete }: InteractiveMapProps = {})
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         
+        <MapRecenter center={mapCenter} />
         <MapEventHandler onMapClick={handleMapClick} mode={mode} />
 
         {/* Render Pins */}
@@ -346,6 +422,54 @@ export function InteractiveMap({ onBoundaryComplete }: InteractiveMapProps = {})
             </Popup>
           </Polygon>
         ))}
+
+        {/* Render Drones */}
+        {drones.map((drone) => {
+          const droneIcon = L.divIcon({
+            className: "custom-drone-icon",
+            html: `<div style="
+              width: 32px;
+              height: 32px;
+              background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+              border: 2px solid #60a5fa;
+              border-radius: 50%;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
+              font-size: 16px;
+            ">🚁</div>`,
+            iconSize: [32, 32],
+            iconAnchor: [16, 16],
+            popupAnchor: [0, -16],
+          });
+
+          return (
+            <Marker
+              key={drone.cairnDroneId}
+              position={[drone.registrationLat, drone.registrationLng]}
+              icon={droneIcon}
+            >
+              <Popup>
+                <div className="p-2 min-w-[200px]">
+                  <h4 className="font-semibold text-sm text-blue-600 mb-2">
+                    🚁 {drone.cairnDroneId}
+                  </h4>
+                  <div className="space-y-1 text-xs">
+                    <p><strong>Model:</strong> {drone.model}</p>
+                    <p><strong>Serial:</strong> {drone.serialNumber}</p>
+                    <p className="text-gray-600 mt-2">
+                      <strong>Registration Location:</strong>
+                    </p>
+                    <p className="text-gray-500 font-mono">
+                      {drone.registrationLat.toFixed(6)}, {drone.registrationLng.toFixed(6)}
+                    </p>
+                  </div>
+                </div>
+              </Popup>
+            </Marker>
+          );
+        })}
 
         {/* Render temporary boundary being created */}
         {boundaryPoints.length > 0 && (

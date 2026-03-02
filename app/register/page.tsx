@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useQuery } from "@tanstack/react-query";
 import {
     ChevronLeft,
     ChevronRight,
@@ -113,12 +114,25 @@ const ACCENT_CLASSES: Record<string, { badge: string; glow: string; stat: string
     purple: { badge: "bg-purple-500/20 text-purple-400 border-purple-500/30", glow: "shadow-purple-500/30", stat: "text-purple-400" },
 };
 
-const ZONES = [
+const ZONES: Zone[] = [
     { id: "Wayanad-11", name: "Wayanad WY-11" },
     { id: "Nilgiris-04", name: "Nilgiris NG-04" },
     { id: "Coorg-07", name: "Coorg CG-07" },
     { id: "Anamalai-02", name: "Anamalai AN-02" }
 ];
+
+interface Zone {
+    id?: string;
+    zoneId?: string;
+    name: string;
+}
+
+async function fetchZones() {
+    const res = await fetch("/api/zones");
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.zones || [];
+}
 
 
 export default function RegisterDronePage() {
@@ -128,7 +142,7 @@ export default function RegisterDronePage() {
         serialNumber: "",
         dgcaCertNumber: "",
         certExpiryDate: "",
-        assignedZoneId: ZONES[0].id,
+        assignedZoneId: "",
         sensorType: "",
         maxFlightMinutes: "35",
     });
@@ -136,6 +150,17 @@ export default function RegisterDronePage() {
     const [registrationStep, setRegistrationStep] = useState(0);
     const [processingStatus, setProcessingStatus] = useState<string[]>([]);
     const [registeredDrone, setRegisteredDrone] = useState<any>(null);
+    const [currentLocation, setCurrentLocation] = useState<{lat: number; lng: number} | null>(null);
+    const [isGettingLocation, setIsGettingLocation] = useState(false);
+
+    // Fetch dynamic zones from API
+    const { data: zonesData } = useQuery({
+        queryKey: ["zones"],
+        queryFn: fetchZones,
+    });
+    
+    const dynamicZones: Zone[] = zonesData || [];
+    const allZones: Zone[] = dynamicZones.length > 0 ? dynamicZones : ZONES;
 
     const currentModel = DRONE_MODELS[currentModelIndex];
     const accent = ACCENT_CLASSES[currentModel.accentColor];
@@ -143,9 +168,37 @@ export default function RegisterDronePage() {
     useEffect(() => {
         setFormData(prev => ({
             ...prev,
-            sensorType: currentModel.sensorTypes[0]
+            sensorType: currentModel.sensorTypes[0],
+            assignedZoneId: prev.assignedZoneId || allZones[0]?.zoneId || allZones[0]?.id || ""
         }));
-    }, [currentModel]);
+    }, [currentModel, allZones]);
+
+    const getCurrentLocation = () => {
+        if (!navigator.geolocation) {
+            alert("Geolocation is not supported by your browser");
+            return;
+        }
+
+        setIsGettingLocation(true);
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+                setCurrentLocation({ lat, lng });
+                setIsGettingLocation(false);
+                alert(`Location captured!\nLatitude: ${lat.toFixed(6)}\nLongitude: ${lng.toFixed(6)}`);
+            },
+            (error) => {
+                setIsGettingLocation(false);
+                alert(`Error getting location: ${error.message}\n\nPlease allow location access in your browser.`);
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 0,
+            }
+        );
+    };
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
@@ -157,6 +210,11 @@ export default function RegisterDronePage() {
 
         if (!connected) {
             alert("Please connect your Hedera wallet first.");
+            return;
+        }
+
+        if (!currentLocation) {
+            alert("Please get your current location first by clicking 'Get My Location'");
             return;
         }
 
@@ -172,7 +230,9 @@ export default function RegisterDronePage() {
                 body: JSON.stringify({
                     ...formData,
                     model: currentModel.name,
-                    registeredByOfficerId: selectedAccount?.id || "OFFICER-001"
+                    registeredByOfficerId: selectedAccount?.id || "OFFICER-001",
+                    registrationLat: currentLocation.lat,
+                    registrationLng: currentLocation.lng
                 }),
             });
 
@@ -315,6 +375,64 @@ export default function RegisterDronePage() {
 
                             <Card className="glass-strong border-white/10 overflow-hidden relative z-1">
                                 <CardContent className="p-8">
+                                    {/* Location Section */}
+                                    <div className="mb-6 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+                                        <div className="flex items-center justify-between mb-3">
+                                            <div>
+                                                <h3 className="text-sm font-bold text-blue-400 flex items-center gap-2">
+                                                    <MapPin className="h-4 w-4" />
+                                                    Drone Registration Location
+                                                </h3>
+                                                <p className="text-xs text-gray-400 mt-1">
+                                                    Get your current GPS coordinates to register drone at this location
+                                                </p>
+                                            </div>
+                                        </div>
+                                        
+                                        {!currentLocation ? (
+                                            <Button
+                                                type="button"
+                                                onClick={getCurrentLocation}
+                                                disabled={isGettingLocation}
+                                                className="w-full bg-blue-600 hover:bg-blue-700"
+                                                size="sm"
+                                            >
+                                                {isGettingLocation ? (
+                                                    <>
+                                                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                                        Getting Location...
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <MapPin className="h-4 w-4 mr-2" />
+                                                        Get My Location
+                                                    </>
+                                                )}
+                                            </Button>
+                                        ) : (
+                                            <div className="space-y-2">
+                                                <div className="flex items-center justify-between text-sm">
+                                                    <span className="text-gray-400">Latitude:</span>
+                                                    <span className="font-mono text-green-400">{currentLocation.lat.toFixed(6)}</span>
+                                                </div>
+                                                <div className="flex items-center justify-between text-sm">
+                                                    <span className="text-gray-400">Longitude:</span>
+                                                    <span className="font-mono text-green-400">{currentLocation.lng.toFixed(6)}</span>
+                                                </div>
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    onClick={getCurrentLocation}
+                                                    disabled={isGettingLocation}
+                                                    className="w-full mt-2"
+                                                    size="sm"
+                                                >
+                                                    Update Location
+                                                </Button>
+                                            </div>
+                                        )}
+                                    </div>
+
                                     <form onSubmit={handleSubmit} className="space-y-6">
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                             <div className="space-y-2">
@@ -373,12 +491,25 @@ export default function RegisterDronePage() {
                                                     onChange={handleInputChange}
                                                     className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all text-gray-300 appearance-none"
                                                 >
-                                                    {ZONES.map(zone => (
-                                                        <option key={zone.id} value={zone.id} className="bg-[#0d1f12]">
-                                                            {zone.name}
+                                                    {allZones.length === 0 && (
+                                                        <option value="" className="bg-[#0d1f12]">No zones available</option>
+                                                    )}
+                                                    {allZones.map(zone => (
+                                                        <option key={zone.zoneId || zone.id} value={zone.zoneId || zone.id} className="bg-[#0d1f12]">
+                                                            {zone.name || zone.zoneId}
                                                         </option>
                                                     ))}
                                                 </select>
+                                                {dynamicZones.length === 0 && (
+                                                    <p className="text-xs text-yellow-400 mt-1">
+                                                        ⚠️ Using default zones. Create boundaries in Deploy Mission for custom zones.
+                                                    </p>
+                                                )}
+                                                {dynamicZones.length > 0 && (
+                                                    <p className="text-xs text-green-400 mt-1">
+                                                        ✓ {dynamicZones.length} custom zone(s) available
+                                                    </p>
+                                                )}
                                             </div>
                                         </div>
 
@@ -551,32 +682,14 @@ export default function RegisterDronePage() {
                     </div>
                 )}
 
-                {/* Processing and Success steps — unchanged */}
+                {/* Processing overlay — cleaner, more professional */}
                 {registrationStep === 1 && (
                     <div className="max-w-2xl mx-auto py-12">
-                        <h2 className="text-3xl font-bold text-center mb-8">Processing Registration</h2>
-                        <Card className="glass-strong border-white/10 overflow-hidden relative z-1 p-8">
-                            <div className="space-y-6">
-                                {processingStatus.map((status, i) => (
-                                    <motion.div
-                                        key={i}
-                                        initial={{ opacity: 0, y: 10 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        className="flex items-center gap-4"
-                                    >
-                                        {i === processingStatus.length - 1 && isSubmitting ? (
-                                            <Loader2 className="h-5 w-5 text-green-400 animate-spin" />
-                                        ) : (
-                                            <CheckCircle2 className="h-5 w-5 text-green-400" />
-                                        )}
-                                        <span className={i === processingStatus.length - 1 ? "text-white font-medium" : "text-gray-400"}>
-                                            {status}
-                                        </span>
-                                    </motion.div>
-                                ))}
-                                <div className="pt-6">
-                                    <Progress value={(processingStatus.length / 5) * 100} className="h-2 bg-white/5" />
-                                </div>
+                        <Card className="glass-strong border-white/10 overflow-hidden relative z-1 p-12">
+                            <div className="flex flex-col items-center justify-center space-y-6">
+                                <Loader2 className="h-16 w-16 text-green-400 animate-spin" />
+                                <h2 className="text-2xl font-bold text-center">Processing Registration...</h2>
+                                <p className="text-gray-400 text-center">Please sign the transactions in your wallet</p>
                             </div>
                         </Card>
                     </div>

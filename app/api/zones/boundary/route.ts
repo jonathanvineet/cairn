@@ -34,10 +34,19 @@ export async function POST(req: NextRequest) {
     // Check if zone already exists
     const existingZone = await db.zones.findByZoneId(zoneId);
 
+    // Find all drones that were registered for this zone
+    const allDrones = await db.drones.findMany();
+    const dronesForThisZone = allDrones
+      .filter((drone: any) => drone.assignedZoneId === zoneId)
+      .map((drone: any) => drone.cairnDroneId);
+
+    console.log(`🤖 Auto-assigning ${dronesForThisZone.length} drones to zone ${zoneId}:`, dronesForThisZone);
+
     if (existingZone) {
-      // Update existing zone with new boundary
+      // Update existing zone with new boundary and auto-assigned drones
       const updated = await db.zones.update(zoneId, {
         coordinates: coordinates,
+        assignedDrones: dronesForThisZone,
       });
 
       if (!updated) {
@@ -51,14 +60,16 @@ export async function POST(req: NextRequest) {
         success: true,
         message: "Zone boundary updated",
         zone: updated,
+        autoAssignedDrones: dronesForThisZone,
+        autoAssignedCount: dronesForThisZone.length,
       });
     } else {
-      // Create new zone
+      // Create new zone with auto-assigned drones
       const newZone = await db.zones.create({
         zoneId,
         name: `Zone ${zoneId}`,
         coordinates: coordinates,
-        assignedDrones: [],
+        assignedDrones: dronesForThisZone,
         createdAt: new Date(),
       });
 
@@ -66,6 +77,8 @@ export async function POST(req: NextRequest) {
         success: true,
         message: "Zone boundary created",
         zone: newZone,
+        autoAssignedDrones: dronesForThisZone,
+        autoAssignedCount: dronesForThisZone.length,
       }, { status: 201 });
     }
   } catch (error: any) {

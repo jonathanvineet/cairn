@@ -30,12 +30,21 @@ export async function POST(req: Request) {
             sensorType,
             maxFlightMinutes,
             registeredByOfficerId,
+            registrationLat,
+            registrationLng,
         } = body;
 
         if (!serialNumber || !model || !dgcaCertNumber || !assignedZoneId) {
             return Response.json({
                 success: false,
                 error: "Missing required fields"
+            }, { status: 400 });
+        }
+
+        if (!registrationLat || !registrationLng) {
+            return Response.json({
+                success: false,
+                error: "Location is required for drone registration"
             }, { status: 400 });
         }
 
@@ -155,6 +164,8 @@ export async function POST(req: Request) {
             completionRate: null,
             registeredAt: new Date(),
             initialHBARBalance: 20,
+            registrationLat: Number(registrationLat),
+            registrationLng: Number(registrationLng),
         });
 
         // ─────────────────────────────────────────

@@ -25,6 +25,7 @@ import { ZoneOverview } from "@/components/ZoneOverview";
 import { RecentActivity } from "@/components/RecentActivity";
 import { ActiveMission } from "@/components/ActiveMission";
 import { MapWidget } from "@/components/MapWidget";
+import SavedZones from "@/components/SavedZones";
 
 async function fetchPatrols() {
   const res = await fetch("/api/mock-patrols");
@@ -308,6 +309,15 @@ export default function DashboardPage() {
             <ActiveMission />
           </motion.div>
         </div>
+
+        {/* ROW 2.5: Saved Zones */}
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.28 }}
+        >
+          <SavedZones />
+        </motion.div>
 
         {/* ROW 3: Recent Activity */}
         <motion.div

@@ -1,4 +1,4 @@
-export const BOUNDARY_ZONE_REGISTRY_ADDRESS = "0xD0cD6C91d0B22ecdA45C637767595a102330C422";
+export const BOUNDARY_ZONE_REGISTRY_ADDRESS = "0x263D1790F9669a72c95bAb46a28e7835108E72d7";
 export const DRONE_REGISTRY_ADDRESS = "0x2A18e5826cf3443a2034a2F9a5f6eC6bEa2b5ae7";
 
 export const BOUNDARY_ZONE_REGISTRY_ABI = [
@@ -44,6 +44,128 @@ export const BOUNDARY_ZONE_REGISTRY_ABI = [
         ],
         "name": "DroneStatusUpdated",
         "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "string",
+                "name": "zoneId",
+                "type": "string"
+            },
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "creator",
+                "type": "address"
+            },
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "fee",
+                "type": "uint256"
+            }
+        ],
+        "name": "ZoneCreated",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "newFee",
+                "type": "uint256"
+            }
+        ],
+        "name": "BoundaryFeeUpdated",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "to",
+                "type": "address"
+            },
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "amount",
+                "type": "uint256"
+            }
+        ],
+        "name": "FundsWithdrawn",
+        "type": "event"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "string",
+                "name": "_zoneId",
+                "type": "string"
+            }
+        ],
+        "name": "createBoundaryZone",
+        "outputs": [
+            {
+                "internalType": "bool",
+                "name": "",
+                "type": "bool"
+            }
+        ],
+        "stateMutability": "payable",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "getBoundaryCreationFee",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint256",
+                "name": "_newFee",
+                "type": "uint256"
+            }
+        ],
+        "name": "updateBoundaryFee",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "withdrawFunds",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "boundaryCreationFee",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
     },
     {
         "inputs": [

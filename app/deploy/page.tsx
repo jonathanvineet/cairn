@@ -2,13 +2,14 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Save, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Save, CheckCircle2, Wallet } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { DRONE_REGISTRY_ADDRESS, BOUNDARY_ZONE_REGISTRY_ADDRESS } from "@/lib/contracts";
+import { DRONE_REGISTRY_ADDRESS, BOUNDARY_ZONE_REGISTRY_ADDRESS, BOUNDARY_ZONE_REGISTRY_ABI } from "@/lib/contracts";
+import { ethers } from "ethers";
 
 const InteractiveMap = dynamic(
   () => import("@/components/InteractiveMap").then((mod) => mod.InteractiveMap),
@@ -24,7 +25,70 @@ export default function DeployPage() {
   const [boundaryCoords, setBoundaryCoords] = useState<Coordinate[] | null>(null);
   const [zoneId, setZoneId] = useState("");
   const [savedZoneId, setSavedZoneId] = useState<string | null>(null);
-  const [selectedDrones, setSelectedDrones] = useState<string[]>([]);
+  const [autoAssignedDrones, setAutoAssignedDrones] = useState<string[]>([]);
+  const [walletConnected, setWalletConnected] = useState(false);
+  const [walletAddress, setWalletAddress] = useState<string | null>(null);
+  const [boundaryFee, setBoundaryFee] = useState<string>("0.01");
+  const [isPaymentProcessing, setIsPaymentProcessing] = useState(false);
+
+  // Check wallet connection on mount
+  useEffect(() => {
+    checkWalletConnection();
+  }, []);
+
+  const checkWalletConnection = async () => {
+    if (typeof window.ethereum !== "undefined") {
+      try {
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        const accounts = await provider.listAccounts();
+        if (accounts.length > 0) {
+          setWalletConnected(true);
+          setWalletAddress(accounts[0].address);
+          await fetchBoundaryFee();
+        }
+      } catch (error) {
+        console.error("Error checking wallet:", error);
+      }
+    }
+  };
+
+  const connectWallet = async () => {
+    if (typeof window.ethereum === "undefined") {
+      alert("Please install MetaMask to use this feature");
+      return;
+    }
+    
+    try {
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      await provider.send("eth_requestAccounts", []);
+      const signer = await provider.getSigner();
+      const address = await signer.getAddress();
+      setWalletConnected(true);
+      setWalletAddress(address);
+      await fetchBoundaryFee();
+      alert("Wallet connected successfully!");
+    } catch (error: any) {
+      console.error("Error connecting wallet:", error);
+      alert("Failed to connect wallet: " + error.message);
+    }
+  };
+
+  const fetchBoundaryFee = async () => {
+    try {
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const contract = new ethers.Contract(
+        BOUNDARY_ZONE_REGISTRY_ADDRESS,
+        BOUNDARY_ZONE_REGISTRY_ABI,
+        provider
+      );
+      const fee = await contract.getBoundaryCreationFee();
+      const feeInEther = ethers.formatEther(fee);
+      setBoundaryFee(feeInEther);
+      console.log("Boundary creation fee:", feeInEther, "HBAR");
+    } catch (error) {
+      console.error("Error fetching fee:", error);
+    }
+  };
 
   // Fetch all drones
   const { data: dronesData, isLoading: dronesLoading, error: dronesError, refetch: refetchDrones } = useQuery({
@@ -61,15 +125,19 @@ export default function DeployPage() {
     onSuccess: (data) => {
       console.log("✅ Boundary saved successfully:", data);
       setSavedZoneId(zoneId);
-      alert(`Boundary saved successfully for zone: ${zoneId}`);
+      setAutoAssignedDrones(data.autoAssignedDrones || []);
+      const droneCount = data.autoAssignedCount || 0;
+      setIsPaymentProcessing(false);
+      alert(`Boundary saved for ${zoneId}\n${droneCount} drone(s) assigned`);
     },
     onError: (error: any) => {
       console.error("❌ Error saving boundary:", error);
+      setIsPaymentProcessing(false);
       alert(`Error saving boundary: ${error.message}`);
     },
   });
 
-  // Mutation for assigning drones
+  // Mutation for assigning drones (kept for potential manual override)
   const assignDronesMutation = useMutation({
     mutationFn: async (data: { zoneId: string; droneIds: string[] }) => {
       const res = await fetch("/api/zones/assign", {
@@ -82,7 +150,7 @@ export default function DeployPage() {
     },
     onSuccess: (data) => {
       alert(`Successfully assigned ${data.summary?.newAssignments || 0} drones to zone ${savedZoneId}`);
-      setSelectedDrones([]);
+      refetchDrones();
     },
     onError: (error: any) => {
       alert(`Error assigning drones: ${error.message}`);
@@ -104,7 +172,7 @@ export default function DeployPage() {
     onSuccess: (data) => {
       console.log("✅ Sync successful:", data);
       refetchDrones();
-      alert(`✅ Synced ${data.stats.newlySynced} drones from blockchain!\n\nTotal on-chain: ${data.stats.totalOnChain}\nNewly synced: ${data.stats.newlySynced}\nAlready in DB: ${data.stats.skipped}`);
+      alert(`Synced ${data.stats.newlySynced} drone(s) from blockchain`);
     },
     onError: (error: any) => {
       console.error("❌ Sync failed:", error);
@@ -115,10 +183,9 @@ export default function DeployPage() {
   const handleBoundaryComplete = (coordinates: Coordinate[]) => {
     console.log("✅ Boundary completed callback received:", coordinates);
     setBoundaryCoords(coordinates);
-    alert(`Boundary captured with ${coordinates.length} points! Now click "Save Boundary".`);
   };
 
-  const handleSaveBoundary = () => {
+  const handleSaveBoundary = async () => {
     console.log("🔵 Save boundary clicked. Zone ID:", zoneId, "Coords:", boundaryCoords);
     
     if (!zoneId.trim()) {
@@ -126,12 +193,59 @@ export default function DeployPage() {
       return;
     }
     if (!boundaryCoords || boundaryCoords.length < 3) {
-      alert(`Please draw a boundary with at least 3 points. Current: ${boundaryCoords?.length || 0} points`);
+      alert("Please draw a boundary first");
       return;
     }
     
-    console.log("🚀 Sending to API:", { zoneId, coordinates: boundaryCoords });
-    saveBoundaryMutation.mutate({ zoneId, coordinates: boundaryCoords });
+    setIsPaymentProcessing(true);
+    
+    // If wallet is connected, try blockchain payment first
+    if (walletConnected) {
+      try {
+        console.log("💰 Attempting blockchain payment...");
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        const signer = await provider.getSigner();
+        const contract = new ethers.Contract(
+          BOUNDARY_ZONE_REGISTRY_ADDRESS,
+          BOUNDARY_ZONE_REGISTRY_ABI,
+          signer
+        );
+        
+        const feeInWei = ethers.parseEther(boundaryFee);
+        console.log("Sending transaction with fee:", boundaryFee, "HBAR");
+        
+        const tx = await contract.createBoundaryZone(zoneId, {
+          value: feeInWei,
+          gasLimit: 300000
+        });
+        
+        console.log("⏳ Transaction sent:", tx.hash);
+        const receipt = await tx.wait();
+        console.log("✅ Payment confirmed!", receipt);
+        
+      } catch (contractError: any) {
+        console.warn("⚠️ Blockchain transaction failed:", contractError);
+        
+        if (contractError.code === 4001) {
+          setIsPaymentProcessing(false);
+          alert("Transaction cancelled");
+          return;
+        }
+        
+        // Continue to database save even if blockchain fails
+        console.log("💾 Blockchain payment not available, saving to database only...");
+      }
+    }
+    
+    // Save to database
+    try {
+      console.log("💾 Saving to database...");
+      saveBoundaryMutation.mutate({ zoneId, coordinates: boundaryCoords });
+    } catch (error: any) {
+      console.error("❌ Error saving:", error);
+      setIsPaymentProcessing(false);
+      alert("Error: " + error.message);
+    }
   };
 
   const handleAssignDrones = () => {
@@ -139,19 +253,12 @@ export default function DeployPage() {
       alert("Please save a boundary first");
       return;
     }
-    if (selectedDrones.length === 0) {
-      alert("Please select at least one drone");
+    if (autoAssignedDrones.length === 0) {
+      alert("No drones registered for this zone yet. Register drones with this zone ID first.");
       return;
     }
-    assignDronesMutation.mutate({ zoneId: savedZoneId, droneIds: selectedDrones });
-  };
-
-  const toggleDroneSelection = (droneId: string) => {
-    setSelectedDrones((prev) =>
-      prev.includes(droneId)
-        ? prev.filter((id) => id !== droneId)
-        : [...prev, droneId]
-    );
+    // Re-sync in case new drones were registered
+    refetchDrones();
   };
 
   return (
@@ -165,290 +272,210 @@ export default function DeployPage() {
           </Button>
         </Link>
         <h1 className="text-lg font-bold text-green-400">Deploy Mission</h1>
-        <div className="w-24"></div> {/* Spacer for centering */}
+        <div className="flex items-center gap-2">
+          {walletConnected ? (
+            <Badge variant="outline" className="bg-green-500/10 text-green-400 border-green-500/30">
+              <Wallet className="h-3 w-3 mr-1" />
+              {walletAddress?.slice(0, 6)}...{walletAddress?.slice(-4)}
+            </Badge>
+          ) : (
+            <Button variant="outline" size="sm" onClick={connectWallet} className="gap-2">
+              <Wallet className="h-4 w-4" />
+              Connect
+            </Button>
+          )}
+        </div>
       </header>
       
       {/* Full map with side panel */}
       <div className="flex-1 flex">
         <div className="flex-1">
-          <InteractiveMap onBoundaryComplete={handleBoundaryComplete} />
+          <InteractiveMap 
+            onBoundaryComplete={handleBoundaryComplete}
+            drones={dronesData || []}
+          />
         </div>
 
         {/* Right sidebar for boundary management */}
         <div className="w-80 bg-forest-950 border-l border-green-500/20 p-4 overflow-y-auto">
           <div className="space-y-4">
-            {/* Blockchain Sync Alert - Shows when 0 drones found */}
-            {dronesData && dronesData.count === 0 && (
-              <div className="glass-strong border-purple-500/50 bg-purple-500/10 p-4 rounded-lg">
-                <h3 className="text-sm font-bold text-purple-400 mb-2 flex items-center gap-2">
-                  <span className="text-2xl">⚡</span>
-                  Sync Required!
-                </h3>
-                <p className="text-xs text-gray-300 mb-3">
-                  Your blockchain drones aren't in the local database. Click below to import them from the smart contract.
-                </p>
-                <Button
-                  onClick={() => syncBlockchainMutation.mutate()}
-                  disabled={syncBlockchainMutation.isPending}
-                  className="w-full bg-purple-600 hover:bg-purple-700 gap-2"
-                  size="sm"
-                >
-                  {syncBlockchainMutation.isPending ? (
-                    <>⏳ Syncing from Blockchain...</>
-                  ) : (
-                    <>🔄 Sync Blockchain Drones</>
-                  )}
-                </Button>
-                <p className="text-xs text-gray-500 mt-2 text-center">
-                  Contract: {DRONE_REGISTRY_ADDRESS.slice(0, 8)}...
-                </p>
-              </div>
+            {/* Wallet Connection */}
+            {!walletConnected && (
+              <Card className="glass-strong border-blue-500/30">
+                <CardContent className="pt-6">
+                  <div className="text-center mb-3">
+                    <Wallet className="h-8 w-8 mx-auto mb-2 text-blue-400" />
+                    <p className="text-sm font-semibold text-blue-400 mb-1">Optional: Connect Wallet</p>
+                    <p className="text-xs text-gray-400">Connect to enable blockchain payments (if contract supports it)</p>
+                  </div>
+                  <Button
+                    onClick={connectWallet}
+                    variant="outline"
+                    className="w-full"
+                    size="sm"
+                  >
+                    <Wallet className="h-4 w-4 mr-2" />
+                    Connect MetaMask
+                  </Button>
+                  <p className="text-xs text-center text-gray-500 mt-2">You can save boundaries without connecting</p>
+                </CardContent>
+              </Card>
             )}
             
-            {/* Instructions */}
-            {!savedZoneId && (
-              <div className="glass-strong border-blue-500/30 p-3 rounded-lg">
-                <h3 className="text-xs font-bold text-blue-400 mb-2">📍 HOW TO USE</h3>
-                <ol className="text-xs text-gray-300 space-y-1 list-decimal list-inside">
-                  <li>Click "Create Boundary" on map</li>
-                  <li>Click map to add points</li>
-                  <li>Click "Complete" button</li>
-                  <li>Enter Zone ID below</li>
-                  <li>Click "Save Boundary"</li>
-                </ol>
-                {dronesData?.count === 0 && (
-                  <div className="mt-3 pt-3 border-t border-yellow-500/30">
-                    <p className="text-xs text-yellow-400 mb-2">⚠️ No drones in local database!</p>
-                    <p className="text-xs text-gray-400 mb-3">
-                      If you already registered drones via blockchain, click "Sync from Blockchain" to import them.
-                    </p>
-                    <div className="grid grid-cols-2 gap-2">
-                      <Button
-                        variant="default"
-                        size="sm"
-                        onClick={() => syncBlockchainMutation.mutate()}
-                        disabled={syncBlockchainMutation.isPending}
-                        className="w-full h-8 text-xs bg-purple-600 hover:bg-purple-700"
-                      >
-                        {syncBlockchainMutation.isPending ? "⏳ Syncing..." : "🔄 Sync Chain"}
-                      </Button>
-                      <Link href="/register" className="w-full">
-                        <Button variant="outline" size="sm" className="w-full h-8 text-xs">
-                          + Register New
-                        </Button>
-                      </Link>
-                    </div>
+            {/* Blockchain Sync Alert */}
+            {dronesData && dronesData.count === 0 && (
+              <Card className="glass-strong border-purple-500/30">
+                <CardContent className="pt-6">
+                  <div className="text-center mb-3">
+                    <p className="text-sm font-semibold text-purple-400 mb-2">No drones available</p>
                   </div>
-                )}
-              </div>
+                  <Button
+                    onClick={() => syncBlockchainMutation.mutate()}
+                    disabled={syncBlockchainMutation.isPending}
+                    className="w-full bg-purple-600 hover:bg-purple-700"
+                    size="sm"
+                  >
+                    {syncBlockchainMutation.isPending ? 'Syncing...' : 'Sync from Blockchain'}
+                  </Button>
+                </CardContent>
+              </Card>
             )}
+            
+
             
             {/* Boundary Save Section */}
             <Card className="glass-strong border-green-500/30">
               <CardHeader>
-                <CardTitle className="text-sm text-green-400">Save Boundary</CardTitle>
+                <CardTitle className="text-sm text-green-400">Create Boundary Zone</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
+                {/* Fee Display - only show if wallet connected */}
+                {walletConnected && (
+                  <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-gray-400">Blockchain Fee:</span>
+                      <span className="text-sm font-bold text-blue-400">{boundaryFee} HBAR</span>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">Payment will be attempted if contract supports it</p>
+                  </div>
+                )}
+                
                 <div>
                   <label className="text-xs text-gray-400 block mb-1">Zone ID</label>
                   <input
                     type="text"
                     value={zoneId}
                     onChange={(e) => setZoneId(e.target.value)}
-                    placeholder="e.g., ZONE-01"
+                    placeholder="e.g., Wayanad-11"
                     className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm"
                     disabled={!!savedZoneId}
                   />
                 </div>
                 
                 {/* Status indicator */}
-                <div className="text-xs">
-                  {boundaryCoords ? (
-                    <div className="space-y-2">
-                      <Badge variant="outline" className="w-full justify-center bg-green-500/10 text-green-400 border-green-500/30">
-                        ✓ {boundaryCoords.length} points captured
-                      </Badge>
-                      {!savedZoneId && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            setBoundaryCoords(null);
-                            alert("Boundary cleared. Draw a new one and click Complete.");
-                          }}
-                          className="w-full text-xs h-7 text-gray-400 hover:text-white"
-                        >
-                          Clear & Draw New
-                        </Button>
-                      )}
-                    </div>
-                  ) : (
-                    <Badge variant="outline" className="w-full justify-center bg-yellow-500/10 text-yellow-400 border-yellow-500/30">
-                      ⚠ Draw boundary and click "Complete"
-                    </Badge>
-                  )}
-                </div>
+                {boundaryCoords && (
+                  <Badge variant="outline" className="w-full justify-center bg-green-500/10 text-green-400 border-green-500/30">
+                    ✓ {boundaryCoords.length} points
+                  </Badge>
+                )}
                 
                 <Button
                   onClick={handleSaveBoundary}
-                  disabled={!boundaryCoords || !zoneId || saveBoundaryMutation.isPending || !!savedZoneId}
+                  disabled={!boundaryCoords || !zoneId || isPaymentProcessing || !!savedZoneId}
                   className="w-full gap-2"
                   size="sm"
                 >
-                  {saveBoundaryMutation.isPending ? (
-                    "Saving..."
+                  {isPaymentProcessing ? (
+                    "Processing..."
                   ) : savedZoneId ? (
                     <>
                       <CheckCircle2 className="h-4 w-4" />
                       Saved
                     </>
+                  ) : walletConnected ? (
+                    <>
+                      <Wallet className="h-4 w-4" />
+                      Save Boundary (with payment)
+                    </>
                   ) : (
                     <>
                       <Save className="h-4 w-4" />
-                      Save Boundary {!boundaryCoords && "(needs boundary)"}
+                      Save Boundary
                     </>
                   )}
                 </Button>
               </CardContent>
             </Card>
 
-            {/* Debug Panel - Always visible */}
-            <Card className="glass-strong border-purple-500/30">
-              <CardHeader>
-                <CardTitle className="text-xs text-purple-400">🔍 Debug Info</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2 text-xs">
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Drones Loading:</span>
-                  <span className={dronesLoading ? "text-yellow-400" : "text-green-400"}>
-                    {dronesLoading ? "Yes" : "No"}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-400">API Error:</span>
-                  <span className="text-red-400">{dronesError ? "Yes" : "No"}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Drones Found:</span>
-                  <span className="text-white font-bold">
-                    {dronesData?.count || 0}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Boundary Saved:</span>
-                  <span className={savedZoneId ? "text-green-400" : "text-gray-500"}>
-                    {savedZoneId || "Not yet"}
-                  </span>
-                </div>
-                
-                {/* Contract Addresses */}
-                <div className="pt-2 border-t border-white/10">
-                  <p className="text-gray-500 font-semibold mb-1">Smart Contracts:</p>
-                  <div className="space-y-1">
-                    <div>
-                      <p className="text-gray-500">DroneRegistry:</p>
-                      <p className="font-mono text-green-400 break-all text-[10px]">
-                        {DRONE_REGISTRY_ADDRESS}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-gray-500">BoundaryZoneRegistry:</p>
-                      <p className="font-mono text-blue-400 break-all text-[10px]">
-                        {BOUNDARY_ZONE_REGISTRY_ADDRESS}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-2 mt-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      console.log("Full dronesData:", dronesData);
-                      alert(`Drones: ${JSON.stringify(dronesData, null, 2)}`);
-                    }}
-                    className="h-7 text-xs"
-                  >
-                    View Raw
-                  </Button>
-                  <Button
-                    variant="default"
-                    size="sm"
-                    onClick={() => syncBlockchainMutation.mutate()}
-                    disabled={syncBlockchainMutation.isPending}
-                    className="h-7 text-xs bg-purple-600 hover:bg-purple-700"
-                  >
-                    {syncBlockchainMutation.isPending ? "⏳ Syncing..." : "🔄 Sync Chain"}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
 
-            {/* Drone Assignment Section */}
-            {savedZoneId && (
+
+            {/* Available Drones */}
+            {dronesData && dronesData.count > 0 && (
               <Card className="glass-strong border-blue-500/30">
                 <CardHeader>
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-sm text-blue-400">Assign Drones</CardTitle>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => refetchDrones()}
-                      className="h-6 px-2 text-xs"
-                    >
-                      🔄 Refresh
-                    </Button>
+                    <CardTitle className="text-sm text-blue-400">Available Drones</CardTitle>
+                    <Badge variant="outline" className="text-xs">
+                      {dronesData.count}
+                    </Badge>
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-3">
-                  {/* Debug info */}
-                  {dronesLoading && (
-                    <p className="text-xs text-gray-400 text-center">Loading drones...</p>
-                  )}
-                  {dronesError && (
-                    <p className="text-xs text-red-400 text-center">Error: {(dronesError as Error).message}</p>
-                  )}
-                  {dronesData && (
-                    <p className="text-xs text-gray-400 text-center mb-2">
-                      Found {dronesData.count || 0} drone(s) in database
-                    </p>
-                  )}
-                  
-                  <div className="max-h-60 overflow-y-auto space-y-2">
-                    {dronesData?.drones
-                      // Remove duplicates by cairnDroneId, keeping the first occurrence
+                <CardContent>
+                  <div className="max-h-48 overflow-y-auto space-y-2">
+                    {dronesData.drones
                       ?.filter((drone: any, index: number, self: any[]) => 
                         self.findIndex((d: any) => d.cairnDroneId === drone.cairnDroneId) === index
                       )
                       ?.map((drone: any) => (
-                      <div
-                        key={`${drone.id}-${drone.cairnDroneId}`}
-                        onClick={() => toggleDroneSelection(drone.cairnDroneId)}
-                        className={`p-3 rounded cursor-pointer transition-colors ${
-                          selectedDrones.includes(drone.cairnDroneId)
-                            ? "bg-blue-500/20 border-2 border-blue-500"
-                            : "bg-white/5 border border-white/10 hover:bg-white/10"
-                        }`}
-                      >
-                        <p className="text-sm font-semibold">{drone.cairnDroneId}</p>
-                        <p className="text-xs text-gray-400">{drone.model}</p>
-                      </div>
-                    ))}
-                    {(!dronesData?.drones || dronesData.drones.length === 0) && (
-                      <p className="text-xs text-gray-500 text-center py-4">No drones available</p>
-                    )}
+                        <div
+                          key={drone.cairnDroneId}
+                          className="p-2.5 rounded bg-white/5 border border-white/10 hover:border-blue-500/30 transition-colors"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex-1">
+                              <p className="text-sm font-semibold text-white">{drone.cairnDroneId}</p>
+                              <p className="text-xs text-gray-400 mt-0.5">{drone.model || "Unknown Model"}</p>
+                            </div>
+                            <Badge variant="outline" className="text-xs font-mono bg-green-500/10 text-green-400 border-green-500/30">
+                              {drone.assignedZoneId || "UNASSIGNED"}
+                            </Badge>
+                          </div>
+                        </div>
+                      ))}
                   </div>
-                  <Button
-                    onClick={handleAssignDrones}
-                    disabled={selectedDrones.length === 0 || assignDronesMutation.isPending}
-                    className="w-full gap-2"
-                    size="sm"
-                  >
-                    {assignDronesMutation.isPending
-                      ? "Assigning..."
-                      : `Assign ${selectedDrones.length} Drone(s)`}
-                  </Button>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Assigned Drones */}
+            {savedZoneId && (
+              <Card className="glass-strong border-green-500/30">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-sm text-green-400">Assigned Drones</CardTitle>
+                    <Badge variant="outline" className="text-xs bg-green-500/10 text-green-400 border-green-500/30">
+                      {autoAssignedDrones.length}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {autoAssignedDrones.length > 0 ? (
+                    <div className="max-h-60 overflow-y-auto space-y-2">
+                      {autoAssignedDrones.map((droneId) => (
+                        <div
+                          key={droneId}
+                          className="p-2.5 rounded bg-green-500/10 border border-green-500/30 flex items-center justify-between"
+                        >
+                          <span className="text-sm font-semibold text-white">{droneId}</span>
+                          <CheckCircle2 className="h-4 w-4 text-green-400" />
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-4">
+                      <p className="text-sm text-gray-400">No drones for zone "{savedZoneId}"</p>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             )}
