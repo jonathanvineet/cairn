@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Save, CheckCircle2, Wallet, Loader2 } from "lucide-react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { DRONE_REGISTRY_ADDRESS, BOUNDARY_ZONE_REGISTRY_ADDRESS, BOUNDARY_ZONE_REGISTRY_ABI } from "@/lib/contracts";
 import { ethers } from "ethers";
 
@@ -30,6 +30,7 @@ export default function DeployPage() {
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [boundaryFee, setBoundaryFee] = useState<string>("0.01");
   const [isPaymentProcessing, setIsPaymentProcessing] = useState(false);
+  const [selectedZone, setSelectedZone] = useState<any | null>(null);
 
   // Check wallet connection and auto-sync drones on mount
   useEffect(() => {
@@ -78,21 +79,9 @@ export default function DeployPage() {
     }
   };
 
-  const fetchBoundaryFee = async () => {
-    try {
-      const provider = new ethers.BrowserProvider(window.ethereum as any);
-      const contract = new ethers.Contract(
-        BOUNDARY_ZONE_REGISTRY_ADDRESS,
-        BOUNDARY_ZONE_REGISTRY_ABI,
-        provider
-      );
-      const fee = await contract.getBoundaryCreationFee();
-      const feeInEther = ethers.formatEther(fee);
-      setBoundaryFee(feeInEther);
-      console.log("Boundary creation fee:", feeInEther, "HBAR");
-    } catch (error) {
-      console.error("Error fetching fee:", error);
-    }
+  const fetchBoundaryFee = () => {
+    // Fee is hardcoded in contract: 0.01 ether
+    setBoundaryFee("0.01");
   };
 
   // Fetch all zones
@@ -118,69 +107,12 @@ export default function DeployPage() {
     },
   });
 
-  // Mutation for saving boundary
-  const saveBoundaryMutation = useMutation({
-    mutationFn: async (data: { zoneId: string; coordinates: Coordinate[] }) => {
-      console.log("📤 Posting to /api/zones/boundary:", data);
-      const res = await fetch("/api/zones/boundary", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      
-      const responseText = await res.text();
-      console.log("📥 Response status:", res.status, "Body:", responseText);
-      
-      if (!res.ok) {
-        throw new Error(`Failed to save boundary: ${responseText}`);
-      }
-      
-      return JSON.parse(responseText);
-    },
-    onSuccess: (data) => {
-      console.log("✅ Boundary saved successfully:", data);
-      setSavedZoneId(zoneId);
-      setAutoAssignedDrones(data.autoAssignedDrones || []);
-      const droneCount = data.autoAssignedCount || 0;
-      setIsPaymentProcessing(false);
-      refetchZones();
-      alert(`Boundary saved for ${zoneId}\n${droneCount} drone(s) assigned`);
-    },
-    onError: (error: any) => {
-      console.error("❌ Error saving boundary:", error);
-      setIsPaymentProcessing(false);
-      alert(`Error saving boundary: ${error.message}`);
-    },
-  });
-
-  // Mutation for assigning drones (kept for potential manual override)
-  const assignDronesMutation = useMutation({
-    mutationFn: async (data: { zoneId: string; droneIds: string[] }) => {
-      const res = await fetch("/api/zones/assign", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) throw new Error("Failed to assign drones");
-      return res.json();
-    },
-    onSuccess: (data) => {
-      alert(`Successfully assigned ${data.summary?.newAssignments || 0} drones to zone ${savedZoneId}`);
-      refetchDrones();
-    },
-    onError: (error: any) => {
-      alert(`Error assigning drones: ${error.message}`);
-    },
-  });
-
   const handleBoundaryComplete = (coordinates: Coordinate[]) => {
     console.log("✅ Boundary completed callback received:", coordinates);
     setBoundaryCoords(coordinates);
   };
 
   const handleSaveBoundary = async () => {
-    console.log("🔵 Save boundary clicked. Zone ID:", zoneId, "Coords:", boundaryCoords);
-    
     if (!zoneId.trim()) {
       alert("Please enter a Zone ID");
       return;
@@ -189,72 +121,65 @@ export default function DeployPage() {
       alert("Please draw a boundary first (click 'Create Boundary', add points, then click 'Complete')");
       return;
     }
-    
-    setIsPaymentProcessing(true);
-    
-    // Step 1: Always save to database first
-    try {
-      console.log("💾 Saving to database...");
-      saveBoundaryMutation.mutate({ zoneId, coordinates: boundaryCoords });
-    } catch (error: any) {
-      console.error("❌ Error saving:", error);
-      setIsPaymentProcessing(false);
-      alert("Error: " + error.message);
+    if (!walletConnected) {
+      alert("Please connect MetaMask — coordinates are saved directly to the blockchain.");
       return;
     }
 
-    // Step 2: Attempt blockchain payment separately (non-blocking)
-    if (walletConnected) {
-      try {
-        console.log("💰 Attempting blockchain payment...");
-        const provider = new ethers.BrowserProvider(window.ethereum as any);
-        const signer = await provider.getSigner();
-        const contract = new ethers.Contract(
-          BOUNDARY_ZONE_REGISTRY_ADDRESS,
-          BOUNDARY_ZONE_REGISTRY_ABI,
-          signer
-        );
-        
-        const feeInWei = ethers.parseEther(boundaryFee);
-        console.log("Sending transaction with fee:", boundaryFee, "HBAR");
-        
-        // Race the transaction against a 60s timeout
-        const txPromise = contract.createBoundaryZone(zoneId, {
-          value: feeInWei,
-          gasLimit: 300000
-        });
-        const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("TIMEOUT")), 60000)
-        );
+    setIsPaymentProcessing(true);
+    try {
+      const provider = new ethers.BrowserProvider(window.ethereum as any);
+      const signer = await provider.getSigner();
 
-        const tx = await Promise.race([txPromise, timeoutPromise]) as any;
-        console.log("⏳ Transaction sent:", tx.hash);
-        const receipt = await tx.wait();
-        console.log("✅ Blockchain payment confirmed!", receipt);
-      } catch (contractError: any) {
-        if (contractError.message === "TIMEOUT") {
-          console.warn("⏱️ Blockchain transaction timed out — boundary already saved to DB");
-        } else if (contractError.code === 4001 || contractError.code === "ACTION_REJECTED") {
-          console.warn("⚠️ Transaction rejected by user");
-        } else {
-          console.warn("⚠️ Blockchain payment failed (DB save still succeeded):", contractError.message);
-        }
-        // DB save already in progress — no need to do anything else
+      // Convert zone ID to bytes32
+      const zoneIdBytes32 = ethers.id(zoneId);
+
+      // Encode coords as UTF-8 bytes: "lat0,lng0,lat1,lng1,..." (scaled by 1e6)
+      const coordsStr = boundaryCoords
+        .flatMap(c => [
+          Math.round(c.lat * 1_000_000).toString(),
+          Math.round(c.lng * 1_000_000).toString(),
+        ])
+        .join(",");
+      const coordsBytes = ethers.toUtf8Bytes(coordsStr);
+
+      // Encode calldata manually to avoid ethers contract wrapper BigNumberish quirks
+      const iface = new ethers.Interface(BOUNDARY_ZONE_REGISTRY_ABI);
+      const data = iface.encodeFunctionData("createBoundaryZone", [zoneIdBytes32, coordsBytes]);
+
+      console.log(`⛓️ Sending createBoundaryZone("${zoneId}", ${boundaryCoords.length} points) to chain...`);
+      const tx = await signer.sendTransaction({
+        to: BOUNDARY_ZONE_REGISTRY_ADDRESS,
+        data,
+        value: BigInt("10000000000000000"), // 0.01 HBAR in weibars
+      });
+
+      console.log("⏳ Tx sent:", tx.hash);
+      const receipt = await tx.wait();
+      console.log("✅ Zone saved on-chain!", receipt?.hash);
+
+      // Fetch assigned drones for this zone from chain
+      const zonesRes = await fetch("/api/zones/boundary", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ zoneId }),
+      });
+      const zonesResData = await zonesRes.json();
+
+      setSavedZoneId(zoneId);
+      setAutoAssignedDrones(zonesResData.autoAssignedDrones || []);
+      setIsPaymentProcessing(false);
+      refetchZones();
+      alert(`✅ Zone "${zoneId}" saved on blockchain!\n${zonesResData.autoAssignedCount || 0} drone(s) assigned.`);
+    } catch (error: any) {
+      setIsPaymentProcessing(false);
+      if (error.code === 4001 || error.code === "ACTION_REJECTED") {
+        alert("Transaction cancelled.");
+      } else {
+        console.error("❌ Error saving zone:", error);
+        alert("Error: " + (error.reason || error.message));
       }
     }
-  };
-
-  const handleAssignDrones = () => {
-    if (!savedZoneId) {
-      alert("Please save a boundary first");
-      return;
-    }
-    if (autoAssignedDrones.length === 0) {
-      alert("No drones registered for this zone yet. Register drones with this zone ID first.");
-      return;
-    }
-    // Re-sync in case new drones were registered
-    refetchDrones();
   };
 
   return (
@@ -289,6 +214,7 @@ export default function DeployPage() {
           <InteractiveMap 
             onBoundaryComplete={handleBoundaryComplete}
             drones={dronesData?.drones || []}
+            selectedZone={selectedZone}
           />
         </div>
 
@@ -333,22 +259,37 @@ export default function DeployPage() {
                   <p className="text-xs text-gray-500 text-center py-2">No zones saved yet</p>
                 ) : (
                   <div className="max-h-48 overflow-y-auto space-y-2">
-                    {zonesData.zones?.map((zone: any) => (
-                      <div
-                        key={zone.zoneId}
-                        className="p-2.5 rounded bg-white/5 border border-white/10 hover:border-purple-500/30 transition-colors"
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold text-white truncate">{zone.zoneId}</p>
-                            <p className="text-xs text-gray-400 mt-0.5">{zone.coordinates?.length ?? 0} boundary points</p>
+                    {zonesData.zones?.map((zone: any) => {
+                      const isSelected = selectedZone?.zoneId === zone.zoneId;
+                      return (
+                        <div
+                          key={zone.zoneId}
+                          onClick={() => setSelectedZone(isSelected ? null : zone)}
+                          className={`p-2.5 rounded border transition-colors cursor-pointer ${
+                            isSelected
+                              ? "bg-purple-500/20 border-purple-500/60"
+                              : "bg-white/5 border-white/10 hover:border-purple-500/30"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-semibold text-white truncate">{zone.zoneId}</p>
+                              <p className="text-xs text-gray-400 mt-0.5">{zone.coordinates?.length ?? 0} boundary points</p>
+                            </div>
+                            <div className="flex items-center gap-1.5 ml-2 shrink-0">
+                              {isSelected && (
+                                <Badge variant="outline" className="text-xs bg-purple-500/20 text-purple-300 border-purple-400/50">
+                                  Viewing
+                                </Badge>
+                              )}
+                              <Badge variant="outline" className="text-xs bg-purple-500/10 text-purple-400 border-purple-500/30">
+                                {zone.assignedDrones?.length ?? 0} drones
+                              </Badge>
+                            </div>
                           </div>
-                          <Badge variant="outline" className="text-xs ml-2 shrink-0 bg-purple-500/10 text-purple-400 border-purple-500/30">
-                            {zone.assignedDrones?.length ?? 0} drones
-                          </Badge>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </CardContent>

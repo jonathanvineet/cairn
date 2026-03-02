@@ -1,325 +1,38 @@
-export const BOUNDARY_ZONE_REGISTRY_ADDRESS = "0x263D1790F9669a72c95bAb46a28e7835108E72d7";
+export const BOUNDARY_ZONE_REGISTRY_ADDRESS = "0x209B7720B65B40549429D2DA5EFaa481Da95bC79";
 export const DRONE_REGISTRY_ADDRESS = "0x2A18e5826cf3443a2034a2F9a5f6eC6bEa2b5ae7";
 
 export const BOUNDARY_ZONE_REGISTRY_ABI = [
     {
-        "inputs": [],
-        "stateMutability": "nonpayable",
-        "type": "constructor"
-    },
-    {
-        "anonymous": false,
         "inputs": [
-            {
-                "indexed": true,
-                "internalType": "address",
-                "name": "droneAccount",
-                "type": "address"
-            },
-            {
-                "indexed": false,
-                "internalType": "string",
-                "name": "zoneId",
-                "type": "string"
-            }
-        ],
-        "name": "DroneRegistered",
-        "type": "event"
-    },
-    {
-        "anonymous": false,
-        "inputs": [
-            {
-                "indexed": true,
-                "internalType": "address",
-                "name": "droneAccount",
-                "type": "address"
-            },
-            {
-                "indexed": false,
-                "internalType": "bool",
-                "name": "isActive",
-                "type": "bool"
-            }
-        ],
-        "name": "DroneStatusUpdated",
-        "type": "event"
-    },
-    {
-        "anonymous": false,
-        "inputs": [
-            {
-                "indexed": true,
-                "internalType": "string",
-                "name": "zoneId",
-                "type": "string"
-            },
-            {
-                "indexed": true,
-                "internalType": "address",
-                "name": "creator",
-                "type": "address"
-            },
-            {
-                "indexed": false,
-                "internalType": "uint256",
-                "name": "fee",
-                "type": "uint256"
-            }
-        ],
-        "name": "ZoneCreated",
-        "type": "event"
-    },
-    {
-        "anonymous": false,
-        "inputs": [
-            {
-                "indexed": false,
-                "internalType": "uint256",
-                "name": "newFee",
-                "type": "uint256"
-            }
-        ],
-        "name": "BoundaryFeeUpdated",
-        "type": "event"
-    },
-    {
-        "anonymous": false,
-        "inputs": [
-            {
-                "indexed": true,
-                "internalType": "address",
-                "name": "to",
-                "type": "address"
-            },
-            {
-                "indexed": false,
-                "internalType": "uint256",
-                "name": "amount",
-                "type": "uint256"
-            }
-        ],
-        "name": "FundsWithdrawn",
-        "type": "event"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "string",
-                "name": "_zoneId",
-                "type": "string"
-            }
+            {"internalType": "bytes32", "name": "id", "type": "bytes32"},
+            {"internalType": "bytes", "name": "coords", "type": "bytes"}
         ],
         "name": "createBoundaryZone",
-        "outputs": [
-            {
-                "internalType": "bool",
-                "name": "",
-                "type": "bool"
-            }
-        ],
+        "outputs": [],
         "stateMutability": "payable",
         "type": "function"
     },
     {
         "inputs": [],
-        "name": "getBoundaryCreationFee",
-        "outputs": [
-            {
-                "internalType": "uint256",
-                "name": "",
-                "type": "uint256"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "uint256",
-                "name": "_newFee",
-                "type": "uint256"
-            }
-        ],
-        "name": "updateBoundaryFee",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-    },
-    {
-        "inputs": [],
-        "name": "withdrawFunds",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-    },
-    {
-        "inputs": [],
-        "name": "boundaryCreationFee",
-        "outputs": [
-            {
-                "internalType": "uint256",
-                "name": "",
-                "type": "uint256"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "_droneAccount",
-                "type": "address"
-            },
-            {
-                "internalType": "string",
-                "name": "_zoneId",
-                "type": "string"
-            }
-        ],
-        "name": "registerDrone",
-        "outputs": [
-            {
-                "internalType": "bool",
-                "name": "",
-                "type": "bool"
-            }
-        ],
-        "stateMutability": "nonpayable",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "uint256",
-                "name": "",
-                "type": "uint256"
-            }
-        ],
-        "name": "allDrones",
-        "outputs": [
-            {
-                "internalType": "address",
-                "name": "",
-                "type": "address"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "",
-                "type": "address"
-            }
-        ],
-        "name": "drones",
-        "outputs": [
-            {
-                "internalType": "address",
-                "name": "accountId",
-                "type": "address"
-            },
-            {
-                "internalType": "string",
-                "name": "zoneId",
-                "type": "string"
-            },
-            {
-                "internalType": "uint256",
-                "name": "registeredAt",
-                "type": "uint256"
-            },
-            {
-                "internalType": "bool",
-                "name": "isActive",
-                "type": "bool"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "string",
-                "name": "_zoneId",
-                "type": "string"
-            }
-        ],
-        "name": "getDronesInZone",
-        "outputs": [
-            {
-                "internalType": "address[]",
-                "name": "",
-                "type": "address[]"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "_droneAccount",
-                "type": "address"
-            },
-            {
-                "internalType": "string",
-                "name": "_zoneId",
-                "type": "string"
-            }
-        ],
-        "name": "isDroneAuthorized",
-        "outputs": [
-            {
-                "internalType": "bool",
-                "name": "",
-                "type": "bool"
-            }
-        ],
+        "name": "getAllZoneIds",
+        "outputs": [{"internalType": "bytes32[]", "name": "", "type": "bytes32[]"}],
         "stateMutability": "view",
         "type": "function"
     },
     {
         "inputs": [],
-        "name": "owner",
-        "outputs": [
-            {
-                "internalType": "address",
-                "name": "",
-                "type": "address"
-            }
-        ],
+        "name": "getTotalZones",
+        "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
         "stateMutability": "view",
         "type": "function"
     },
     {
-        "inputs": [
-            {
-                "internalType": "string",
-                "name": "",
-                "type": "string"
-            },
-            {
-                "internalType": "uint256",
-                "name": "",
-                "type": "uint256"
-            }
-        ],
-        "name": "zoneDrones",
+        "inputs": [{"internalType": "bytes32", "name": "id", "type": "bytes32"}],
+        "name": "getZone",
         "outputs": [
-            {
-                "internalType": "address",
-                "name": "",
-                "type": "address"
-            }
+            {"internalType": "address", "name": "", "type": "address"},
+            {"internalType": "uint256", "name": "", "type": "uint256"},
+            {"internalType": "bytes", "name": "", "type": "bytes"}
         ],
         "stateMutability": "view",
         "type": "function"
