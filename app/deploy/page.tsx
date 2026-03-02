@@ -31,9 +31,14 @@ export default function DeployPage() {
   const [boundaryFee, setBoundaryFee] = useState<string>("0.01");
   const [isPaymentProcessing, setIsPaymentProcessing] = useState(false);
 
-  // Check wallet connection on mount
+  // Check wallet connection and auto-sync drones on mount
   useEffect(() => {
     checkWalletConnection();
+    // Silently sync drones from blockchain in the background
+    fetch("/api/sync-blockchain", { method: "POST" })
+      .then(() => refetchDrones())
+      .catch((e) => console.warn("Background sync failed:", e));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const checkWalletConnection = async () => {
@@ -90,6 +95,16 @@ export default function DeployPage() {
     }
   };
 
+  // Fetch all zones
+  const { data: zonesData, refetch: refetchZones } = useQuery({
+    queryKey: ["zones"],
+    queryFn: async () => {
+      const res = await fetch("/api/zones");
+      const data = await res.json();
+      return data;
+    },
+  });
+
   // Fetch all drones
   const { data: dronesData, isLoading: dronesLoading, error: dronesError, refetch: refetchDrones } = useQuery({
     queryKey: ["drones"],
@@ -128,6 +143,7 @@ export default function DeployPage() {
       setAutoAssignedDrones(data.autoAssignedDrones || []);
       const droneCount = data.autoAssignedCount || 0;
       setIsPaymentProcessing(false);
+      refetchZones();
       alert(`Boundary saved for ${zoneId}\n${droneCount} drone(s) assigned`);
     },
     onError: (error: any) => {
@@ -154,29 +170,6 @@ export default function DeployPage() {
     },
     onError: (error: any) => {
       alert(`Error assigning drones: ${error.message}`);
-    },
-  });
-
-  // Mutation for syncing blockchain data
-  const syncBlockchainMutation = useMutation({
-    mutationFn: async () => {
-      console.log("🔄 Starting blockchain sync...");
-      const res = await fetch("/api/sync-blockchain", {
-        method: "POST",
-      });
-      const data = await res.json();
-      console.log("📦 Sync response:", data);
-      if (!res.ok) throw new Error(data.error || "Failed to sync blockchain");
-      return data;
-    },
-    onSuccess: (data) => {
-      console.log("✅ Sync successful:", data);
-      refetchDrones();
-      alert(`Synced ${data.stats.newlySynced} drone(s) from blockchain`);
-    },
-    onError: (error: any) => {
-      console.error("❌ Sync failed:", error);
-      alert(`Error syncing blockchain: ${error.message}`);
     },
   });
 
@@ -325,24 +318,41 @@ export default function DeployPage() {
               </Card>
             )}
             
-            {/* Blockchain Sync Alert */}
-            {dronesData && dronesData.count === 0 && (
-              <Card className="glass-strong border-purple-500/30">
-                <CardContent className="pt-6">
-                  <div className="text-center mb-3">
-                    <p className="text-sm font-semibold text-purple-400 mb-2">No drones available</p>
+            {/* Saved Boundary Zones */}
+            <Card className="glass-strong border-purple-500/30">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm text-purple-400">Saved Boundary Zones</CardTitle>
+                  <Badge variant="outline" className="text-xs">
+                    {zonesData?.count ?? 0}
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {!zonesData || zonesData.count === 0 ? (
+                  <p className="text-xs text-gray-500 text-center py-2">No zones saved yet</p>
+                ) : (
+                  <div className="max-h-48 overflow-y-auto space-y-2">
+                    {zonesData.zones?.map((zone: any) => (
+                      <div
+                        key={zone.zoneId}
+                        className="p-2.5 rounded bg-white/5 border border-white/10 hover:border-purple-500/30 transition-colors"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-white truncate">{zone.zoneId}</p>
+                            <p className="text-xs text-gray-400 mt-0.5">{zone.coordinates?.length ?? 0} boundary points</p>
+                          </div>
+                          <Badge variant="outline" className="text-xs ml-2 shrink-0 bg-purple-500/10 text-purple-400 border-purple-500/30">
+                            {zone.assignedDrones?.length ?? 0} drones
+                          </Badge>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                  <Button
-                    onClick={() => syncBlockchainMutation.mutate()}
-                    disabled={syncBlockchainMutation.isPending}
-                    className="w-full bg-purple-600 hover:bg-purple-700"
-                    size="sm"
-                  >
-                    {syncBlockchainMutation.isPending ? 'Syncing...' : 'Sync from Blockchain'}
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
+                )}
+              </CardContent>
+            </Card>
             
 
             
