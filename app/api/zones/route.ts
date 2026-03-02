@@ -41,7 +41,7 @@ export async function GET(req: NextRequest) {
             zoneName,
             createdBy: creator,
             createdAt: Number(timestamp),
-            exists: timestamp > 0n,
+            exists: timestamp > BigInt(0),
             coordinates,
             assignedDrones: [],
           };
