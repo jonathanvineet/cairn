@@ -95,6 +95,45 @@ function FlyToZone({ positions }: { positions: LatLngTuple[] }) {
   return null;
 }
 
+// Component to fly and display a selected saved zone
+function SelectedZoneLayer({ zone }: { zone: InteractiveMapProps["selectedZone"] }) {
+  if (!zone || !zone.coordinates || zone.coordinates.length === 0) return null;
+  const positions: LatLngTuple[] = zone.coordinates.map(({ lat, lng }) => [lat, lng] as LatLngTuple);
+  const displayName = (zone as any).zoneName || zone.zoneId;
+  return (
+    <>
+      <FlyToZone positions={positions} />
+      <Polygon
+        positions={positions}
+        pathOptions={{ color: "#a855f7", fillColor: "#a855f7", fillOpacity: 0.2, weight: 3 }}
+      >
+        <Popup>
+          <div className="p-2">
+            <p className="font-semibold text-purple-600">{displayName}</p>
+            <p className="text-xs text-gray-500">{positions.length} boundary points</p>
+          </div>
+        </Popup>
+      </Polygon>
+      {positions.map(([lat, lng], i) => (
+        <Marker
+          key={`zone-pin-${i}`}
+          position={[lat, lng]}
+          icon={L.divIcon({
+            className: "",
+            html: `<div style="width:26px;height:26px;background:#a855f7;border:2px solid #f3e8ff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;color:white;font-weight:bold;box-shadow:0 2px 8px rgba(168,85,247,0.6);">${i + 1}</div>`,
+            iconSize: [26, 26],
+            iconAnchor: [13, 13],
+          })}
+        >
+          <Popup>
+            <span className="text-xs">{displayName} — Point {i + 1}</span>
+          </Popup>
+        </Marker>
+      ))}
+    </>
+  );
+}
+
 export function InteractiveMap({ onBoundaryComplete, drones = [], selectedZone = null }: InteractiveMapProps = {}) {
   const [isMounted, setIsMounted] = useState(false);
   const [pins, setPins] = useState<Pin[]>([]);
@@ -241,7 +280,7 @@ export function InteractiveMap({ onBoundaryComplete, drones = [], selectedZone =
   }
 
   return (
-    <div className="relative h-full w-full">
+    <div className="relative h-full w-full overflow-hidden">
       {/* Control Panel */}
       <div className="absolute top-4 left-4 z-[1000] flex flex-col gap-2">
         <div className="glass-strong rounded-lg border border-white/20 p-3 space-y-2">
@@ -351,8 +390,8 @@ export function InteractiveMap({ onBoundaryComplete, drones = [], selectedZone =
         <MapRecenter center={mapCenter} />
         <MapEventHandler onMapClick={handleMapClick} mode={mode} />
 
-        {/* Render Pins */}
-        {pins.map((pin) => (
+        {/* Render Pins - hide when viewing a saved chain zone */}
+        {!selectedZone && pins.map((pin) => (
           <Marker key={pin.id} position={pin.position}>
             <Popup>
               <div className="p-2 min-w-[180px]">
@@ -416,8 +455,8 @@ export function InteractiveMap({ onBoundaryComplete, drones = [], selectedZone =
           </Marker>
         ))}
 
-        {/* Render Boundaries */}
-        {boundaries.map((boundary) => (
+        {/* Render Boundaries - hide when viewing a saved chain zone */}
+        {!selectedZone && boundaries.map((boundary) => (
           <Polygon
             key={boundary.id}
             positions={boundary.positions}
@@ -449,59 +488,7 @@ export function InteractiveMap({ onBoundaryComplete, drones = [], selectedZone =
         ))}
 
         {/* Selected Saved Zone */}
-        {selectedZone && (() => {
-          const positions: LatLngTuple[] = selectedZone.coordinates.map(({ lat, lng }) => [lat, lng]);
-          return (
-            <>
-              <FlyToZone positions={positions} />
-              <Polygon
-                positions={positions}
-                pathOptions={{
-                  color: "#a855f7",
-                  fillColor: "#a855f7",
-                  fillOpacity: 0.15,
-                  weight: 2.5,
-                }}
-              >
-                <Popup>
-                  <div className="p-2">
-                    <p className="font-semibold text-purple-600">{selectedZone.zoneId}</p>
-                    <p className="text-xs text-gray-500">{positions.length} boundary points</p>
-                    {selectedZone.assignedDrones && selectedZone.assignedDrones.length > 0 && (
-                      <p className="text-xs text-gray-500 mt-1">
-                        Drones: {selectedZone.assignedDrones.join(", ")}
-                      </p>
-                    )}
-                  </div>
-                </Popup>
-              </Polygon>
-              {positions.map(([lat, lng], i) => (
-                <Marker
-                  key={`zone-pin-${i}`}
-                  position={[lat, lng]}
-                  icon={L.divIcon({
-                    className: "",
-                    html: `<div style="
-                      width:22px;height:22px;
-                      background:#a855f7;
-                      border:2px solid #d8b4fe;
-                      border-radius:50%;
-                      display:flex;align-items:center;justify-content:center;
-                      font-size:10px;color:white;font-weight:bold;
-                      box-shadow:0 2px 6px rgba(168,85,247,0.5);
-                    ">${i + 1}</div>`,
-                    iconSize: [22, 22],
-                    iconAnchor: [11, 11],
-                  })}
-                >
-                  <Popup>
-                    <span className="text-xs">{selectedZone.zoneId} — Point {i + 1}</span>
-                  </Popup>
-                </Marker>
-              ))}
-            </>
-          );
-        })()}
+        <SelectedZoneLayer zone={selectedZone} />
 
         {/* Render Drones */}
         {drones.filter((drone) => 

@@ -134,8 +134,8 @@ export default function DeployPage() {
       // Convert zone ID to bytes32
       const zoneIdBytes32 = ethers.id(zoneId);
 
-      // Encode coords as UTF-8 bytes: "lat0,lng0,lat1,lng1,..." (scaled by 1e6)
-      const coordsStr = boundaryCoords
+      // Encode as bytes: "zoneName|lat0,lng0,lat1,lng1,..." (int * 1e6)
+      const coordsStr = zoneId + "|" + boundaryCoords
         .flatMap(c => [
           Math.round(c.lat * 1_000_000).toString(),
           Math.round(c.lng * 1_000_000).toString(),
@@ -151,7 +151,6 @@ export default function DeployPage() {
       const tx = await signer.sendTransaction({
         to: BOUNDARY_ZONE_REGISTRY_ADDRESS,
         data,
-        value: BigInt("10000000000000000"), // 0.01 HBAR in weibars
       });
 
       console.log("⏳ Tx sent:", tx.hash);
@@ -249,9 +248,21 @@ export default function DeployPage() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-sm text-purple-400">Saved Boundary Zones</CardTitle>
-                  <Badge variant="outline" className="text-xs">
-                    {zonesData?.count ?? 0}
-                  </Badge>
+                  <div className="flex items-center gap-1.5">
+                    {selectedZone && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setSelectedZone(null)}
+                        className="h-6 text-xs text-gray-400 hover:text-white px-2"
+                      >
+                        ✕ Clear
+                      </Button>
+                    )}
+                    <Badge variant="outline" className="text-xs">
+                      {zonesData?.count ?? 0}
+                    </Badge>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
@@ -273,7 +284,7 @@ export default function DeployPage() {
                         >
                           <div className="flex items-center justify-between">
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm font-semibold text-white truncate">{zone.zoneId}</p>
+                              <p className="text-sm font-semibold text-white truncate">{zone.zoneName || zone.zoneId}</p>
                               <p className="text-xs text-gray-400 mt-0.5">{zone.coordinates?.length ?? 0} boundary points</p>
                             </div>
                             <div className="flex items-center gap-1.5 ml-2 shrink-0">
@@ -303,16 +314,7 @@ export default function DeployPage() {
                 <CardTitle className="text-sm text-green-400">Create Boundary Zone</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                {/* Fee Display - only show if wallet connected */}
-                {walletConnected && (
-                  <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-2.5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-gray-400">Blockchain Fee:</span>
-                      <span className="text-sm font-bold text-blue-400">{boundaryFee} HBAR</span>
-                    </div>
-                    <p className="text-xs text-gray-500 mt-1">Payment will be attempted if contract supports it</p>
-                  </div>
-                )}
+
                 
                 <div>
                   <label className="text-xs text-gray-400 block mb-1">Zone ID</label>

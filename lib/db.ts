@@ -103,5 +103,26 @@ export const db = {
         findMany: async () => {
             return memoryDb.zones;
         },
+        upsert: async (zoneId: string, data: any) => {
+            const index = memoryDb.zones.findIndex((z) => z.zoneId === zoneId);
+            if (index !== -1) {
+                // Preserve existing assignedDrones if not provided
+                const existing = memoryDb.zones[index];
+                memoryDb.zones[index] = {
+                    ...existing,
+                    ...data,
+                    assignedDrones: data.assignedDrones ?? existing.assignedDrones,
+                };
+                return memoryDb.zones[index];
+            }
+            const newZone = {
+                id: Math.random().toString(36).substring(7),
+                assignedDrones: [],
+                createdAt: new Date(),
+                ...data,
+            };
+            memoryDb.zones.push(newZone);
+            return newZone;
+        },
     },
 };

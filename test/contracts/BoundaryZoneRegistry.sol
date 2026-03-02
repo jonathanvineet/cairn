@@ -11,8 +11,7 @@ contract BoundaryZoneRegistry {
     mapping(bytes32 => Zone) zones;
     bytes32[] ids;
 
-    function createBoundaryZone(bytes32 id, bytes calldata coords) external payable {
-        require(msg.value >= 0.01 ether);
+    function createBoundaryZone(bytes32 id, bytes calldata coords) external {
         require(zones[id].timestamp == 0);
         zones[id] = Zone(msg.sender, block.timestamp, coords);
         ids.push(id);

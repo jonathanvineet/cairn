@@ -1,15 +1,47 @@
-import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { NextRequest } from "next/server";
+import { ethers } from "ethers";
+import { DRONE_REGISTRY_ADDRESS, DRONE_REGISTRY_ABI } from "@/lib/contracts";
+
+const HEDERA_TESTNET_RPC = "https://testnet.hashio.io/api";
 
 export async function GET(req: NextRequest) {
   try {
-    const drones = await db.drones.findMany();
-    
-    return Response.json({
-      success: true,
-      drones,
-      count: drones.length,
-    });
+    const provider = new ethers.JsonRpcProvider(HEDERA_TESTNET_RPC);
+    const contract = new ethers.Contract(DRONE_REGISTRY_ADDRESS, DRONE_REGISTRY_ABI, provider);
+
+    const totalDrones = await contract.getTotalDrones();
+    const count = Number(totalDrones);
+    console.log(`📡 DroneRegistry has ${count} drones on-chain`);
+
+    const drones: any[] = [];
+    const seenAddresses = new Set<string>();
+
+    for (let i = 0; i < count; i++) {
+      try {
+        const droneAddress: string = await contract.allDrones(i);
+        if (seenAddresses.has(droneAddress.toLowerCase())) continue;
+        seenAddresses.add(droneAddress.toLowerCase());
+
+        const droneData = await contract.getDrone(droneAddress);
+        drones.push({
+          cairnDroneId: droneData.cairnId,
+          evmAddress: droneAddress,
+          model: droneData.model || "Unknown Model",
+          assignedZoneId: droneData.zoneId || "UNASSIGNED",
+          status: droneData.isActive ? "ACTIVE" : "INACTIVE",
+          registeredAt: new Date(Number(droneData.registeredAt) * 1000).toISOString(),
+        });
+      } catch (err: any) {
+        console.error(`  ❌ Error fetching drone at index ${i}:`, err.message);
+      }
+    }
+
+    // Deduplicate by cairnDroneId (keep first occurrence)
+    const unique = Array.from(
+      new Map(drones.map((d) => [d.cairnDroneId, d])).values()
+    );
+
+    return Response.json({ success: true, drones: unique, count: unique.length });
   } catch (error: any) {
     console.error("Error in GET /api/drones:", error);
     return Response.json(

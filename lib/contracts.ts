@@ -1,42 +1,48 @@
-export const BOUNDARY_ZONE_REGISTRY_ADDRESS = "0x209B7720B65B40549429D2DA5EFaa481Da95bC79";
+export const BOUNDARY_ZONE_REGISTRY_ADDRESS = "0xeEFfE09953FDCB844Ff69B67e46E8474B70f0E69";
 export const DRONE_REGISTRY_ADDRESS = "0x2A18e5826cf3443a2034a2F9a5f6eC6bEa2b5ae7";
 
 export const BOUNDARY_ZONE_REGISTRY_ABI = [
-    {
-        "inputs": [
-            {"internalType": "bytes32", "name": "id", "type": "bytes32"},
-            {"internalType": "bytes", "name": "coords", "type": "bytes"}
-        ],
-        "name": "createBoundaryZone",
-        "outputs": [],
-        "stateMutability": "payable",
-        "type": "function"
-    },
-    {
-        "inputs": [],
-        "name": "getAllZoneIds",
-        "outputs": [{"internalType": "bytes32[]", "name": "", "type": "bytes32[]"}],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [],
-        "name": "getTotalZones",
-        "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [{"internalType": "bytes32", "name": "id", "type": "bytes32"}],
-        "name": "getZone",
-        "outputs": [
-            {"internalType": "address", "name": "", "type": "address"},
-            {"internalType": "uint256", "name": "", "type": "uint256"},
-            {"internalType": "bytes", "name": "", "type": "bytes"}
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    }
+	{
+		"inputs": [
+			{"internalType": "bytes32", "name": "id", "type": "bytes32"},
+			{"internalType": "bytes", "name": "coords", "type": "bytes"}
+		],
+		"name": "createBoundaryZone",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "getAllZoneIds",
+		"outputs": [
+			{"internalType": "bytes32[]", "name": "", "type": "bytes32[]"}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "getTotalZones",
+		"outputs": [
+			{"internalType": "uint256", "name": "", "type": "uint256"}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{"internalType": "bytes32", "name": "id", "type": "bytes32"}
+		],
+		"name": "getZone",
+		"outputs": [
+			{"internalType": "address", "name": "", "type": "address"},
+			{"internalType": "uint256", "name": "", "type": "uint256"},
+			{"internalType": "bytes", "name": "", "type": "bytes"}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	}
 ];
 
 export const DRONE_REGISTRY_ABI = [
