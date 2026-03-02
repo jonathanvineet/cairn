@@ -39,7 +39,7 @@ export default function DeployPage() {
   const checkWalletConnection = async () => {
     if (typeof window.ethereum !== "undefined") {
       try {
-        const provider = new ethers.BrowserProvider(window.ethereum);
+        const provider = new ethers.BrowserProvider(window.ethereum as any);
         const accounts = await provider.listAccounts();
         if (accounts.length > 0) {
           setWalletConnected(true);
@@ -59,7 +59,7 @@ export default function DeployPage() {
     }
     
     try {
-      const provider = new ethers.BrowserProvider(window.ethereum);
+      const provider = new ethers.BrowserProvider(window.ethereum as any);
       await provider.send("eth_requestAccounts", []);
       const signer = await provider.getSigner();
       const address = await signer.getAddress();
@@ -75,7 +75,7 @@ export default function DeployPage() {
 
   const fetchBoundaryFee = async () => {
     try {
-      const provider = new ethers.BrowserProvider(window.ethereum);
+      const provider = new ethers.BrowserProvider(window.ethereum as any);
       const contract = new ethers.Contract(
         BOUNDARY_ZONE_REGISTRY_ADDRESS,
         BOUNDARY_ZONE_REGISTRY_ABI,
@@ -203,7 +203,7 @@ export default function DeployPage() {
     if (walletConnected) {
       try {
         console.log("💰 Attempting blockchain payment...");
-        const provider = new ethers.BrowserProvider(window.ethereum);
+        const provider = new ethers.BrowserProvider(window.ethereum as any);
         const signer = await provider.getSigner();
         const contract = new ethers.Contract(
           BOUNDARY_ZONE_REGISTRY_ADDRESS,
