@@ -4,10 +4,10 @@ import { ethers } from "ethers";
 
 export async function GET(
     request: Request,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const { id } = params;
+        const { id } = await params;
         
         // Try to find drone by cairnDroneId first, then by hederaAccountId, then by evmAddress
         let drone = await db.drones.findByCairnId(id);
