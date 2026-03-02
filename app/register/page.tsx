@@ -176,6 +176,14 @@ export default function RegisterDronePage() {
                 }),
             });
 
+            // Check if response is JSON
+            const contentType = response.headers.get("content-type");
+            if (!contentType || !contentType.includes("application/json")) {
+                const text = await response.text();
+                console.error("Non-JSON response received:", text);
+                throw new Error("Server returned an error. Check browser console for details.");
+            }
+
             const result = await response.json();
             if (!result.success) {
                 throw new Error(result.error || "Backend registration failed");
@@ -669,7 +677,7 @@ export default function RegisterDronePage() {
                                         View on Mirror Node
                                     </Button>
                                 </Link>
-                                <Link href="/dashboard" className="flex-1">
+                                <Link href={`/dashboard?drone=${registeredDrone.cairnDroneId}`} className="flex-1">
                                     <Button className="w-full gap-2 py-6 glow-green-strong">
                                         <BarChart3 className="h-4 w-4" />
                                         View Drone Profile

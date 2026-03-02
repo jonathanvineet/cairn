@@ -23,11 +23,23 @@ interface Drone {
     initialHBARBalance: number;
 }
 
-declare global {
-    var prismaMock: { drones: Drone[] } | undefined;
+interface Zone {
+    id: string;
+    zoneId: string;
+    name: string;
+    coordinates: { lat: number; lng: number }[];
+    createdAt: Date;
+    assignedDrones: string[];
 }
 
-const memoryDb = global.prismaMock || { drones: [] };
+declare global {
+    var prismaMock: { 
+        drones: Drone[];
+        zones: Zone[];
+    } | undefined;
+}
+
+const memoryDb = global.prismaMock || { drones: [], zones: [] };
 if (process.env.NODE_ENV !== 'production') global.prismaMock = memoryDb;
 
 export const db = {
@@ -48,6 +60,46 @@ export const db = {
         },
         findByAccountId: async (accountId: string) => {
             return memoryDb.drones.find((d) => d.hederaAccountId === accountId);
+        },
+        findByCairnId: async (cairnId: string) => {
+            return memoryDb.drones.find((d) => d.cairnDroneId === cairnId);
+        },
+        findByEvmAddress: async (evmAddress: string) => {
+            return memoryDb.drones.find((d) => d.evmAddress.toLowerCase() === evmAddress.toLowerCase());
+        },
+        update: async (id: string, data: any) => {
+            const index = memoryDb.drones.findIndex((d) => d.id === id || d.cairnDroneId === id);
+            if (index !== -1) {
+                memoryDb.drones[index] = { ...memoryDb.drones[index], ...data };
+                return memoryDb.drones[index];
+            }
+            return null;
+        },
+    },
+    zones: {
+        create: async (data: any) => {
+            const newZone = {
+                id: Math.random().toString(36).substring(7),
+                assignedDrones: [],
+                createdAt: new Date(),
+                ...data,
+            };
+            memoryDb.zones.push(newZone);
+            return newZone;
+        },
+        findByZoneId: async (zoneId: string) => {
+            return memoryDb.zones.find((z) => z.zoneId === zoneId);
+        },
+        update: async (zoneId: string, data: any) => {
+            const index = memoryDb.zones.findIndex((z) => z.zoneId === zoneId);
+            if (index !== -1) {
+                memoryDb.zones[index] = { ...memoryDb.zones[index], ...data };
+                return memoryDb.zones[index];
+            }
+            return null;
+        },
+        findMany: async () => {
+            return memoryDb.zones;
         },
     },
 };

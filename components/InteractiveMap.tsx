@@ -29,6 +29,10 @@ interface Boundary {
   color: string;
 }
 
+interface InteractiveMapProps {
+  onBoundaryComplete?: (coordinates: { lat: number; lng: number }[]) => void;
+}
+
 const WAYANAD_CENTER: LatLngTuple = [11.6, 76.1];
 
 // Fix for default marker icons in Leaflet
@@ -48,7 +52,7 @@ function MapEventHandler({
 }) {
   useMapEvents({
     click(e: L.LeafletMouseEvent) {
-      if (mode === "pin") {
+      if (mode === "pin" || mode === "boundary") {
         onMapClick(e.latlng.lat, e.latlng.lng);
       }
     },
@@ -56,13 +60,19 @@ function MapEventHandler({
   return null;
 }
 
-export function InteractiveMap() {
+export function InteractiveMap({ onBoundaryComplete }: InteractiveMapProps = {}) {
+  const [isMounted, setIsMounted] = useState(false);
   const [pins, setPins] = useState<Pin[]>([]);
   const [boundaries, setBoundaries] = useState<Boundary[]>([]);
   const [mode, setMode] = useState<"pin" | "boundary" | "none">("none");
   const [boundaryPoints, setBoundaryPoints] = useState<LatLngTuple[]>([]);
   const [editingPin, setEditingPin] = useState<string | null>(null);
   const [editLabel, setEditLabel] = useState("");
+
+  // Ensure component only renders on client
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const handleMapClick = (lat: number, lng: number) => {
     if (mode === "pin") {
@@ -102,6 +112,13 @@ export function InteractiveMap() {
         color: `#${Math.floor(Math.random()*16777215).toString(16)}`,
       };
       setBoundaries([...boundaries, newBoundary]);
+      
+      // Call callback with lat/lng objects
+      if (onBoundaryComplete) {
+        const coordinates = boundaryPoints.map(([lat, lng]) => ({ lat, lng }));
+        onBoundaryComplete(coordinates);
+      }
+      
       setBoundaryPoints([]);
       setMode("none");
     }
@@ -129,6 +146,18 @@ export function InteractiveMap() {
       setMode("none");
     }
   };
+
+  // Don't render until mounted on client
+  if (!isMounted) {
+    return (
+      <div className="relative h-full w-full flex items-center justify-center bg-forest-900">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500 mx-auto mb-3"></div>
+          <p className="text-gray-400 text-sm">Loading map...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="relative h-full w-full">

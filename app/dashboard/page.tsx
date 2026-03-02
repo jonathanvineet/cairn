@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
@@ -11,9 +12,14 @@ import {
   ArrowLeft,
   Lock,
   Send,
+  Cpu,
+  Zap,
+  CheckCircle2,
+  ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
 import { WalletConnect } from "@/components/WalletConnect";
 import { ZoneOverview } from "@/components/ZoneOverview";
 import { RecentActivity } from "@/components/RecentActivity";
@@ -26,10 +32,25 @@ async function fetchPatrols() {
   return res.json();
 }
 
+async function fetchDrone(droneId: string) {
+  const res = await fetch(`/api/drones/${droneId}`);
+  if (!res.ok) throw new Error("Failed to fetch drone");
+  return res.json();
+}
+
 export default function DashboardPage() {
+  const searchParams = useSearchParams();
+  const droneId = searchParams.get("drone");
+
   const { data, isLoading } = useQuery({
     queryKey: ["patrols"],
     queryFn: fetchPatrols,
+  });
+
+  const { data: droneData, isLoading: isDroneLoading } = useQuery({
+    queryKey: ["drone", droneId],
+    queryFn: () => fetchDrone(droneId!),
+    enabled: !!droneId,
   });
 
   return (
@@ -150,6 +171,114 @@ export default function DashboardPage() {
             </Badge>
           </div>
         </motion.div>
+
+        {/* Drone Profile Section - Shows when drone query param is present */}
+        {droneId && droneData?.success && (
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.05 }}
+          >
+            <Card className="glass-strong border-green-500/30 border-2 overflow-hidden">
+              <CardContent className="p-6">
+                <div className="flex items-start justify-between mb-6">
+                  <div>
+                    <div className="flex items-center gap-3 mb-2">
+                      <Badge className="bg-green-500/20 text-green-400 border-green-500/30 text-sm">
+                        NEWLY REGISTERED
+                      </Badge>
+                      <Badge variant="outline" className={
+                        droneData.drone.status === "ACTIVE" 
+                          ? "bg-green-500/10 text-green-400 border-green-500/30"
+                          : "bg-gray-500/10 text-gray-400 border-gray-500/30"
+                      }>
+                        {droneData.drone.status}
+                      </Badge>
+                    </div>
+                    <h2 className="text-2xl font-bold">{droneData.drone.cairnDroneId}</h2>
+                    <p className="text-gray-400 text-sm mt-1">{droneData.drone.model}</p>
+                  </div>
+                  <Link 
+                    href={`https://hashscan.io/testnet/account/${droneData.drone.hederaAccountId}`}
+                    target="_blank"
+                  >
+                    <Button variant="outline" size="sm" className="gap-2">
+                      <ExternalLink className="h-3 w-3" />
+                      View on HashScan
+                    </Button>
+                  </Link>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                  <div className="glass p-4 rounded-xl">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="p-2 bg-blue-500/10 rounded-lg">
+                        <Shield className="h-5 w-5 text-blue-400" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 font-medium">HEDERA WALLET</p>
+                        <p className="text-sm font-mono text-white">{droneData.drone.hederaAccountId}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="glass p-4 rounded-xl">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="p-2 bg-purple-500/10 rounded-lg">
+                        <MapPin className="h-5 w-5 text-purple-400" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 font-medium">ASSIGNED ZONE</p>
+                        <p className="text-sm font-semibold text-white">{droneData.drone.assignedZoneId}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="glass p-4 rounded-xl">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="p-2 bg-green-500/10 rounded-lg">
+                        <CheckCircle2 className="h-5 w-5 text-green-400" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 font-medium">INITIAL BALANCE</p>
+                        <p className="text-sm font-bold text-green-400">{droneData.drone.initialHBARBalance} HBAR</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                  <div className="p-3 bg-white/5 rounded-lg">
+                    <p className="text-gray-500 mb-1">Serial Number</p>
+                    <p className="font-mono">{droneData.drone.serialNumber}</p>
+                  </div>
+                  <div className="p-3 bg-white/5 rounded-lg">
+                    <p className="text-gray-500 mb-1">DGCA Cert</p>
+                    <p className="font-mono">{droneData.drone.dgcaCertNumber}</p>
+                  </div>
+                  <div className="p-3 bg-white/5 rounded-lg">
+                    <p className="text-gray-500 mb-1">Sensor Type</p>
+                    <p className="font-medium">{droneData.drone.sensorType}</p>
+                  </div>
+                  <div className="p-3 bg-white/5 rounded-lg">
+                    <p className="text-gray-500 mb-1">Flight Time</p>
+                    <p className="font-medium">{droneData.drone.maxFlightMinutes} min</p>
+                  </div>
+                </div>
+
+                {droneData.contractStatus && (
+                  <div className="mt-4 p-3 bg-green-500/10 border border-green-500/30 rounded-lg">
+                    <p className="text-xs text-green-400 font-bold mb-1">✓ BLOCKCHAIN VERIFIED</p>
+                    <p className="text-xs text-gray-400">
+                      On-chain status: {droneData.contractStatus.isActive ? "Active" : "Inactive"} • 
+                      Registered at block: {new Date(droneData.contractStatus.registeredAt * 1000).toLocaleString()}
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
 
         {/* ROW 1: Zone Overview (4 KPI Cards) */}
         <motion.div
