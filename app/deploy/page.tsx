@@ -6,7 +6,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Save, CheckCircle2, Wallet } from "lucide-react";
+import { ArrowLeft, Save, CheckCircle2, Wallet, Loader2 } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { DRONE_REGISTRY_ADDRESS, BOUNDARY_ZONE_REGISTRY_ADDRESS, BOUNDARY_ZONE_REGISTRY_ABI } from "@/lib/contracts";
 import { ethers } from "ethers";
@@ -193,13 +193,24 @@ export default function DeployPage() {
       return;
     }
     if (!boundaryCoords || boundaryCoords.length < 3) {
-      alert("Please draw a boundary first");
+      alert("Please draw a boundary first (click 'Create Boundary', add points, then click 'Complete')");
       return;
     }
     
     setIsPaymentProcessing(true);
     
-    // If wallet is connected, try blockchain payment first
+    // Step 1: Always save to database first
+    try {
+      console.log("💾 Saving to database...");
+      saveBoundaryMutation.mutate({ zoneId, coordinates: boundaryCoords });
+    } catch (error: any) {
+      console.error("❌ Error saving:", error);
+      setIsPaymentProcessing(false);
+      alert("Error: " + error.message);
+      return;
+    }
+
+    // Step 2: Attempt blockchain payment separately (non-blocking)
     if (walletConnected) {
       try {
         console.log("💰 Attempting blockchain payment...");
@@ -214,37 +225,29 @@ export default function DeployPage() {
         const feeInWei = ethers.parseEther(boundaryFee);
         console.log("Sending transaction with fee:", boundaryFee, "HBAR");
         
-        const tx = await contract.createBoundaryZone(zoneId, {
+        // Race the transaction against a 60s timeout
+        const txPromise = contract.createBoundaryZone(zoneId, {
           value: feeInWei,
           gasLimit: 300000
         });
-        
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("TIMEOUT")), 60000)
+        );
+
+        const tx = await Promise.race([txPromise, timeoutPromise]) as any;
         console.log("⏳ Transaction sent:", tx.hash);
         const receipt = await tx.wait();
-        console.log("✅ Payment confirmed!", receipt);
-        
+        console.log("✅ Blockchain payment confirmed!", receipt);
       } catch (contractError: any) {
-        console.warn("⚠️ Blockchain transaction failed:", contractError);
-        
-        if (contractError.code === 4001) {
-          setIsPaymentProcessing(false);
-          alert("Transaction cancelled");
-          return;
+        if (contractError.message === "TIMEOUT") {
+          console.warn("⏱️ Blockchain transaction timed out — boundary already saved to DB");
+        } else if (contractError.code === 4001 || contractError.code === "ACTION_REJECTED") {
+          console.warn("⚠️ Transaction rejected by user");
+        } else {
+          console.warn("⚠️ Blockchain payment failed (DB save still succeeded):", contractError.message);
         }
-        
-        // Continue to database save even if blockchain fails
-        console.log("💾 Blockchain payment not available, saving to database only...");
+        // DB save already in progress — no need to do anything else
       }
-    }
-    
-    // Save to database
-    try {
-      console.log("💾 Saving to database...");
-      saveBoundaryMutation.mutate({ zoneId, coordinates: boundaryCoords });
-    } catch (error: any) {
-      console.error("❌ Error saving:", error);
-      setIsPaymentProcessing(false);
-      alert("Error: " + error.message);
     }
   };
 
@@ -386,7 +389,10 @@ export default function DeployPage() {
                   size="sm"
                 >
                   {isPaymentProcessing ? (
-                    "Processing..."
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Saving...
+                    </>
                   ) : savedZoneId ? (
                     <>
                       <CheckCircle2 className="h-4 w-4" />

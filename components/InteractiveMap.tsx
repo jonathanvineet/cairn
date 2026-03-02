@@ -198,6 +198,13 @@ export function InteractiveMap({ onBoundaryComplete, drones = [] }: InteractiveM
         color: "#10b981",
       };
       setBoundaries([...boundaries, newBoundary]);
+
+      // Notify parent with lat/lng coordinates
+      if (onBoundaryComplete) {
+        const coordinates = positions.map(([lat, lng]) => ({ lat, lng }));
+        onBoundaryComplete(coordinates);
+      }
+
       setPins([]);
       setMode("none");
     }
@@ -424,7 +431,9 @@ export function InteractiveMap({ onBoundaryComplete, drones = [] }: InteractiveM
         ))}
 
         {/* Render Drones */}
-        {drones.map((drone) => {
+        {drones.filter((drone) => 
+          drone.registrationLat != null && drone.registrationLng != null
+        ).map((drone) => {
           const droneIcon = L.divIcon({
             className: "custom-drone-icon",
             html: `<div style="
