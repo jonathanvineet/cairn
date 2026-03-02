@@ -9,6 +9,7 @@ import { BOUNDARY_ZONE_REGISTRY_ADDRESS } from "@/lib/contracts";
 
 interface ChainZone {
   zoneId: string;
+  zoneName: string;
   createdBy: string;
   createdAt: number;
   exists: boolean;
