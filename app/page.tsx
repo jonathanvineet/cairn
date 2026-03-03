@@ -22,6 +22,7 @@ import {
   ArrowRight,
   Zap,
   CheckCircle2,
+  MapPin,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -135,55 +136,39 @@ export default function LandingPage() {
               className="mt-12 flex flex-wrap items-center justify-center gap-6"
             >
               <MagneticHover strength={0.4}>
-                <Link href="/dashboard">
+                <Link href="/register">
                   <Button size="lg" className="gap-2 glow-green-strong text-lg px-8 py-6">
-                    <Rocket className="h-5 w-5" />
-                    Start Inspection
+                    <Shield className="h-5 w-5" />
+                    Register Drone
                     <ArrowRight className="h-5 w-5" />
                   </Button>
                 </Link>
               </MagneticHover>
 
               <MagneticHover strength={0.3}>
-                <Link href="/register">
+                <Link href="/deploy">
                   <Button
                     variant="outline"
                     size="lg"
                     className="gap-2 glass text-lg px-8 py-6"
                   >
-                    <Shield className="h-5 w-5" />
-                    Register Drone
+                    <MapPin className="h-5 w-5" />
+                    Register Boundary
                   </Button>
                 </Link>
               </MagneticHover>
-
-              <MagneticHover strength={0.3}>
-                <Button
-                  variant="ghost"
-                  size="lg"
-                  className="gap-2 glass text-lg px-8 py-6"
-                  onClick={openDemo}
-                >
-                  <Eye className="h-5 w-5" />
-                  View Demo Zone
-                </Button>
-              </MagneticHover>
             </motion.div>
 
-            {/* Live status badge */}
+            {/* Wallet Connection Notice */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.6, duration: 0.6 }}
               className="mt-12 glass-strong rounded-full px-6 py-3 flex items-center gap-3"
             >
-              <span className="relative flex h-3 w-3">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-green-400" />
-              </span>
-              <span className="text-sm font-medium">
-                <span className="text-green-400 font-bold">Wayanad Zone:</span>{" "}
-                14/16 Checkpoints ✅
+              <Lock className="h-4 w-4 text-blue-400" />
+              <span className="text-sm font-medium text-gray-300">
+                Connect wallet to register drones or create boundaries
               </span>
             </motion.div>
           </motion.div>

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ethers } from "ethers";
 import { BOUNDARY_ZONE_REGISTRY_ADDRESS, BOUNDARY_ZONE_REGISTRY_ABI } from "@/lib/contracts";
+import { db } from "@/lib/db";
 
 const HEDERA_TESTNET_RPC = "https://testnet.hashio.io/api";
 
@@ -36,6 +37,19 @@ export async function GET(req: NextRequest) {
             });
           }
 
+          // Try to get assigned drones from local DB cache
+          let assignedDrones: string[] = [];
+          try {
+            // Convert bytes32 to human-readable zone ID
+            const zoneIdStr = coordsStr.split("|")[0] || zoneIdBytes32;
+            const cachedZone = await db.zones.findByZoneId(zoneIdStr);
+            if (cachedZone) {
+              assignedDrones = cachedZone.assignedDrones || [];
+            }
+          } catch (dbError) {
+            console.warn("Failed to fetch assigned drones from DB:", dbError);
+          }
+
           return {
             zoneId: zoneIdBytes32,
             zoneName,
@@ -43,7 +57,7 @@ export async function GET(req: NextRequest) {
             createdAt: Number(timestamp),
             exists: timestamp > BigInt(0),
             coordinates,
-            assignedDrones: [],
+            assignedDrones,
           };
         } catch (err) {
           console.error(`Failed to fetch zone ${zoneIdBytes32}:`, err);
