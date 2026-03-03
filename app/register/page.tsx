@@ -205,14 +205,19 @@ export default function RegisterDronePage() {
                 const provider = new BrowserProvider((window as any).ethereum);
                 const signer = await provider.getSigner();
 
-                setProcessingStatus(prev => [...prev, "Authorizing zone access (Sign in MetaMask)..."]);
-                const zoneContract = new Contract(
-                    BOUNDARY_ZONE_REGISTRY_ADDRESS,
-                    ["function registerDrone(address _droneAccount, string _zoneId) public returns (bool)"],
-                    signer
-                );
-                const tx1 = await zoneContract.registerDrone(droneData.evmAddress, droneData.assignedZoneId);
-                await tx1.wait();
+                // Only register with zone contract if a valid zone is assigned
+                if (droneData.assignedZoneId && droneData.assignedZoneId !== "UNASSIGNED") {
+                    setProcessingStatus(prev => [...prev, "Authorizing zone access (Sign in MetaMask)..."]);
+                    const zoneContract = new Contract(
+                        BOUNDARY_ZONE_REGISTRY_ADDRESS,
+                        ["function registerDrone(address _droneAccount, string _zoneId) public returns (bool)"],
+                        signer
+                    );
+                    const tx1 = await zoneContract.registerDrone(droneData.evmAddress, droneData.assignedZoneId);
+                    await tx1.wait();
+                } else {
+                    setProcessingStatus(prev => [...prev, "⏭️ Skipping zone assignment (will be auto-assigned later)..."]);
+                }
 
                 setProcessingStatus(prev => [...prev, "Finalizing on-chain record (Sign in MetaMask)..."]);
                 const droneContract = new Contract(
@@ -223,7 +228,7 @@ export default function RegisterDronePage() {
                 const tx2 = await droneContract.registerDrone(
                     droneData.cairnDroneId,
                     droneData.evmAddress,
-                    droneData.assignedZoneId,
+                    droneData.assignedZoneId || "UNASSIGNED",
                     droneData.model
                 );
                 await tx2.wait();
@@ -235,18 +240,23 @@ export default function RegisterDronePage() {
                 const dapp = getConnector();
                 if (!dapp) throw new Error("Wallet connector not found");
 
-                const zoneTx = new ContractExecuteTransaction()
-                    .setContractId(ContractId.fromEvmAddress(0, 0, BOUNDARY_ZONE_REGISTRY_ADDRESS))
-                    .setGas(250000)
-                    .setFunction(
-                        "registerDrone",
-                        new ContractFunctionParameters()
-                            .addAddress(AccountId.fromString(droneData.hederaAccountId).toEvmAddress())
-                            .addString(droneData.assignedZoneId)
-                    );
+                // Only register with zone contract if a valid zone is assigned
+                if (droneData.assignedZoneId && droneData.assignedZoneId !== "UNASSIGNED") {
+                    const zoneTx = new ContractExecuteTransaction()
+                        .setContractId(ContractId.fromEvmAddress(0, 0, BOUNDARY_ZONE_REGISTRY_ADDRESS))
+                        .setGas(250000)
+                        .setFunction(
+                            "registerDrone",
+                            new ContractFunctionParameters()
+                                .addAddress(AccountId.fromString(droneData.hederaAccountId).toEvmAddress())
+                                .addString(droneData.assignedZoneId)
+                        );
 
-                setProcessingStatus(prev => [...prev, "Authorizing zone access (Sign in HashPack)..."]);
-                await (dapp as any).executeTransaction(zoneTx);
+                    setProcessingStatus(prev => [...prev, "Authorizing zone access (Sign in HashPack)..."]);
+                    await (dapp as any).executeTransaction(zoneTx);
+                } else {
+                    setProcessingStatus(prev => [...prev, "⏭️ Skipping zone assignment (will be auto-assigned later)..."]);
+                }
 
                 const droneTx = new ContractExecuteTransaction()
                     .setContractId(ContractId.fromEvmAddress(0, 0, DRONE_REGISTRY_ADDRESS))
@@ -256,7 +266,7 @@ export default function RegisterDronePage() {
                         new ContractFunctionParameters()
                             .addString(droneData.cairnDroneId)
                             .addAddress(AccountId.fromString(droneData.hederaAccountId).toEvmAddress())
-                            .addString(droneData.assignedZoneId)
+                            .addString(droneData.assignedZoneId || "UNASSIGNED")
                             .addString(droneData.model)
                     );
 
