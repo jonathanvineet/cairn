@@ -23,6 +23,9 @@ interface Drone {
     initialHBARBalance: number;
     registrationLat: number;
     registrationLng: number;
+    // Hedera AI Agent fields
+    agentTopicId?: string;        // HCS topic ID — the drone's on-chain agent inbox
+    agentManifestSequence?: number; // Sequence number of the manifest message on HCS
 }
 
 interface Zone {

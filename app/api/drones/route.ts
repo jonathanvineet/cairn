@@ -39,15 +39,19 @@ export async function GET(req: NextRequest) {
           // Add location data from local DB
           registrationLat: localDrone?.registrationLat,
           registrationLng: localDrone?.registrationLng,
+          // AI Agent fields from local DB
+          agentTopicId: localDrone?.agentTopicId || null,
+          agentManifestSequence: localDrone?.agentManifestSequence || null,
+          isAgent: !!localDrone?.agentTopicId,
         });
       } catch (err: any) {
         console.error(`  ❌ Error fetching drone at index ${i}:`, err.message);
       }
     }
 
-    // Deduplicate by cairnDroneId (keep first occurrence)
+    // Deduplicate by evmAddress (keep first occurrence) - this is the unique identifier on-chain
     const unique = Array.from(
-      new Map(drones.map((d) => [d.cairnDroneId, d])).values()
+      new Map(drones.map((d) => [d.evmAddress.toLowerCase(), d])).values()
     );
 
     return Response.json({ success: true, drones: unique, count: unique.length });

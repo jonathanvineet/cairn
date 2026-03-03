@@ -222,16 +222,37 @@ export default function RegisterDronePage() {
                 setProcessingStatus(prev => [...prev, "Finalizing on-chain record (Sign in MetaMask)..."]);
                 const droneContract = new Contract(
                     DRONE_REGISTRY_ADDRESS,
-                    ["function registerDrone(string _cairnId, address _accountId, string _zoneId, string _model) public returns (bool)"],
+                    [
+                        "function registerDrone(string _cairnId, address _accountId, string _zoneId, string _model) public returns (bool)",
+                        "function getDrone(address _accountId) public view returns (tuple(string cairnId, address accountId, string zoneId, string model, uint256 registeredAt, bool isActive))"
+                    ],
                     signer
                 );
-                const tx2 = await droneContract.registerDrone(
-                    droneData.cairnDroneId,
-                    droneData.evmAddress,
-                    droneData.assignedZoneId || "UNASSIGNED",
-                    droneData.model
-                );
-                await tx2.wait();
+
+                // Check if already registered on-chain
+                try {
+                    const existingDrone = await droneContract.getDrone(droneData.evmAddress);
+                    if (existingDrone.accountId !== "0x0000000000000000000000000000000000000000") {
+                        setProcessingStatus(prev => [...prev, "⚠️  Drone already registered on-chain, skipping..."]);
+                    } else {
+                        const tx2 = await droneContract.registerDrone(
+                            droneData.cairnDroneId,
+                            droneData.evmAddress,
+                            droneData.assignedZoneId || "UNASSIGNED",
+                            droneData.model
+                        );
+                        await tx2.wait();
+                    }
+                } catch (checkErr) {
+                    // If getDrone fails, try to register anyway
+                    const tx2 = await droneContract.registerDrone(
+                        droneData.cairnDroneId,
+                        droneData.evmAddress,
+                        droneData.assignedZoneId || "UNASSIGNED",
+                        droneData.model
+                    );
+                    await tx2.wait();
+                }
 
             } else {
                 setProcessingStatus(prev => [...prev, "Authenticating with Hedera network..."]);
@@ -271,7 +292,15 @@ export default function RegisterDronePage() {
                     );
 
                 setProcessingStatus(prev => [...prev, "Finalizing on-chain record (Sign in HashPack)..."]);
-                await (dapp as any).executeTransaction(droneTx);
+                try {
+                    await (dapp as any).executeTransaction(droneTx);
+                } catch (contractErr: any) {
+                    if (contractErr.message?.includes("already registered")) {
+                        setProcessingStatus(prev => [...prev, "⚠️  Drone already registered on-chain, skipping..."]);
+                    } else {
+                        throw contractErr;
+                    }
+                }
             }
 
             setProcessingStatus(prev => [...prev, "Registration complete!"]);
@@ -279,7 +308,17 @@ export default function RegisterDronePage() {
 
         } catch (error: any) {
             console.error("Registration flow error:", error);
-            alert("Registration failed: " + (error.message || "Unknown error"));
+            
+            let errorMsg = "Unknown error";
+            if (error.message?.includes("already registered")) {
+                errorMsg = "This drone address is already registered. You may have already completed registration.";
+            } else if (error.message?.includes("user rejected")) {
+                errorMsg = "Transaction was cancelled by user.";
+            } else if (error.message) {
+                errorMsg = error.message;
+            }
+            
+            alert("Registration failed: " + errorMsg);
             setRegistrationStep(0);
             setProcessingStatus([]);
         } finally {
@@ -627,6 +666,45 @@ export default function RegisterDronePage() {
                                 </div>
                             </Card>
                         </div>
+
+                        {/* AI Agent Registration Banner */}
+                        {registeredDrone.agentTopicId && (
+                            <Card className="glass-strong border-purple-500/30 p-5 relative z-1">
+                                <div className="flex items-start gap-4">
+                                    <div className="w-10 h-10 rounded-full bg-purple-500/20 border border-purple-500/30 flex items-center justify-center shrink-0 text-lg">🤖</div>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <h4 className="font-bold text-purple-300">Registered as Hedera AI Agent</h4>
+                                            <Badge className="bg-purple-500/20 text-purple-300 border-purple-500/30 text-[10px]">AUTONOMOUS</Badge>
+                                        </div>
+                                        <p className="text-xs text-gray-400 mb-3">
+                                            This drone has its own HCS topic — a permanent on-chain inbox for agent-to-agent communication. 
+                                            No AI API key used. Signed entirely by the drone's ECDSA key.
+                                        </p>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                            <div className="p-2 bg-purple-500/10 rounded border border-purple-500/20">
+                                                <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-0.5">HCS Agent Topic</p>
+                                                <p className="font-mono text-xs text-purple-300">{registeredDrone.agentTopicId}</p>
+                                            </div>
+                                            <div className="p-2 bg-purple-500/10 rounded border border-purple-500/20">
+                                                <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-0.5">Manifest Sequence #</p>
+                                                <p className="font-mono text-xs text-purple-300">{registeredDrone.agentManifestSequence}</p>
+                                            </div>
+                                        </div>
+                                        <div className="mt-2">
+                                            <a
+                                                href={`https://hashscan.io/testnet/topic/${registeredDrone.agentTopicId}`}
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                className="text-[11px] text-purple-400 underline underline-offset-2 hover:text-purple-300"
+                                            >
+                                                View agent topic on HashScan ↗
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </Card>
+                        )}
 
                         <Card className="glass-strong border-white/10 p-8 relative z-1">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">

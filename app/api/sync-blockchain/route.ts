@@ -56,8 +56,8 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Deduplicate by cairnId
-    const unique = Array.from(new Map(drones.map((d) => [d.cairnId, d])).values());
+    // Deduplicate by evmAddress (the unique on-chain identifier)
+    const unique = Array.from(new Map(drones.map((d) => [d.evmAddress.toLowerCase(), d])).values());
 
     const response = {
       success: true,

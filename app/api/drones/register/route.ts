@@ -8,6 +8,7 @@ import {
 import { db } from "@/lib/db";
 import { encrypt } from "@/lib/encryption";
 import { mintDroneCredentialNFT, registerDroneInSmartContract } from "@/lib/hederaDroneHelpers";
+import { registerDroneAsAgent } from "@/lib/droneAgent";
 
 export async function POST(req: Request) {
     try {
@@ -132,10 +133,23 @@ export async function POST(req: Request) {
         const droneEvmAddress = `0x${dronePublicKey.toEvmAddress()}`;
 
         // ─────────────────────────────────────────
-        // STEP 4: Generate CAIRN drone ID
+        // STEP 4: Generate unique CAIRN drone ID
         // ─────────────────────────────────────────
-        const droneCount = await db.drones.count();
-        const cairnDroneId = `CAIRN-${String(droneCount + 1).padStart(2, "0")}`;
+        // Use a combination of timestamp + serial hash to ensure uniqueness across server restarts
+        const serialHash = serialNumber.slice(-4).toUpperCase();
+        const timestamp = Date.now().toString().slice(-4);
+        const existingDrones = await db.drones.findMany();
+        
+        // Find highest CAIRN number to continue sequence
+        const cairnNumbers = existingDrones
+          .map(d => {
+            const match = d.cairnDroneId.match(/CAIRN-(\d+)/);
+            return match ? parseInt(match[1]) : 0;
+          })
+          .filter(n => n > 0);
+        
+        const nextNumber = Math.max(0, ...cairnNumbers) + 1;
+        const cairnDroneId = `CAIRN-${String(nextNumber).padStart(2, "0")}`;
 
         // ─────────────────────────────────────────
         // STEP 5: Store in database
@@ -183,6 +197,42 @@ export async function POST(req: Request) {
             registeredByOfficerId,
         });
 
+        // ─────────────────────────────────────────
+        // STEP 7: Register drone as Hedera AI Agent
+        //   - Creates a dedicated HCS topic (the agent's on-chain inbox)
+        //   - Submits a signed agent manifest message to that topic
+        //   - No NLP / no AI API key required — pure Hedera SDK
+        // ─────────────────────────────────────────
+        let agentTopicId: string | null = null;
+        let agentManifestSequence: number | null = null;
+        try {
+            const agentResult = await registerDroneAsAgent(
+                {
+                    cairnDroneId,
+                    hederaAccountId: droneAccountId,
+                    evmAddress: droneEvmAddress,
+                    model,
+                    assignedZoneId,
+                    registeredAt: new Date().toISOString(),
+                    registrationLat: Number(registrationLat),
+                    registrationLng: Number(registrationLng),
+                },
+                client,
+                dronePrivateKey,
+            );
+            agentTopicId = agentResult.agentTopicId;
+            agentManifestSequence = agentResult.agentManifestSequence;
+
+            // Persist agent fields into the in-memory DB record
+            await db.drones.update(drone.id, {
+                agentTopicId,
+                agentManifestSequence,
+            });
+        } catch (agentErr: any) {
+            // Non-fatal: agent registration failure should not block drone registration
+            console.error("⚠️  Agent registration failed (non-fatal):", agentErr.message);
+        }
+
         client.close();
 
         return Response.json({
@@ -198,7 +248,11 @@ export async function POST(req: Request) {
                 status: "ACTIVE",
                 initialBalance: "20 HBAR",
                 nftSerialNumber: nftResult.serialNumber,
-                message: `Drone ${cairnDroneId} registered. Hedera wallet created.`
+                // AI Agent fields
+                agentTopicId,
+                agentManifestSequence,
+                isAgent: agentTopicId !== null,
+                message: `Drone ${cairnDroneId} registered as Hedera AI Agent${agentTopicId ? ` (topic: ${agentTopicId})` : ""}.`
             }
         });
 

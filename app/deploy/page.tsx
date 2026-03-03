@@ -386,18 +386,30 @@ export default function DeployPage() {
                 <CardContent>
                   <div className="max-h-48 overflow-y-auto space-y-2">
                     {dronesData.drones
-                      ?.filter((drone: any, index: number, self: any[]) => 
-                        self.findIndex((d: any) => d.cairnDroneId === drone.cairnDroneId) === index
-                      )
                       ?.map((drone: any) => (
                         <div
-                          key={drone.cairnDroneId}
+                          key={drone.evmAddress}
                           className="p-2.5 rounded bg-white/5 border border-white/10 hover:border-blue-500/30 transition-colors"
                         >
-                          <div className="flex items-center justify-between">
+                          <div className="flex items-center justify-between gap-2">
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm font-semibold text-white">{drone.cairnDroneId}</p>
+                              <div className="flex items-center gap-1.5">
+                                <p className="text-sm font-semibold text-white">{drone.cairnDroneId}</p>
+                                {drone.isAgent && (
+                                  <span
+                                    title={`HCS Agent Topic: ${drone.agentTopicId}`}
+                                    className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30 leading-none"
+                                  >
+                                    AI AGENT
+                                  </span>
+                                )}
+                              </div>
                               <p className="text-xs text-gray-400 mt-0.5">{drone.model || "Unknown Model"}</p>
+                              {drone.agentTopicId && (
+                                <p className="text-[10px] text-purple-400 mt-0.5 font-mono truncate">
+                                  📡 {drone.agentTopicId}
+                                </p>
+                              )}
                               {drone.assignedZoneId === "UNASSIGNED" && drone.registrationLat && drone.registrationLng && (
                                 <p className="text-xs text-blue-400 mt-1">
                                   📍 {drone.registrationLat.toFixed(4)}°, {drone.registrationLng.toFixed(4)}°
@@ -406,7 +418,7 @@ export default function DeployPage() {
                             </div>
                             <Badge 
                               variant="outline" 
-                              className={`text-xs font-mono ${drone.assignedZoneId === "UNASSIGNED" ? "bg-yellow-500/10 text-yellow-400 border-yellow-500/30" : "bg-green-500/10 text-green-400 border-green-500/30"}`}
+                              className={`text-xs font-mono shrink-0 ${drone.assignedZoneId === "UNASSIGNED" ? "bg-yellow-500/10 text-yellow-400 border-yellow-500/30" : "bg-green-500/10 text-green-400 border-green-500/30"}`}
                             >
                               {drone.assignedZoneId || "UNASSIGNED"}
                             </Badge>
