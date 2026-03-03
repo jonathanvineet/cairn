@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import * as RL from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -145,10 +145,30 @@ export function InteractiveMap({ onBoundaryComplete, drones = [], selectedZone =
   const [currentLocation, setCurrentLocation] = useState<LatLngTuple | null>(null);
   const [ isGettingLocation, setIsGettingLocation] = useState(false);
   const [mapCenter, setMapCenter] = useState<LatLngTuple>(WAYANAD_CENTER);
+  const mapContainerRef = useRef<HTMLDivElement>(null);
 
   // Ensure component only renders on client
   useEffect(() => {
     setIsMounted(true);
+    
+    // Cleanup function to prevent map container reuse
+    return () => {
+      // Clear any orphaned Leaflet containers from failed mounts
+      const containers = document.querySelectorAll(".leaflet-container");
+      if (containers.length > 1) {
+        // Keep only the first valid one, remove duplicates
+        Array.from(containers).slice(1).forEach(container => {
+          try {
+            if ((container as any)._leaflet_map) {
+              (container as any)._leaflet_map.remove();
+            }
+            container.remove();
+          } catch (e) {
+            // Silently ignore removal errors
+          }
+        });
+      }
+    };
   }, []);
 
   const getCurrentLocation = () => {
@@ -280,7 +300,7 @@ export function InteractiveMap({ onBoundaryComplete, drones = [], selectedZone =
   }
 
   return (
-    <div className="relative h-full w-full overflow-hidden">
+    <div className="relative h-full w-full overflow-hidden" ref={mapContainerRef}>
       {/* Control Panel */}
       <div className="absolute top-4 left-4 z-[1000] flex flex-col gap-2">
         <div className="glass-strong rounded-lg border border-white/20 p-3 space-y-2">
@@ -376,16 +396,18 @@ export function InteractiveMap({ onBoundaryComplete, drones = [], selectedZone =
       </div>
 
       {/* Map */}
-      <MapContainer
-        center={mapCenter}
-        zoom={13}
-        className="h-full w-full"
-        zoomControl={true}
-      >
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
+      <div className="h-full w-full" style={{ position: "relative" }}>
+        <MapContainer
+          center={mapCenter}
+          zoom={13}
+          className="h-full w-full"
+          zoomControl={true}
+          key="interactive-map"
+        >
+          <TileLayer
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          />
         
         <MapRecenter center={mapCenter} />
         <MapEventHandler onMapClick={handleMapClick} mode={mode} />
@@ -553,7 +575,8 @@ export function InteractiveMap({ onBoundaryComplete, drones = [], selectedZone =
             }}
           />
         )}
-      </MapContainer>
+        </MapContainer>
+      </div>
     </div>
   );
 }
