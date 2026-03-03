@@ -2,7 +2,6 @@
 
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useQuery } from "@tanstack/react-query";
 import {
     ChevronLeft,
     ChevronRight,
@@ -115,27 +114,6 @@ const ACCENT_CLASSES: Record<string, { badge: string; glow: string; stat: string
     purple: { badge: "bg-purple-500/20 text-purple-400 border-purple-500/30", glow: "shadow-purple-500/30", stat: "text-purple-400" },
 };
 
-const ZONES: Zone[] = [
-    { id: "Wayanad-11", name: "Wayanad WY-11" },
-    { id: "Nilgiris-04", name: "Nilgiris NG-04" },
-    { id: "Coorg-07", name: "Coorg CG-07" },
-    { id: "Anamalai-02", name: "Anamalai AN-02" }
-];
-
-interface Zone {
-    id?: string;
-    zoneId?: string;
-    name: string;
-}
-
-async function fetchZones() {
-    const res = await fetch("/api/zones");
-    if (!res.ok) return [];
-    const data = await res.json();
-    return data.zones || [];
-}
-
-
 export default function RegisterDronePage() {
     const { connected, selectedAccount, connect } = useWalletStore();
     const [currentModelIndex, setCurrentModelIndex] = useState(0);
@@ -143,7 +121,7 @@ export default function RegisterDronePage() {
         serialNumber: "",
         dgcaCertNumber: "",
         certExpiryDate: "",
-        assignedZoneId: "",
+        assignedZoneId: "UNASSIGNED",
         sensorType: "",
         maxFlightMinutes: "35",
     });
@@ -153,25 +131,15 @@ export default function RegisterDronePage() {
     const [registeredDrone, setRegisteredDrone] = useState<any>(null);
     const [currentLocation, setCurrentLocation] = useState<{lat: number; lng: number; address?: string} | null>(null);
 
-    // Fetch dynamic zones from API
-    const { data: zonesData } = useQuery({
-        queryKey: ["zones"],
-        queryFn: fetchZones,
-    });
-    
-    const dynamicZones: Zone[] = zonesData || [];
-    const allZones: Zone[] = dynamicZones.length > 0 ? dynamicZones : ZONES;
-
     const currentModel = DRONE_MODELS[currentModelIndex];
     const accent = ACCENT_CLASSES[currentModel.accentColor];
 
     useEffect(() => {
         setFormData(prev => ({
             ...prev,
-            sensorType: currentModel.sensorTypes[0],
-            assignedZoneId: prev.assignedZoneId || allZones[0]?.zoneId || allZones[0]?.id || ""
+            sensorType: currentModel.sensorTypes[0]
         }));
-    }, [currentModel, allZones]);
+    }, [currentModel]);
 
     const handleLocationSelect = (location: { lat: number; lng: number; address?: string }) => {
         setCurrentLocation(location);
@@ -391,51 +359,40 @@ export default function RegisterDronePage() {
                                             </div>
                                         </div>
 
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            <div className="space-y-2">
-                                                <label className="text-sm font-medium text-gray-300 flex items-center gap-2">
-                                                    <Calendar className="h-4 w-4 text-green-400" />
-                                                    Certificate Expiry
-                                                </label>
-                                                <input
-                                                    required
-                                                    type="date"
-                                                    name="certExpiryDate"
-                                                    value={formData.certExpiryDate}
-                                                    onChange={handleInputChange}
-                                                    className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all text-gray-300"
-                                                />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <label className="text-sm font-medium text-gray-300 flex items-center gap-2">
-                                                    <MapPin className="h-4 w-4 text-green-400" />
-                                                    Assigned Zone
-                                                </label>
-                                                <select
-                                                    name="assignedZoneId"
-                                                    value={formData.assignedZoneId}
-                                                    onChange={handleInputChange}
-                                                    className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all text-gray-300 appearance-none"
-                                                >
-                                                    {allZones.length === 0 && (
-                                                        <option value="" className="bg-[#0d1f12]">No zones available</option>
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium text-gray-300 flex items-center gap-2">
+                                                <Calendar className="h-4 w-4 text-green-400" />
+                                                Certificate Expiry
+                                            </label>
+                                            <input
+                                                required
+                                                type="date"
+                                                name="certExpiryDate"
+                                                value={formData.certExpiryDate}
+                                                onChange={handleInputChange}
+                                                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all text-gray-300"
+                                            />
+                                        </div>
+
+                                        {/* Auto-Assignment Info */}
+                                        <div className="p-4 rounded-lg bg-purple-500/10 border border-purple-500/30">
+                                            <div className="flex items-start gap-3">
+                                                <MapPin className="h-5 w-5 text-purple-400 mt-0.5 flex-shrink-0" />
+                                                <div>
+                                                    <h4 className="text-sm font-bold text-purple-400 mb-1">
+                                                        🎯 Automatic Zone Assignment
+                                                    </h4>
+                                                    <p className="text-xs text-gray-300 leading-relaxed">
+                                                        This drone will be automatically assigned to zones based on its location. 
+                                                        When you create boundary zones that contain this drone's registration coordinates, 
+                                                        it will be automatically assigned to those zones.
+                                                    </p>
+                                                    {currentLocation && (
+                                                        <div className="mt-2 text-xs text-purple-300">
+                                                            📍 Registered at: {currentLocation.address || `${currentLocation.lat.toFixed(4)}°, ${currentLocation.lng.toFixed(4)}°`}
+                                                        </div>
                                                     )}
-                                                    {allZones.map(zone => (
-                                                        <option key={zone.zoneId || zone.id} value={zone.zoneId || zone.id} className="bg-[#0d1f12]">
-                                                            {zone.name || zone.zoneId}
-                                                        </option>
-                                                    ))}
-                                                </select>
-                                                {dynamicZones.length === 0 && (
-                                                    <p className="text-xs text-yellow-400 mt-1">
-                                                        ⚠️ Using default zones. Create boundaries in Deploy Mission for custom zones.
-                                                    </p>
-                                                )}
-                                                {dynamicZones.length > 0 && (
-                                                    <p className="text-xs text-green-400 mt-1">
-                                                        ✓ {dynamicZones.length} custom zone(s) available
-                                                    </p>
-                                                )}
+                                                </div>
                                             </div>
                                         </div>
 
