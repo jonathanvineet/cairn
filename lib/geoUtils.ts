@@ -3,11 +3,17 @@ export function isPointInPolygon(
   point: { lat: number; lng: number },
   polygon: { lat: number; lng: number }[]
 ): boolean {
-  if (polygon.length < 3) return false;
+  if (polygon.length < 3) {
+    console.log(`    ⚠️  Polygon has < 3 points (${polygon.length})`);
+    return false;
+  }
 
   let inside = false;
   const x = point.lng;
   const y = point.lat;
+
+  console.log(`    🧮 Ray-casting from point [${y}, ${x}]`);
+  let intersections = 0;
 
   for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
     const xi = polygon[i].lng;
@@ -18,9 +24,13 @@ export function isPointInPolygon(
     const intersect =
       yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi;
 
-    if (intersect) inside = !inside;
+    if (intersect) {
+      inside = !inside;
+      intersections++;
+    }
   }
 
+  console.log(`    📊 Intersections: ${intersections}, Inside: ${inside}`);
   return inside;
 }
 
@@ -77,15 +87,26 @@ export function findDronesInZone(
 ): string[] {
   const dronesInZone: string[] = [];
 
+  console.log(`\n🎯 Starting zone matching with ${drones.length} drones and ${zoneCoordinates.length} boundary points`);
+  console.log(`📍 Zone boundary:`, zoneCoordinates.map(c => `[${c.lat}, ${c.lng}]`).join(', '));
+
   for (const drone of drones) {
-    if (!drone.registrationLat || !drone.registrationLng) continue;
+    if (!drone.registrationLat || !drone.registrationLng) {
+      console.log(`  ⏭️  ${drone.cairnDroneId}: Skipping (no location data)`);
+      continue;
+    }
 
     const droneLocation = {
       lat: drone.registrationLat,
       lng: drone.registrationLng,
     };
 
-    if (isPointInPolygon(droneLocation, zoneCoordinates)) {
+    console.log(`  🔍 Testing ${drone.cairnDroneId} at [${droneLocation.lat}, ${droneLocation.lng}]`);
+    
+    const isInside = isPointInPolygon(droneLocation, zoneCoordinates);
+    console.log(`    → Result: ${isInside ? '✅ INSIDE' : '❌ OUTSIDE'}`);
+
+    if (isInside) {
       dronesInZone.push(drone.cairnDroneId);
     }
   }
