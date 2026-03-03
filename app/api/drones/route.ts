@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { ethers } from "ethers";
 import { DRONE_REGISTRY_ADDRESS, DRONE_REGISTRY_ABI } from "@/lib/contracts";
+import { db } from "@/lib/db";
 
 const HEDERA_TESTNET_RPC = "https://testnet.hashio.io/api";
 
@@ -23,13 +24,21 @@ export async function GET(req: NextRequest) {
         seenAddresses.add(droneAddress.toLowerCase());
 
         const droneData = await contract.getDrone(droneAddress);
+        
+        // Merge with local DB data to get location info and updated zone assignment
+        const localDrone = await db.drones.findByEvmAddress(droneAddress);
+        
         drones.push({
           cairnDroneId: droneData.cairnId,
           evmAddress: droneAddress,
           model: droneData.model || "Unknown Model",
-          assignedZoneId: droneData.zoneId || "UNASSIGNED",
+          // Prioritize local DB zone assignment (updated by boundary API) over blockchain
+          assignedZoneId: localDrone?.assignedZoneId || droneData.zoneId || "UNASSIGNED",
           status: droneData.isActive ? "ACTIVE" : "INACTIVE",
           registeredAt: new Date(Number(droneData.registeredAt) * 1000).toISOString(),
+          // Add location data from local DB
+          registrationLat: localDrone?.registrationLat,
+          registrationLng: localDrone?.registrationLng,
         });
       } catch (err: any) {
         console.error(`  ❌ Error fetching drone at index ${i}:`, err.message);

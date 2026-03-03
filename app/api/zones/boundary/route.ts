@@ -55,11 +55,43 @@ export async function POST(req: NextRequest) {
 
     // 3. Fetch all drones from database
     const allDrones = await db.drones.findMany();
+    console.log(`📦 Found ${allDrones.length} drones in database`);
+    
+    // Log drones with location data
+    allDrones.forEach(drone => {
+      if (drone.registrationLat && drone.registrationLng) {
+        console.log(`  ✓ ${drone.cairnDroneId}: [${drone.registrationLat}, ${drone.registrationLng}]`);
+      } else {
+        console.log(`  ✗ ${drone.cairnDroneId}: NO LOCATION DATA`);
+      }
+    });
 
     // 4. Find drones within this zone's boundary
+    console.log(`🔍 Checking zone "${zoneId}" with ${coordinates.length} boundary points:`);
+    coordinates.forEach((coord, i) => {
+      console.log(`  Point ${i + 1}: [${coord.lat}, ${coord.lng}]`);
+    });
+    
     const dronesInZone = findDronesInZone(allDrones, coordinates);
+    
+    console.log(`✅ Found ${dronesInZone.length} drones inside zone boundary`);
 
-    // 5. Update zone in local database (for caching)
+    // 5. Update each drone's assigned zone in the database
+    for (const droneId of dronesInZone) {
+      try {
+        const drone = allDrones.find(d => d.cairnDroneId === droneId);
+        if (drone) {
+          await db.drones.update(drone.id, {
+            assignedZoneId: zoneId
+          });
+          console.log(`  ✓ Updated ${droneId} → ${zoneId}`);
+        }
+      } catch (updateError) {
+        console.warn(`  ✗ Failed to update drone ${droneId}:`, updateError);
+      }
+    }
+
+    // 6. Update zone in local database (for caching)
     try {
       const existingZone = await db.zones.findByZoneId(zoneId);
       if (existingZone) {

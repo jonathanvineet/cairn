@@ -168,7 +168,11 @@ export default function DeployPage() {
       setSavedZoneId(zoneId);
       setAutoAssignedDrones(zonesResData.autoAssignedDrones || []);
       setIsPaymentProcessing(false);
+      
+      // Refetch both zones and drones to show updated assignments
       refetchZones();
+      refetchDrones();
+      
       alert(`✅ Zone "${zoneId}" saved on blockchain!\n${zonesResData.autoAssignedCount || 0} drone(s) assigned.`);
     } catch (error: any) {
       setIsPaymentProcessing(false);
@@ -391,11 +395,19 @@ export default function DeployPage() {
                           className="p-2.5 rounded bg-white/5 border border-white/10 hover:border-blue-500/30 transition-colors"
                         >
                           <div className="flex items-center justify-between">
-                            <div className="flex-1">
+                            <div className="flex-1 min-w-0">
                               <p className="text-sm font-semibold text-white">{drone.cairnDroneId}</p>
                               <p className="text-xs text-gray-400 mt-0.5">{drone.model || "Unknown Model"}</p>
+                              {drone.assignedZoneId === "UNASSIGNED" && drone.registrationLat && drone.registrationLng && (
+                                <p className="text-xs text-blue-400 mt-1">
+                                  📍 {drone.registrationLat.toFixed(4)}°, {drone.registrationLng.toFixed(4)}°
+                                </p>
+                              )}
                             </div>
-                            <Badge variant="outline" className="text-xs font-mono bg-green-500/10 text-green-400 border-green-500/30">
+                            <Badge 
+                              variant="outline" 
+                              className={`text-xs font-mono ${drone.assignedZoneId === "UNASSIGNED" ? "bg-yellow-500/10 text-yellow-400 border-yellow-500/30" : "bg-green-500/10 text-green-400 border-green-500/30"}`}
+                            >
                               {drone.assignedZoneId || "UNASSIGNED"}
                             </Badge>
                           </div>
