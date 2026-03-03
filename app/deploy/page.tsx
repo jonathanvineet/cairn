@@ -453,7 +453,7 @@ export default function DeployPage() {
                     <Button
                       onClick={handleConfirmAndProceed}
                       disabled={isSelectingDrone}
-                      className="w-full gap-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500"
+                      className="w-full gap-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500"
                       size="sm"
                     >
                       <Zap className="h-4 w-4" />
