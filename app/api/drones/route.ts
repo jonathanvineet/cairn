@@ -54,6 +54,32 @@ export async function GET(req: NextRequest) {
       new Map(drones.map((d) => [d.evmAddress.toLowerCase(), d])).values()
     );
 
+    // ALSO include drones that are in local DB but not yet on blockchain
+    const allLocalDrones = await db.drones.findMany();
+    const blockchainAddresses = new Set(unique.map(d => d.evmAddress.toLowerCase()));
+    
+    for (const localDrone of allLocalDrones) {
+      if (!blockchainAddresses.has(localDrone.evmAddress.toLowerCase())) {
+        console.log(`📝 Adding local-only drone: ${localDrone.cairnDroneId} (not yet on blockchain)`);
+        unique.push({
+          cairnDroneId: localDrone.cairnDroneId,
+          evmAddress: localDrone.evmAddress,
+          model: localDrone.model || "Unknown Model",
+          assignedZoneId: localDrone.assignedZoneId || "UNASSIGNED",
+          status: localDrone.status || "ACTIVE",
+          registeredAt: localDrone.registeredAt?.toISOString() || new Date().toISOString(),
+          registrationLat: localDrone.registrationLat,
+          registrationLng: localDrone.registrationLng,
+          agentTopicId: localDrone.agentTopicId || null,
+          agentManifestSequence: localDrone.agentManifestSequence || null,
+          isAgent: !!localDrone.agentTopicId,
+          serialNumber: localDrone.serialNumber,
+        });
+      }
+    }
+
+    console.log(`📊 Total drones returned: ${unique.length} (${count} on blockchain, ${unique.length - count} local-only)`);
+
     return Response.json({ success: true, drones: unique, count: unique.length });
   } catch (error: any) {
     console.error("Error in GET /api/drones:", error);

@@ -7,6 +7,7 @@ export interface DroneStatus {
   cairnDroneId: string;
   evmAddress: string;
   agentTopicId: string | null;
+  assignedZoneId?: string;
   batteryLevel: number;
   currentLat: number;
   currentLng: number;
@@ -72,6 +73,7 @@ function generateRealtimeDroneStatus(drone: any): DroneStatus {
     cairnDroneId: drone.cairnId,
     evmAddress: drone.evmAddress,
     agentTopicId: drone.agentTopicId || null,
+    assignedZoneId: drone.assignedZoneId || "UNASSIGNED",
     
     batteryLevel,
     currentLat,
@@ -107,6 +109,9 @@ export async function fetchDronesFromBlockchain(): Promise<DroneStatus[]> {
     const totalDrones = await contract.getTotalDrones();
     const count = Number(totalDrones);
     
+    // Import db to get real coordinates
+    const { db } = await import("./db");
+    
     const drones: any[] = [];
     const seenAddresses = new Set<string>();
 
@@ -118,16 +123,20 @@ export async function fetchDronesFromBlockchain(): Promise<DroneStatus[]> {
 
         const droneData = await contract.getDrone(droneAddress);
         
+        // Fetch real location from database
+        const localDrone = await db.drones.findByEvmAddress(droneAddress);
+        
         drones.push({
           cairnId: droneData.cairnId,
           evmAddress: droneAddress,
           model: droneData.model || "Unknown Model",
           status: droneData.isActive ? "ACTIVE" : "INACTIVE",
           registeredAt: new Date(Number(droneData.registeredAt) * 1000).toISOString(),
-          // Location from blockchain or default
-          registrationLat: 11.6 + (Math.random() - 0.5) * 0.1,
-          registrationLng: 76.1 + (Math.random() - 0.5) * 0.1,
-          agentTopicId: null, // Would come from agent registration
+          // Use REAL coordinates from database, not random ones!
+          registrationLat: localDrone?.registrationLat || 11.6,
+          registrationLng: localDrone?.registrationLng || 76.1,
+          assignedZoneId: localDrone?.assignedZoneId || droneData.zoneId || "UNASSIGNED",
+          agentTopicId: localDrone?.agentTopicId || null,
         });
       } catch (err: any) {
         console.error(`Error fetching drone at index ${i}:`, err.message);

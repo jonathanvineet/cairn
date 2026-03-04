@@ -91,7 +91,7 @@ export function LocationPicker({ onLocationSelect, initialLocation, disabled }: 
     
     try {
       const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=5`,
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=10&accept-language=en`,
         {
           headers: {
             'User-Agent': 'BoundaryTruth Drone Management App'
@@ -100,10 +100,16 @@ export function LocationPicker({ onLocationSelect, initialLocation, disabled }: 
       );
       const data: NominatimResult[] = await response.json();
       
-      if (data.length === 0) {
-        alert("No results found. Please try a different address.");
+      // Filter to show only English results (remove Tamil and other non-Latin scripts)
+      const englishResults = data.filter(result => {
+        const hasNonLatin = /[\u0080-\uFFFF]/.test(result.display_name);
+        return !hasNonLatin;
+      });
+      
+      if (englishResults.length === 0) {
+        alert("No English results found. Please try a different address.");
       } else {
-        setSearchResults(data);
+        setSearchResults(englishResults);
         setShowResults(true);
       }
     } catch (error) {

@@ -218,19 +218,19 @@ export default function DeployPage() {
   };
 
   return (
-    <div className="h-screen w-screen bg-forest-900 flex flex-col">
+    <div className="h-screen w-screen bg-[#0a0e27] flex flex-col">
       {/* Minimal header */}
-      <header className="border-b border-green-500/20 glass-dark backdrop-blur-xl px-4 py-3 flex items-center justify-between">
+      <header className="border-b border-white/10 bg-black/20 backdrop-blur-xl px-4 py-3 flex items-center justify-between">
         <Link href="/dashboard">
           <Button variant="ghost" size="sm" className="gap-2">
             <ArrowLeft className="h-4 w-4" />
             Back to Dashboard
           </Button>
         </Link>
-        <h1 className="text-lg font-bold text-green-400">Deploy Mission</h1>
+        <h1 className="text-lg font-bold text-cyan-400">Deploy Mission</h1>
         <div className="flex items-center gap-3">
           {walletConnected ? (
-            <Badge variant="outline" className="bg-green-500/10 text-green-400 border-green-500/30">
+            <Badge variant="outline" className="bg-emerald-500/10 text-emerald-400 border-emerald-500/30">
               <Wallet className="h-3 w-3 mr-1" />
               {walletAddress?.slice(0, 6)}...{walletAddress?.slice(-4)}
             </Badge>
@@ -260,15 +260,15 @@ export default function DeployPage() {
         </div>
 
         {/* Right sidebar for boundary management */}
-        <div className="w-80 bg-forest-950 border-l border-green-500/20 p-4 overflow-y-auto">
+        <div className="w-80 bg-[#0f1729] border-l border-white/10 p-4 overflow-y-auto">
           <div className="space-y-4">
             {/* Wallet Connection */}
             {!walletConnected && (
-              <Card className="glass-strong border-blue-500/30">
+              <Card className="bg-white/5 border-cyan-500/30">
                 <CardContent className="pt-6">
                   <div className="text-center mb-3">
-                    <Wallet className="h-8 w-8 mx-auto mb-2 text-blue-400" />
-                    <p className="text-sm font-semibold text-blue-400 mb-1">Connect Wallet</p>
+                    <Wallet className="h-8 w-8 mx-auto mb-2 text-cyan-400" />
+                    <p className="text-sm font-semibold text-cyan-400 mb-1">Connect Wallet</p>
                     <p className="text-xs text-gray-400">Required to save zones to blockchain</p>
                   </div>
                   <Button
@@ -285,10 +285,10 @@ export default function DeployPage() {
             )}
             
             {/* Select Existing Zone for Deployment */}
-            <Card className="glass-strong border-purple-500/30">
+            <Card className="bg-white/5 border-violet-500/30">
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-sm text-purple-400">Step 1: Select Existing Zone</CardTitle>
+                  <CardTitle className="text-sm text-violet-400">Step 1: Select Existing Zone</CardTitle>
                   <div className="flex items-center gap-1.5">
                     {selectedZone && (
                       <Button
@@ -319,8 +319,8 @@ export default function DeployPage() {
                           onClick={() => setSelectedZone(isSelected ? null : zone)}
                           className={`p-2.5 rounded border transition-colors cursor-pointer ${
                             isSelected
-                              ? "bg-purple-500/20 border-purple-500/60"
-                              : "bg-white/5 border-white/10 hover:border-purple-500/30"
+                              ? "bg-violet-500/20 border-violet-500/60"
+                              : "bg-white/5 border-white/10 hover:border-violet-500/30"
                           }`}
                         >
                           <div className="flex items-center justify-between">
@@ -355,14 +355,13 @@ export default function DeployPage() {
                 <div className="w-full border-t border-white/10"></div>
               </div>
               <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-forest-950 px-2 text-gray-500">OR Create New</span>
+                <span className="bg-[#0f1729] px-2 text-gray-500">OR Create New</span>
               </div>
             </div>
 
-            {/* Boundary Save Section */}
-            <Card className="glass-strong border-green-500/30">
+            <Card className="bg-white/5 border-cyan-500/30">
               <CardHeader>
-                <CardTitle className="text-sm text-green-400">Step 1 (Alternative): Create New Zone</CardTitle>
+                <CardTitle className="text-sm text-cyan-400">Step 1 (Alternative): Create New Zone</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
 
@@ -393,7 +392,7 @@ export default function DeployPage() {
                 
                 {/* Status indicator */}
                 {boundaryCoords && (
-                  <Badge variant="outline" className="w-full justify-center bg-green-500/10 text-green-400 border-green-500/30">
+                  <Badge variant="outline" className="w-full justify-center bg-cyan-500/10 text-cyan-400 border-cyan-500/30">
                     ✓ {boundaryCoords.length} points
                   </Badge>
                 )}
@@ -433,19 +432,19 @@ export default function DeployPage() {
                     <div className="w-full border-t border-white/10"></div>
                   </div>
                   <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-forest-950 px-2 text-gray-500">Step 2: Deploy Drone</span>
+                    <span className="bg-[#0f1729] px-2 text-gray-500">Step 2: Deploy Drone</span>
                   </div>
                 </div>
 
-                <Card className="glass-strong border-purple-500/30">
+                <Card className="bg-white/5 border-violet-500/30">
                   <CardHeader>
-                    <CardTitle className="text-sm text-purple-400">Select Best Drone</CardTitle>
+                    <CardTitle className="text-sm text-violet-400">Select Best Drone</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="mb-3 p-2 bg-purple-500/10 rounded border border-purple-500/20">
+                    <div className="mb-3 p-2 bg-violet-500/10 rounded border border-violet-500/20">
                       <p className="text-xs text-gray-400">Active Zone:</p>
                       <p className="text-sm font-semibold text-white truncate">{selectedZone?.zoneName || savedZoneId}</p>
-                      <p className="text-xs text-purple-400 mt-0.5">{(selectedZone?.coordinates || boundaryCoords)?.length ?? 0} boundary points</p>
+                      <p className="text-xs text-violet-400 mt-0.5">{(selectedZone?.coordinates || boundaryCoords)?.length ?? 0} boundary points</p>
                     </div>
                     <p className="text-xs text-gray-400 mb-3">
                       Active Zone: <span className="text-white font-semibold">{selectedZone?.zoneName || savedZoneId}</span>
@@ -453,7 +452,7 @@ export default function DeployPage() {
                     <Button
                       onClick={handleConfirmAndProceed}
                       disabled={isSelectingDrone}
-                      className="w-full gap-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500"
+                      className="w-full gap-2 bg-gradient-to-r from-cyan-600 to-violet-600 hover:from-cyan-500 hover:to-violet-500"
                       size="sm"
                     >
                       <Zap className="h-4 w-4" />
@@ -466,33 +465,32 @@ export default function DeployPage() {
 
             {/* Selected Drone Report */}
             {selectedDrone && selectionReport && (
-              <Card className="glass-strong border-purple-500/30">
-                <CardHeader>
-                  <CardTitle className="text-sm text-purple-400 flex items-center gap-2">
-                    <CheckCircle2 className="h-4 w-4" />
-                    Selected Drone
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="p-3 bg-purple-500/10 rounded border border-purple-500/20">
-                    <p className="font-bold text-lg text-purple-300">{selectedDrone.drone.cairnDroneId}</p>
+                <Card className="bg-white/5 border-violet-500/30">
+                  <CardHeader>
+                    <CardTitle className="text-sm text-violet-400 flex items-center gap-2">
+                      <CheckCircle2 className="h-4 w-4" />
+                      Selected Drone
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="p-3 bg-violet-500/10 rounded border border-violet-500/20">
+                      <p className="font-bold text-lg text-violet-300">{selectedDrone.drone.cairnDroneId}</p>
                     <p className="text-xs text-gray-400 mt-0.5">{selectedDrone.drone.evmAddress.slice(0, 10)}...{selectedDrone.drone.evmAddress.slice(-8)}</p>
                     {selectedDrone.drone.agentTopicId && (
-                      <Badge className="mt-2 bg-purple-500/20 text-purple-300 border-purple-500/30 text-[10px]">
-                        ✓ HCS AGENT VERIFIED
-                      </Badge>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-xs">
-                      <span className="text-gray-400">Overall Score:</span>
-                      <span className="font-bold text-purple-400">{selectedDrone.totalScore}/100</span>
+                        <Badge className="mt-2 bg-violet-500/20 text-violet-300 border-violet-500/30 text-[10px]">
+                          ✓ HCS AGENT VERIFIED
+                        </Badge>
+                      )}
                     </div>
-                    <div className="w-full bg-white/5 rounded-full h-2">
-                      <div 
-                        className="bg-gradient-to-r from-purple-500 to-blue-500 h-2 rounded-full transition-all"
-                        style={{ width: `${selectedDrone.totalScore}%` }}
+
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-xs">
+                        <span className="text-gray-400">Overall Score:</span>
+                        <span className="font-bold text-violet-400">{selectedDrone.totalScore}/100</span>
+                      </div>
+                      <div className="w-full bg-white/5 rounded-full h-2">
+                        <div 
+                          className="bg-gradient-to-r from-violet-500 to-cyan-500 h-2 rounded-full transition-all"
                       />
                     </div>
                   </div>
@@ -532,7 +530,7 @@ export default function DeployPage() {
                   </div>
 
                   <Button
-                    className="w-full gap-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
+                    className="w-full gap-2 bg-gradient-to-r from-emerald-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500"
                     size="sm"
                   >
                     <Send className="h-4 w-4" />
@@ -602,11 +600,11 @@ export default function DeployPage() {
 
             {/* Assigned Drones */}
             {savedZoneId && (
-              <Card className="glass-strong border-green-500/30">
+              <Card className="bg-white/5 border-emerald-500/30">
                 <CardHeader>
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-sm text-green-400">Assigned Drones</CardTitle>
-                    <Badge variant="outline" className="text-xs bg-green-500/10 text-green-400 border-green-500/30">
+                    <CardTitle className="text-sm text-emerald-400">Assigned Drones</CardTitle>
+                    <Badge variant="outline" className="text-xs bg-emerald-500/10 text-emerald-400 border-emerald-500/30">
                       {autoAssignedDrones.length}
                     </Badge>
                   </div>
@@ -617,10 +615,10 @@ export default function DeployPage() {
                       {autoAssignedDrones.map((droneId) => (
                         <div
                           key={droneId}
-                          className="p-2.5 rounded bg-green-500/10 border border-green-500/30 flex items-center justify-between"
+                          className="p-2.5 rounded bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-between"
                         >
                           <span className="text-sm font-semibold text-white">{droneId}</span>
-                          <CheckCircle2 className="h-4 w-4 text-green-400" />
+                          <CheckCircle2 className="h-4 w-4 text-emerald-400" />
                         </div>
                       ))}
                     </div>

@@ -30,7 +30,8 @@ async function fetchDroneStatuses(): Promise<DroneStatus[]> {
 function scoreDrone(
   drone: DroneStatus,
   boundary: { coordinates: Array<{ lat: number; lng: number }> },
-  missionType: 'patrol' | 'delivery' | 'surveillance' = 'patrol'
+  missionType: 'patrol' | 'delivery' | 'surveillance' = 'patrol',
+  zoneId?: string
 ): { score: number; reason: string; breakdown: any } {
   const reasons: string[] = [];
   let breakdown: any = {};
@@ -38,6 +39,18 @@ function scoreDrone(
   // Calculate boundary center
   const centerLat = boundary.coordinates.reduce((sum, c) => sum + c.lat, 0) / boundary.coordinates.length;
   const centerLng = boundary.coordinates.reduce((sum, c) => sum + c.lng, 0) / boundary.coordinates.length;
+  
+  // Small bonus for already-assigned drones (but doesn't override optimal selection)
+  let zoneAssignmentBonus = 0;
+  if (zoneId && drone.assignedZoneId && drone.assignedZoneId !== "UNASSIGNED") {
+    // Only give bonus if drone is formally assigned in database
+    const isExactMatch = drone.assignedZoneId === zoneId;
+    if (isExactMatch) {
+      zoneAssignmentBonus = 10; // Small bonus, not overwhelming
+      reasons.push(`✓ Previously assigned to ${zoneId} (+10)`);
+    }
+  }
+  breakdown.zoneAssignmentBonus = zoneAssignmentBonus;
   
   // Battery scoring (weight: 0.3)
   const battery = drone.batteryLevel;
@@ -97,14 +110,15 @@ function scoreDrone(
   }
   
   // Calculate weighted score
-  const totalScore = Math.max(0, Math.min(100,
+  const totalScore = Math.max(0, Math.min(999,
     (batteryScore * weights.battery) +
     (proximityScore * weights.proximity) +
     (flightScore * weights.flightTime) +
     (readinessScore * weights.readiness) +
     (healthScore * weights.health) +
     weatherBonus +
-    availabilityPenalty
+    availabilityPenalty +
+    zoneAssignmentBonus
   ));
   
   breakdown.totalScore = Math.round(totalScore);
@@ -123,7 +137,8 @@ function scoreDrone(
 async function analyzeDronesFromBlockchain(
   boundary: { coordinates: Array<{ lat: number; lng: number }> },
   analysisId: string,
-  missionType: 'patrol' | 'delivery' | 'surveillance' = 'patrol'
+  missionType: 'patrol' | 'delivery' | 'surveillance' = 'patrol',
+  zoneId?: string
 ): Promise<Array<{ drone: DroneStatus; score: number; reason: string; breakdown: any }>> {
   console.log(`🚁 Fetching real-time drone status from blockchain...`);
   
@@ -142,20 +157,34 @@ async function analyzeDronesFromBlockchain(
   
   console.log(`✅ ${availableDrones.length} drones available for mission`);
   
+  // Debug zone assignment
+  if (zoneId) {
+    console.log(`🎯 Analyzing for zone: "${zoneId}"`);
+    console.log('📋 Drone Zone Assignments:');
+    availableDrones.forEach(d => {
+      console.log(`   - ${d.cairnDroneId}: assigned to "${d.assignedZoneId}" ${d.assignedZoneId === zoneId ? '✓ MATCH!' : ''}`);
+    });
+  }
+  
   // Score and rank all available drones
   const rankedDrones = availableDrones
     .map(drone => ({
       drone,
-      ...scoreDrone(drone, boundary, missionType),
+      ...scoreDrone(drone, boundary, missionType, zoneId),
     }))
     .sort((a, b) => b.score - a.score);
+  
+  console.log('🎯 Drone Rankings:');
+  rankedDrones.slice(0, 3).forEach((d, i) => {
+    console.log(`  ${i + 1}. ${d.drone.cairnDroneId}: ${d.score} pts (Zone: ${d.drone.assignedZoneId})`);
+  });
   
   return rankedDrones;
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const { boundary, analysisId, missionType = 'patrol' } = await req.json();
+    const { boundary, analysisId, missionType = 'patrol', zoneId } = await req.json();
 
     if (!boundary || !boundary.coordinates || boundary.coordinates.length === 0) {
       return NextResponse.json(
@@ -164,10 +193,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    console.log(`🚁 Starting blockchain drone analysis (ID: ${analysisId}, Type: ${missionType})...`);
+    console.log(`🚁 Starting blockchain drone analysis (Zone: ${zoneId || analysisId}, Type: ${missionType})...`);
 
     // Analyze drones from blockchain
-    const rankedDrones = await analyzeDronesFromBlockchain(boundary, analysisId, missionType);
+    const rankedDrones = await analyzeDronesFromBlockchain(boundary, analysisId, missionType, zoneId || analysisId);
 
     if (rankedDrones.length === 0) {
       return NextResponse.json(

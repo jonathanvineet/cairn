@@ -180,7 +180,8 @@ export default function AnalyseDroneStreamPage() {
             boundary: {
               coordinates
             },
-            analysisId: zoneId || 'unknown-zone'
+            analysisId: zoneId || 'unknown-zone',
+            zoneId: zoneId || 'unknown-zone'
           })
         });
         const data = await response.json();
@@ -207,41 +208,29 @@ export default function AnalyseDroneStreamPage() {
   }, [boundaryCoords, zoneId]);
 
   return (
-    <div className="min-h-screen bg-black text-white overflow-hidden">
-      {/* Animated background grid */}
+    <div className="min-h-screen bg-[#0a0e27] text-white overflow-hidden">
+      {/* Animated background */}
       <div className="fixed inset-0 z-0">
+        <div className="absolute inset-0 bg-gradient-to-br from-cyan-950/20 via-[#0a0e27] to-violet-950/20" />
+        <div className="absolute top-0 right-0 w-96 h-96 bg-cyan-500/5 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-violet-500/5 rounded-full blur-3xl animate-pulse" />
         <div className="absolute inset-0 opacity-10">
-          <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
-            <defs>
-              <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-                <path
-                  d="M 40 0 L 0 0 0 40"
-                  fill="none"
-                  stroke="lime"
-                  strokeWidth="0.5"
-                />
-              </pattern>
-            </defs>
-            <rect width="100%" height="100%" fill="url(#grid)" />
-          </svg>
+          <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(6, 182, 212, 0.15) 1px, transparent 0)', backgroundSize: '40px 40px' }} />
         </div>
-        <div className="absolute inset-0 bg-gradient-to-br from-green-900/20 via-transparent to-emerald-900/20" />
-        <div className="absolute top-0 right-0 w-96 h-96 bg-green-500/5 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute bottom-0 left-0 w-96 h-96 bg-emerald-500/5 rounded-full blur-3xl animate-pulse" />
       </div>
 
       {/* Content */}
       <div className="relative z-10">
         {/* Header */}
-        <div className="border-b border-green-500/20 backdrop-blur-xl bg-black/50 px-6 py-4 sticky top-0">
+        <div className="border-b border-cyan-500/20 backdrop-blur-xl bg-[#0a0e27]/80 px-6 py-4 sticky top-0">
           <div className="max-w-6xl mx-auto flex items-center justify-between">
             <Link href="/deploy">
-              <button className="flex items-center gap-2 text-gray-400 hover:text-green-400 transition">
+              <button className="flex items-center gap-2 text-gray-400 hover:text-cyan-400 transition">
                 <ArrowLeft className="h-5 w-5" />
                 Back
               </button>
             </Link>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-green-400 via-emerald-400 to-teal-400 bg-clip-text text-transparent">
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-cyan-400 via-blue-400 to-violet-400 bg-clip-text text-transparent">
               DRONE ANALYSIS SYSTEM
             </h1>
             <div className="w-12" />
@@ -287,17 +276,17 @@ export default function AnalyseDroneStreamPage() {
                     <div className="relative h-12 w-12">
                       {stage.status === "loading" && (
                         <>
-                          <div className="absolute inset-0 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full animate-spin opacity-75" />
-                          <div className="absolute inset-1 bg-black rounded-full" />
+                          <div className="absolute inset-0 bg-gradient-to-r from-cyan-500 to-violet-500 rounded-full animate-spin opacity-75" />
+                          <div className="absolute inset-1 bg-[#0a0e27] rounded-full" />
                         </>
                       )}
                       {stage.status === "complete" && (
-                        <div className="absolute inset-0 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center">
+                        <div className="absolute inset-0 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full flex items-center justify-center">
                           <div className="text-2xl">✓</div>
                         </div>
                       )}
                       {stage.status === "pending" && (
-                        <div className="absolute inset-0 border-2 border-gray-600 rounded-full" />
+                        <div className="absolute inset-0 border-2 border-slate-600 rounded-full" />
                       )}
                     </div>
                     <div>
@@ -317,9 +306,9 @@ export default function AnalyseDroneStreamPage() {
                 </div>
 
                 {/* Progress Bar */}
-                <div className="relative h-2 bg-gray-900 rounded-full overflow-hidden border border-gray-800">
+                <div className="relative h-2 bg-slate-900 rounded-full overflow-hidden border border-slate-800">
                   <div
-                    className="h-full bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 transition-all duration-300"
+                    className="h-full bg-gradient-to-r from-cyan-500 via-blue-500 to-violet-500 transition-all duration-300"
                     style={{ width: `${stage.progress}%` }}
                   />
                   {stage.status === "loading" && (
@@ -335,7 +324,7 @@ export default function AnalyseDroneStreamPage() {
                         key={i}
                         className="text-sm text-gray-300 font-mono animate-fade-in"
                       >
-                        <span className="text-green-400">→</span> {detail}
+                        <span className="text-cyan-400">→</span> {detail}
                       </div>
                     ))}
                   </div>
@@ -349,9 +338,9 @@ export default function AnalyseDroneStreamPage() {
             <div className="flex items-center justify-center py-12">
               <div className="text-center">
                 <div className="flex items-center justify-center gap-2 mb-4">
-                  <div className="h-3 w-3 bg-green-500 rounded-full animate-bounce" />
-                  <div className="h-3 w-3 bg-emerald-500 rounded-full animate-bounce" style={{ animationDelay: "0.1s" }} />
-                  <div className="h-3 w-3 bg-teal-500 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }} />
+                  <div className="h-3 w-3 bg-cyan-500 rounded-full animate-bounce" />
+                  <div className="h-3 w-3 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: "0.1s" }} />
+                  <div className="h-3 w-3 bg-violet-500 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }} />
                 </div>
                 <p className="text-gray-400 text-sm">SYSTEM THINKING...</p>
               </div>
@@ -361,8 +350,8 @@ export default function AnalyseDroneStreamPage() {
           {/* Results */}
           {isComplete && selectedDrone && (
             <div className="mt-16 space-y-6 animate-fade-in">
-              <div className="border border-green-500/50 rounded-lg p-8 bg-green-500/5 backdrop-blur-sm">
-                <h2 className="text-2xl font-bold text-green-400 mb-6">✓ ANALYSIS COMPLETE</h2>
+              <div className="border border-cyan-500/50 rounded-lg p-8 bg-cyan-500/5 backdrop-blur-sm">
+                <h2 className="text-2xl font-bold text-cyan-400 mb-6">✓ ANALYSIS COMPLETE</h2>
 
                 {/* Zone Information */}
                 {zoneId && (
@@ -390,7 +379,10 @@ export default function AnalyseDroneStreamPage() {
                       <div className="space-y-3">
                         <div>
                           <p className="text-gray-500 text-sm">SUITABILITY SCORE</p>
-                          <p className="text-2xl font-bold text-green-400">{selectedDrone.score}%</p>
+                          <p className="text-2xl font-bold text-cyan-400">{Math.min(selectedDrone.score, 100)}%</p>
+                          {selectedDrone.score > 100 && (
+                            <p className="text-xs text-green-400 mt-1">✓ PRIORITY ASSIGNED</p>
+                          )}
                         </div>
                         <div>
                           <p className="text-gray-500 text-sm">BATTERY LEVEL</p>
@@ -398,7 +390,7 @@ export default function AnalyseDroneStreamPage() {
                         </div>
                         <div>
                           <p className="text-gray-500 text-sm">DISTANCE FROM ZONE</p>
-                          <p className="text-2xl font-bold text-teal-400">{selectedDrone.distance}km</p>
+                          <p className="text-2xl font-bold text-violet-400">{selectedDrone.distance}km</p>
                         </div>
                       </div>
                     </div>
@@ -415,11 +407,11 @@ export default function AnalyseDroneStreamPage() {
                           <div key={item.label}>
                             <div className="flex justify-between mb-1">
                               <span className="text-sm text-gray-400">{item.label}</span>
-                              <span className="text-sm text-green-400">{item.value}%</span>
+                              <span className="text-sm text-cyan-400">{item.value}%</span>
                             </div>
-                            <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
+                            <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
                               <div
-                                className="h-full bg-gradient-to-r from-green-500 to-emerald-500"
+                                className="h-full bg-gradient-to-r from-cyan-500 to-violet-500"
                                 style={{ width: `${item.value}%` }}
                               />
                             </div>
@@ -432,12 +424,12 @@ export default function AnalyseDroneStreamPage() {
 
                 {/* Action Buttons */}
                 <div className="grid grid-cols-2 gap-4">
-                  <button className="px-8 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 rounded-lg font-semibold transition transform hover:scale-105">
+                  <button className="px-8 py-3 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 rounded-lg font-semibold transition transform hover:scale-105">
                     DEPLOY DRONE
                   </button>
                   <button
                     onClick={() => router.back()}
-                    className="px-8 py-3 bg-gray-900 hover:bg-gray-800 border border-gray-700 rounded-lg font-semibold transition"
+                    className="px-8 py-3 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-lg font-semibold transition"
                   >
                     VIEW DETAILS
                   </button>

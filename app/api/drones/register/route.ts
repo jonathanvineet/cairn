@@ -23,6 +23,7 @@ export async function POST(req: Request) {
         }
         
         const {
+            cairnDroneId,  // User's custom drone name like "drone-mumbai-andheri"
             serialNumber,
             model,
             dgcaCertNumber,
@@ -35,10 +36,10 @@ export async function POST(req: Request) {
             registrationLng,
         } = body;
 
-        if (!serialNumber || !model || !dgcaCertNumber || !assignedZoneId) {
+        if (!cairnDroneId || !serialNumber || !model || !dgcaCertNumber || !assignedZoneId) {
             return Response.json({
                 success: false,
-                error: "Missing required fields"
+                error: "Missing required fields (cairnDroneId, serialNumber, model, dgcaCertNumber, assignedZoneId)"
             }, { status: 400 });
         }
 
@@ -133,23 +134,17 @@ export async function POST(req: Request) {
         const droneEvmAddress = `0x${dronePublicKey.toEvmAddress()}`;
 
         // ─────────────────────────────────────────
-        // STEP 4: Generate unique CAIRN drone ID
+        // STEP 4: Use custom CAIRN drone ID from user
         // ─────────────────────────────────────────
-        // Use a combination of timestamp + serial hash to ensure uniqueness across server restarts
-        const serialHash = serialNumber.slice(-4).toUpperCase();
-        const timestamp = Date.now().toString().slice(-4);
-        const existingDrones = await db.drones.findMany();
-        
-        // Find highest CAIRN number to continue sequence
-        const cairnNumbers = existingDrones
-          .map(d => {
-            const match = d.cairnDroneId.match(/CAIRN-(\d+)/);
-            return match ? parseInt(match[1]) : 0;
-          })
-          .filter(n => n > 0);
-        
-        const nextNumber = Math.max(0, ...cairnNumbers) + 1;
-        const cairnDroneId = `CAIRN-${String(nextNumber).padStart(2, "0")}`;
+        // User provides their own drone name like "drone-mumbai-andheri"
+        // Validate it's unique
+        const existingDrone = await db.drones.findByCairnId(cairnDroneId);
+        if (existingDrone) {
+            return Response.json({
+                success: false,
+                error: `Drone with name "${cairnDroneId}" already exists. Please choose a different name.`
+            }, { status: 400 });
+        }
 
         // ─────────────────────────────────────────
         // STEP 5: Store in database
@@ -196,6 +191,24 @@ export async function POST(req: Request) {
             sensorType,
             registeredByOfficerId,
         });
+
+        // ─────────────────────────────────────────
+        // STEP 6.5: Register drone in Smart Contract
+        // ─────────────────────────────────────────
+        try {
+            console.log("📝 Registering drone in blockchain smart contract...");
+            await registerDroneInSmartContract({
+                cairnDroneId,
+                droneAccountId,
+                assignedZoneId,
+                model,
+                operatorClient: client,
+            });
+            console.log("✅ Drone registered in smart contract successfully!");
+        } catch (scError: any) {
+            console.error("⚠️  Smart contract registration failed (non-fatal):", scError.message);
+            // Non-fatal: continue with registration even if smart contract fails
+        }
 
         // ─────────────────────────────────────────
         // STEP 7: Register drone as Hedera AI Agent

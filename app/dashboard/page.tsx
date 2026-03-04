@@ -1,396 +1,437 @@
 "use client";
 
-import Link from "next/link";
-import { useSearchParams } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { ethers } from "ethers";
 import { motion } from "framer-motion";
+import Link from "next/link";
 import {
-  Leaf,
+  Plane,
   MapPin,
-  Clock,
   Shield,
-  ArrowLeft,
-  Lock,
-  Send,
-  Cpu,
+  Activity,
   Zap,
-  CheckCircle2,
-  ExternalLink,
+  ArrowRight,
+  Wallet,
+  Plus,
+  CheckCircle,
+  AlertCircle,
+  Battery
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
-import { WalletConnect } from "@/components/WalletConnect";
-import { ZoneOverview } from "@/components/ZoneOverview";
-import { RecentActivity } from "@/components/RecentActivity";
-import { ActiveMission } from "@/components/ActiveMission";
-import { MapWidget } from "@/components/MapWidget";
-import SavedZones from "@/components/SavedZones";
 
-async function fetchPatrols() {
-  const res = await fetch("/api/mock-patrols");
-  if (!res.ok) throw new Error("Failed to fetch patrols");
-  return res.json();
-}
-
-async function fetchDrone(droneId: string) {
-  const res = await fetch(`/api/drones/${droneId}`);
-  if (!res.ok) throw new Error("Failed to fetch drone");
-  return res.json();
+interface Drone {
+  cairnDroneId: string;
+  evmAddress: string;
+  model: string;
+  assignedZoneId: string;
+  status: string;
+  registrationLat?: number;
+  registrationLng?: number;
+  agentTopicId?: string;
+  isAgent?: boolean;
 }
 
 export default function DashboardPage() {
-  const searchParams = useSearchParams();
-  const droneId = searchParams.get("drone");
+  const router = useRouter();
+  const [walletConnected, setWalletConnected] = useState(false);
+  const [walletAddress, setWalletAddress] = useState<string>("");
+  const [drones, setDrones] = useState<Drone[]>([]);
+  const [zones, setZones] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["patrols"],
-    queryFn: fetchPatrols,
-  });
+  useEffect(() => {
+    checkWalletAndFetchData();
+  }, []);
 
-  const { data: droneData, isLoading: isDroneLoading } = useQuery({
-    queryKey: ["drone", droneId],
-    queryFn: () => fetchDrone(droneId!),
-    enabled: !!droneId,
-  });
+  const checkWalletAndFetchData = async () => {
+    if (typeof window.ethereum !== "undefined") {
+      try {
+        const provider = new ethers.BrowserProvider(window.ethereum as any);
+        const accounts = await provider.listAccounts();
+        if (accounts.length > 0) {
+          setWalletConnected(true);
+          setWalletAddress(accounts[0].address);
+          await fetchData();
+        }
+      } catch (error) {
+        console.error("Wallet check error:", error);
+      }
+    }
+    setLoading(false);
+  };
+
+  const fetchData = async () => {
+    try {
+      const [dronesRes, zonesRes] = await Promise.all([
+        fetch("/api/drones"),
+        fetch("/api/zones")
+      ]);
+      
+      if (dronesRes.ok) {
+        const dronesData = await dronesRes.json();
+        setDrones(dronesData.drones || []);
+      }
+      
+      if (zonesRes.ok) {
+        const zonesData = await zonesRes.json();
+        setZones(zonesData.zones || []);
+      }
+    } catch (error) {
+      console.error("Failed to fetch data:", error);
+    }
+  };
+
+  const connectWallet = async () => {
+    if (typeof window.ethereum === "undefined") {
+      alert("Please install MetaMask");
+      return;
+    }
+    
+    try {
+      const provider = new ethers.BrowserProvider(window.ethereum as any);
+      await provider.send("eth_requestAccounts", []);
+      const signer = await provider.getSigner();
+      const address = await signer.getAddress();
+      setWalletConnected(true);
+      setWalletAddress(address);
+      await fetchData();
+    } catch (error: any) {
+      alert("Failed to connect wallet: " + error.message);
+    }
+  };
+
+  const activeDrones = drones.filter(d => d.status === "ACTIVE");
+  const assignedDrones = drones.filter(d => d.assignedZoneId !== "UNASSIGNED");
+  const unassignedDrones = drones.filter(d => d.assignedZoneId === "UNASSIGNED");
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#0a0e27] flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-cyan-500/20 border-t-cyan-500 rounded-full animate-spin mb-4 mx-auto" />
+          <p className="text-gray-400">Loading Dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!walletConnected) {
+    return (
+      <div className="min-h-screen bg-[#0a0e27]">
+        <nav className="border-b border-white/5 bg-black/20 backdrop-blur-xl">
+          <div className="max-w-7xl mx-auto px-6 py-4">
+            <div className="flex justify-between items-center">
+              <Link href="/" className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-cyan-400 to-violet-500 rounded-lg flex items-center justify-center">
+                  <Shield className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-xl font-bold text-white tracking-tight">CAIRN</h1>
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wider">Dashboard</p>
+                </div>
+              </Link>
+            </div>
+          </div>
+        </nav>
+
+        <div className="flex items-center justify-center min-h-[calc(100vh-80px)] p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="max-w-md w-full"
+          >
+            <div className="relative">
+              <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/20 to-violet-500/20 rounded-2xl blur-2xl" />
+              <div className="relative bg-[#0f1729] border border-white/10 rounded-2xl p-8 text-center">
+                <div className="w-16 h-16 bg-gradient-to-br from-cyan-500 to-violet-500 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                  <Wallet className="h-8 w-8 text-white" />
+                </div>
+                <h2 className="text-2xl font-bold text-white mb-3">
+                  Connect Your Wallet
+                </h2>
+                <p className="text-gray-400 mb-8">
+                  Connect your wallet to access the dashboard
+                </p>
+                <button
+                  onClick={connectWallet}
+                  className="w-full px-6 py-4 bg-gradient-to-r from-cyan-500 to-violet-500 rounded-xl text-white font-semibold hover:shadow-lg hover:shadow-cyan-500/50 transition-all"
+                >
+                  Connect MetaMask
+                </button>
+                <Link href="/" className="block mt-4 text-sm text-gray-400 hover:text-white transition">
+                  Back to Home
+                </Link>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-forest-900 text-white">
-      {/* Dashboard Header - ENHANCED VISIBILITY */}
-      <header className="sticky top-0 z-50 border-b border-green-500/20 glass-dark backdrop-blur-2xl shadow-lg shadow-green-500/10">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 sm:px-6 py-4">
-          <div className="flex items-center gap-3">
-            <Link href="/">
-              <motion.div
-                whileHover={{ scale: 1.1, rotate: -5 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <Button variant="ghost" size="icon" className="h-10 w-10">
-                  <ArrowLeft className="h-5 w-5" />
-                </Button>
-              </motion.div>
-            </Link>
-            <motion.div
-              animate={{ rotate: [0, 5, -5, 0] }}
-              transition={{ duration: 3, repeat: Infinity }}
-            >
-              <Leaf className="h-7 w-7 text-green-400" />
-            </motion.div>
-            <span className="text-xl font-bold hidden sm:inline bg-gradient-to-r from-green-400 to-green-600 bg-clip-text text-transparent">
-              BoundaryTruth
-            </span>
-          </div>
+    <div className="min-h-screen bg-[#0a0e27]">
+      {/* Background Effects */}
+      <div className="fixed inset-0 bg-[linear-gradient(to_right,#1a1f3a_1px,transparent_1px),linear-gradient(to_bottom,#1a1f3a_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_0%,#000_70%,transparent_110%)]" />
+      <motion.div
+        className="fixed top-20 right-10 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl"
+        animate={{
+          x: [0, 50, 0],
+          y: [0, -30, 0],
+        }}
+        transition={{
+          duration: 15,
+          repeat: Infinity,
+          ease: "easeInOut"
+        }}
+      />
 
-          <div className="flex items-center gap-3 sm:gap-4">
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.2 }}
-            >
-              <Badge
-                variant="outline"
-                className="shrink-0 gap-2 glass-strong border-green-500/30 text-sm px-3 py-1.5"
-              >
-                <MapPin className="h-4 w-4 text-green-400" />
-                <span className="font-semibold">Wayanad</span>
-              </Badge>
-            </motion.div>
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.3 }}
-            >
-              <Badge
-                variant="outline"
-                className="shrink-0 gap-2 glass-strong border-blue-500/30 text-sm px-3 py-1.5"
-              >
-                <Clock className="h-4 w-4 text-blue-400" />
-                <span className="hidden sm:inline">2h ago</span>
-              </Badge>
-            </motion.div>
-            <motion.div
-              initial={{ opacity: 0, scale: 0 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.4, type: "spring" }}
-              className="shrink-0"
-            >
-              <WalletConnect />
-            </motion.div>
+      {/* Navigation */}
+      <nav className="relative z-20 border-b border-white/5 bg-black/20 backdrop-blur-xl">
+        <div className="max-w-7xl mx-auto px-6 py-4">
+          <div className="flex justify-between items-center">
+            <Link href="/" className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-cyan-400 to-violet-500 rounded-lg flex items-center justify-center">
+                <Shield className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-xl font-bold text-white tracking-tight">CAIRN</h1>
+                <p className="text-[10px] text-gray-400 uppercase tracking-wider">Dashboard</p>
+              </div>
+            </Link>
+
+            <div className="flex items-center gap-3">
+              <div className="px-4 py-2 bg-gradient-to-r from-emerald-500/10 to-cyan-500/10 border border-emerald-500/30 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
+                  <span className="text-sm text-emerald-400 font-medium">
+                    {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
+      </nav>
 
-        {/* Live status indicator */}
-        <div className="border-t border-white/5">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 py-2">
+      {/* Main Content */}
+      <div className="relative z-10 max-w-7xl mx-auto px-6 py-12">
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-8"
+        >
+          <h1 className="text-4xl font-bold text-white mb-2">Fleet Overview</h1>
+          <p className="text-gray-400">Monitor and manage your drone network</p>
+        </motion.div>
+
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          {[
+            { label: "Total Drones", value: drones.length, icon: Plane, color: "cyan" },
+            { label: "Active Drones", value: activeDrones.length, icon: Activity, color: "emerald" },
+            { label: "Assigned", value: assignedDrones.length, icon: CheckCircle, color: "violet" },
+            { label: "Patrol Zones", value: zones.length, icon: MapPin, color: "fuchsia" }
+          ].map((stat, i) => (
             <motion.div
-              initial={{ opacity: 0, y: -10 }}
+              key={stat.label}
+              initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5 }}
-              className="flex items-center justify-center gap-2 text-xs font-medium"
+              transition={{ delay: i * 0.1 }}
+              className="group relative"
             >
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-400" />
-              </span>
-              <span className="text-green-400">LIVE MONITORING</span>
-              <span className="hidden sm:inline text-gray-500">•</span>
-              <span className="hidden sm:inline text-gray-400">
-                14/16 Checkpoints Intact ✓
-              </span>
+              <div className={`absolute inset-0 bg-gradient-to-br from-${stat.color}-500/20 to-${stat.color}-600/10 rounded-xl blur-xl group-hover:blur-2xl transition`} />
+              <div className="relative bg-[#0f1729] border border-white/10 rounded-xl p-6 hover:border-white/20 transition">
+                <div className="flex items-center justify-between mb-4">
+                  <stat.icon className={`h-8 w-8 text-${stat.color}-400`} />
+                  <span className={`text-3xl font-bold text-${stat.color}-400`}>{stat.value}</span>
+                </div>
+                <p className="text-sm text-gray-400 uppercase tracking-wider">{stat.label}</p>
+              </div>
             </motion.div>
-          </div>
+          ))}
         </div>
-      </header>
 
-      {/* Dashboard Content */}
-      <main className="mx-auto max-w-7xl px-4 sm:px-6 py-6 space-y-6">
-        {/* Page Title */}
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
-          className="flex items-center justify-between"
-        >
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-              Inspection Dashboard
-            </h1>
-            <p className="mt-1 text-sm text-gray-400">
-              Wayanad Wildlife Sanctuary — Zone WY-11
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <Link href="/deploy">
-              <Button className="gap-2 bg-green-600 hover:bg-green-700">
-                <Send className="h-4 w-4" />
-                Deploy
-              </Button>
-            </Link>
-            <Badge variant="blockchain" className="hidden sm:flex gap-1">
-              <Lock className="h-3 w-3" />
-              Blockchain Verified
-            </Badge>
-          </div>
-        </motion.div>
-
-        {/* Drone Profile Section - Shows when drone query param is present */}
-        {droneId && droneData?.success && (
+        {/* Quick Actions */}
+        <div className="grid md:grid-cols-2 gap-6 mb-8">
           <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.05 }}
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.4 }}
+            onClick={() => router.push("/register")}
+            className="group relative cursor-pointer"
           >
-            <Card className="glass-strong border-green-500/30 border-2 overflow-hidden">
-              <CardContent className="p-6">
-                <div className="flex items-start justify-between mb-6">
-                  <div>
-                    <div className="flex items-center gap-3 mb-2">
-                      <Badge className="bg-green-500/20 text-green-400 border-green-500/30 text-sm">
-                        NEWLY REGISTERED
-                      </Badge>
-                      <Badge variant="outline" className={
-                        droneData.drone.status === "ACTIVE" 
-                          ? "bg-green-500/10 text-green-400 border-green-500/30"
-                          : "bg-gray-500/10 text-gray-400 border-gray-500/30"
-                      }>
-                        {droneData.drone.status}
-                      </Badge>
-                    </div>
-                    <h2 className="text-2xl font-bold">{droneData.drone.cairnDroneId}</h2>
-                    <p className="text-gray-400 text-sm mt-1">{droneData.drone.model}</p>
-                  </div>
-                  <Link 
-                    href={`https://hashscan.io/testnet/account/${droneData.drone.hederaAccountId}`}
-                    target="_blank"
+            <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 rounded-xl blur-xl group-hover:blur-2xl transition" />
+            <div className="relative bg-[#0f1729] border border-white/10 rounded-xl p-6 hover:border-cyan-500/50 transition-all">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-xl font-bold text-white mb-2">Register New Drone</h3>
+                  <p className="text-gray-400 text-sm">Add a drone to the registry</p>
+                </div>
+                <div className="w-12 h-12 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-lg flex items-center justify-center">
+                  <Plus className="h-6 w-6 text-white" />
+                </div>
+              </div>
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.5 }}
+            onClick={() => router.push("/deploy")}
+            className="group relative cursor-pointer"
+          >
+            <div className="absolute inset-0 bg-gradient-to-br from-violet-500/20 to-fuchsia-500/20 rounded-xl blur-xl group-hover:blur-2xl transition" />
+            <div className="relative bg-[#0f1729] border border-white/10 rounded-xl p-6 hover:border-violet-500/50 transition-all">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-xl font-bold text-white mb-2">Create Patrol Zone</h3>
+                  <p className="text-gray-400 text-sm">Define new boundary zones</p>
+                </div>
+                <div className="w-12 h-12 bg-gradient-to-br from-violet-500 to-fuchsia-600 rounded-lg flex items-center justify-center">
+                  <MapPin className="h-6 w-6 text-white" />
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+
+        {/* Drones List */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6 }}
+          className="relative"
+        >
+          <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-white/0 rounded-2xl blur-2xl" />
+          <div className="relative bg-[#0f1729] border border-white/10 rounded-2xl p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-white">Registered Drones</h2>
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
+                <span className="text-sm text-gray-400">{activeDrones.length} Active</span>
+              </div>
+            </div>
+
+            {drones.length === 0 ? (
+              <div className="text-center py-12">
+                <Plane className="h-16 w-16 text-gray-600 mx-auto mb-4" />
+                <p className="text-gray-400 mb-6">No drones registered yet</p>
+                <button
+                  onClick={() => router.push("/register")}
+                  className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-violet-500 rounded-lg text-white font-medium hover:shadow-lg hover:shadow-cyan-500/50 transition-all"
+                >
+                  Register Your First Drone
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {drones.map((drone, i) => (
+                  <motion.div
+                    key={drone.evmAddress}
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.7 + i * 0.05 }}
+                    className="bg-white/5 border border-white/10 rounded-xl p-4 hover:border-cyan-500/50 transition-all group"
                   >
-                    <Button variant="outline" size="sm" className="gap-2">
-                      <ExternalLink className="h-3 w-3" />
-                      View on HashScan
-                    </Button>
-                  </Link>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                  <div className="glass p-4 rounded-xl">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="p-2 bg-blue-500/10 rounded-lg">
-                        <Shield className="h-5 w-5 text-blue-400" />
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-white font-bold truncate flex items-center gap-2">
+                          <Plane className="h-4 w-4 text-cyan-400 flex-shrink-0" />
+                          {drone.cairnDroneId}
+                        </h3>
+                        <p className="text-xs text-gray-400 truncate">{drone.model}</p>
                       </div>
-                      <div>
-                        <p className="text-xs text-gray-500 font-medium">HEDERA WALLET</p>
-                        <p className="text-sm font-mono text-white">{droneData.drone.hederaAccountId}</p>
+                      {drone.isAgent && (
+                        <div className="px-2 py-1 bg-violet-500/20 border border-violet-500/30 rounded text-[10px] text-violet-300 font-bold">
+                          AI
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="space-y-2 text-sm">
+                      <div className="flex items-center gap-2 text-gray-400">
+                        <Shield className="h-3 w-3" />
+                        <span className="text-xs truncate">{drone.evmAddress.slice(0, 6)}...{drone.evmAddress.slice(-4)}</span>
+                      </div>
+
+                      {drone.registrationLat && drone.registrationLng && (
+                        <div className="flex items-center gap-2 text-gray-400">
+                          <MapPin className="h-3 w-3" />
+                          <span className="text-xs">
+                            {drone.registrationLat.toFixed(4)}, {drone.registrationLng.toFixed(4)}
+                          </span>
+                        </div>
+                      )}
+
+                      <div className="flex items-center gap-2">
+                        {drone.assignedZoneId === "UNASSIGNED" ? (
+                          <>
+                            <AlertCircle className="h-3 w-3 text-yellow-400" />
+                            <span className="text-xs text-yellow-400">Unassigned</span>
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle className="h-3 w-3 text-emerald-400" />
+                            <span className="text-xs text-emerald-400 truncate">{drone.assignedZoneId}</span>
+                          </>
+                        )}
                       </div>
                     </div>
-                  </div>
 
-                  <div className="glass p-4 rounded-xl">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="p-2 bg-purple-500/10 rounded-lg">
-                        <MapPin className="h-5 w-5 text-purple-400" />
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500 font-medium">ASSIGNED ZONE</p>
-                        <p className="text-sm font-semibold text-white">{droneData.drone.assignedZoneId}</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="glass p-4 rounded-xl">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="p-2 bg-green-500/10 rounded-lg">
-                        <CheckCircle2 className="h-5 w-5 text-green-400" />
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500 font-medium">INITIAL BALANCE</p>
-                        <p className="text-sm font-bold text-green-400">{droneData.drone.initialHBARBalance} HBAR</p>
+                    <div className="mt-4 pt-4 border-t border-white/5">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-gray-400">Status</span>
+                        <span className={`px-2 py-1 rounded ${
+                          drone.status === "ACTIVE" 
+                            ? "bg-emerald-500/20 text-emerald-400" 
+                            : "bg-gray-500/20 text-gray-400"
+                        }`}>
+                          {drone.status}
+                        </span>
                       </div>
                     </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
-                  <div className="p-3 bg-white/5 rounded-lg">
-                    <p className="text-gray-500 mb-1">Serial Number</p>
-                    <p className="font-mono">{droneData.drone.serialNumber}</p>
-                  </div>
-                  <div className="p-3 bg-white/5 rounded-lg">
-                    <p className="text-gray-500 mb-1">DGCA Cert</p>
-                    <p className="font-mono">{droneData.drone.dgcaCertNumber}</p>
-                  </div>
-                  <div className="p-3 bg-white/5 rounded-lg">
-                    <p className="text-gray-500 mb-1">Sensor Type</p>
-                    <p className="font-medium">{droneData.drone.sensorType}</p>
-                  </div>
-                  <div className="p-3 bg-white/5 rounded-lg">
-                    <p className="text-gray-500 mb-1">Flight Time</p>
-                    <p className="font-medium">{droneData.drone.maxFlightMinutes} min</p>
-                  </div>
-                </div>
-
-                {droneData.contractStatus && (
-                  <div className="mt-4 p-3 bg-green-500/10 border border-green-500/30 rounded-lg">
-                    <p className="text-xs text-green-400 font-bold mb-1">✓ BLOCKCHAIN VERIFIED</p>
-                    <p className="text-xs text-gray-400">
-                      On-chain status: {droneData.contractStatus.isActive ? "Active" : "Inactive"} • 
-                      Registered at block: {new Date(droneData.contractStatus.registeredAt * 1000).toLocaleString()}
-                    </p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </motion.div>
-        )}
-
-        {/* ROW 1: Zone Overview (4 KPI Cards) */}
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.1 }}
-        >
-          <ZoneOverview />
+                  </motion.div>
+                ))}
+              </div>
+            )}
+          </div>
         </motion.div>
 
-        {/* ROW 2: Map + Active Mission */}
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
+        {/* Patrol Zones Section */}
+        {zones.length > 0 && (
           <motion.div
-            className="lg:col-span-3"
-            initial={{ opacity: 0, y: 12 }}
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.2 }}
+            transition={{ delay: 0.8 }}
+            className="relative mt-8"
           >
-            <MapWidget />
-          </motion.div>
-          <motion.div
-            className="lg:col-span-2"
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.25 }}
-          >
-            <ActiveMission />
-          </motion.div>
-        </div>
-
-        {/* ROW 2.5: Saved Zones */}
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.28 }}
-        >
-          <SavedZones />
-        </motion.div>
-
-        {/* ROW 3: Recent Activity */}
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.3 }}
-        >
-          <RecentActivity />
-        </motion.div>
-
-        {/* Patrol Data Summary (from API) */}
-        {data && !isLoading && (
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.35 }}
-            className="rounded-xl border border-white/10 glass p-5"
-          >
-            <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3 flex items-center gap-2">
-              <Shield className="h-4 w-4 text-green-400" />
-              Latest Patrol Records
-            </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {data.patrols?.map(
-                (patrol: {
-                  id: string;
-                  zone: string;
-                  timestamp: string;
-                  checkpoints: number;
-                  status: string;
-                }) => (
+            <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-white/0 rounded-2xl blur-2xl" />
+            <div className="relative bg-[#0f1729] border border-white/10 rounded-2xl p-6">
+              <h2 className="text-2xl font-bold text-white mb-6">Patrol Zones</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {zones.map((zone, i) => (
                   <div
-                    key={patrol.id}
-                    className="rounded-lg border border-white/5 glass p-3 text-sm"
+                    key={zone.zoneId}
+                    className="bg-white/5 border border-white/10 rounded-xl p-4 hover:border-violet-500/50 transition-all"
                   >
-                    <div className="flex items-center justify-between">
-                      <span className="font-mono text-xs text-gray-500">
-                        {patrol.id}
-                      </span>
-                      <Badge
-                        variant={
-                          patrol.status === "complete"
-                            ? "intact"
-                            : patrol.status === "in-progress"
-                            ? "info"
-                            : "anomaly"
-                        }
-                      >
-                        {patrol.status}
-                      </Badge>
+                    <div className="flex items-start justify-between mb-3">
+                      <h3 className="text-white font-bold">{zone.zoneName || zone.zoneId}</h3>
+                      <MapPin className="h-5 w-5 text-violet-400" />
                     </div>
-                    <p className="mt-1 text-white font-medium">{patrol.zone}</p>
-                    <p className="text-xs text-gray-500">
-                      {patrol.checkpoints} checkpoints · {patrol.timestamp}
-                    </p>
+                    <div className="space-y-2 text-sm text-gray-400">
+                      <p>{zone.coordinates?.length || 0} boundary points</p>
+                      <p>{zone.assignedDrones?.length || 0} drone{zone.assignedDrones?.length !== 1 ? 's' : ''} assigned</p>
+                    </div>
                   </div>
-                )
-              )}
+                ))}
+              </div>
             </div>
           </motion.div>
         )}
-      </main>
-
-      {/* Dashboard footer */}
-      <footer className="border-t border-white/10 glass-dark px-6 py-4 mt-8">
-        <div className="mx-auto max-w-7xl flex items-center justify-between text-xs text-gray-500">
-          <span>BoundaryTruth — Tamper-Proof Evidence Infrastructure</span>
-          <Badge variant="blockchain" className="gap-1 text-[10px]">
-            <Lock className="h-2.5 w-2.5" />
-            Hedera Testnet
-          </Badge>
-        </div>
-      </footer>
+      </div>
     </div>
   );
 }

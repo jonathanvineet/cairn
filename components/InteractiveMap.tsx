@@ -147,6 +147,20 @@ export function InteractiveMap({ onBoundaryComplete, drones = [], selectedZone =
   const [mapCenter, setMapCenter] = useState<LatLngTuple>(WAYANAD_CENTER);
   const mapContainerRef = useRef<HTMLDivElement>(null);
 
+  // Debug logging for drones
+  useEffect(() => {
+    console.log("🗺️ InteractiveMap received drones:", drones.length);
+    const dronesWithCoords = drones.filter(d => d.registrationLat != null && d.registrationLng != null);
+    console.log("📍 Drones with coordinates:", dronesWithCoords.length);
+    if (dronesWithCoords.length > 0) {
+      console.log("📊 Drone locations:", dronesWithCoords.map(d => ({
+        name: d.cairnDroneId,
+        lat: d.registrationLat,
+        lng: d.registrationLng
+      })));
+    }
+  }, [drones]);
+
   // Ensure component only renders on client
   useEffect(() => {
     setIsMounted(true);
