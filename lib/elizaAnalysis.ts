@@ -1,5 +1,3 @@
-import { db } from "@/lib/db";
-
 export interface DroneMetrics {
   cairnDroneId: string;
   evmAddress: string;
@@ -96,12 +94,19 @@ export async function runElizaAnalysis(
     600
   );
 
-  // Fetch all drones
-  const allDrones = await db.drones.findMany();
+  // Fetch all drones from blockchain via API
+  const dronesResponse = await fetch('/api/drones');
+  const dronesData = await dronesResponse.json();
+  
+  if (!dronesData.success || !dronesData.drones) {
+    throw new Error("Failed to fetch drones from blockchain");
+  }
+  
+  const allDrones = dronesData.drones;
 
   await addThought(
     "assessment",
-    `🚁 Found ${allDrones.length} registered drone(s) in system`,
+    `🚁 Found ${allDrones.length} registered drone(s) in blockchain`,
     700
   );
 
@@ -112,6 +117,19 @@ export async function runElizaAnalysis(
 
   // Phase 2: Evaluation
   await addThought("evaluation", "⚡ Evaluating drone capabilities and status...", 900);
+
+  // Fetch real-time drone status from API
+  const statusResponse = await fetch('/api/drones/status');
+  const statusData = await statusResponse.json();
+  
+  if (!statusData.success || !statusData.statuses) {
+    throw new Error("Failed to fetch drone status");
+  }
+  
+  const droneStatusMap = new Map();
+  statusData.statuses.forEach((status: any) => {
+    droneStatusMap.set(status.evmAddress, status);
+  });
 
   interface DroneScore {
     drone: DroneMetrics;
@@ -126,15 +144,23 @@ export async function runElizaAnalysis(
   const scores: DroneScore[] = [];
 
   for (const drone of allDrones) {
+    // Get real-time status for this drone
+    const realtimeStatus = droneStatusMap.get(drone.evmAddress);
+    
+    if (!realtimeStatus) {
+      console.warn(`No real-time status for drone ${drone.cairnDroneId}`);
+      continue;
+    }
+    
     const metrics: DroneMetrics = {
       cairnDroneId: drone.cairnDroneId,
       evmAddress: drone.evmAddress,
-      batteryLevel: 75, // Default value - would come from real telemetry
+      batteryLevel: realtimeStatus.batteryLevel,
       location: {
-        lat: drone.registrationLat || 11.6,
-        lng: drone.registrationLng || 76.1,
+        lat: realtimeStatus.currentLat,
+        lng: realtimeStatus.currentLng,
       },
-      health: "good", // Default value - would come from real system health check
+      health: realtimeStatus.sensorHealth,
       agentTopicId: drone.agentTopicId,
       model: drone.model,
       serialNumber: drone.serialNumber,

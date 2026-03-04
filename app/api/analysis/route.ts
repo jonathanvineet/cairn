@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ethers } from "ethers";
-import { db } from "@/lib/db";
+import { DRONE_REGISTRY_ADDRESS, DRONE_REGISTRY_ABI } from "@/lib/contracts";
 
 const HEDERA_TESTNET_RPC = "https://testnet.hashio.io/api";
 
@@ -136,31 +136,89 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Fetch all drones from database
-    const allDrones = await db.drones.findMany();
+    // Fetch all drones from blockchain
+    const provider = new ethers.JsonRpcProvider(HEDERA_TESTNET_RPC);
+    const contract = new ethers.Contract(DRONE_REGISTRY_ADDRESS, DRONE_REGISTRY_ABI, provider);
+
+    const totalDrones = await contract.getTotalDrones();
+    const count = Number(totalDrones);
     
-    if (allDrones.length === 0) {
+    if (count === 0) {
       return NextResponse.json(
-        { success: false, error: "No drones registered in system" },
+        { success: false, error: "No drones registered on blockchain" },
         { status: 404 }
       );
     }
 
-    // Prepare drones for analysis
-    const dronesForAnalysis: DroneWithScore[] = allDrones.map((drone: any) => ({
-      cairnDroneId: drone.cairnDroneId,
-      evmAddress: drone.evmAddress,
-      batteryLevel: drone.batteryLevel || Math.floor(Math.random() * 40 + 60),
-      location: {
-        lat: drone.registrationLat || 11.6,
-        lng: drone.registrationLng || 76.1,
-      },
-      health: drone.sensorHealth || "good",
-      agentTopicId: drone.agentTopicId,
-    }));
+    const blockchainDrones: any[] = [];
+    const seenAddresses = new Set<string>();
+
+    for (let i = 0; i < count; i++) {
+      try {
+        const droneAddress: string = await contract.allDrones(i);
+        if (seenAddresses.has(droneAddress.toLowerCase())) continue;
+        seenAddresses.add(droneAddress.toLowerCase());
+
+        const droneData = await contract.getDrone(droneAddress);
+        
+        blockchainDrones.push({
+          cairnId: droneData.cairnId,
+          evmAddress: droneAddress,
+          model: droneData.model || "Unknown Model",
+          status: droneData.isActive ? "ACTIVE" : "INACTIVE",
+          agentTopicId: null,
+        });
+      } catch (err: any) {
+        console.error(`Error fetching drone at index ${i}:`, err.message);
+      }
+    }
+
+    // Fetch real-time status for all drones
+    const baseUrl = req.nextUrl.origin;
+    const statusResponse = await fetch(`${baseUrl}/api/drones/status`);
+    const statusData = await statusResponse.json();
+    
+    if (!statusData.success || !statusData.statuses) {
+      return NextResponse.json(
+        { success: false, error: "Failed to fetch real-time drone status" },
+        { status: 500 }
+      );
+    }
+    
+    // Create a map of statuses by evm address
+    const statusMap = new Map();
+    statusData.statuses.forEach((status: any) => {
+      statusMap.set(status.evmAddress.toLowerCase(), status);
+    });
+
+    // Prepare drones for analysis with real-time data
+    const dronesForAnalysis: DroneWithScore[] = blockchainDrones
+      .filter(drone => drone.status === "ACTIVE")
+      .map((drone: any) => {
+        const realtimeStatus = statusMap.get(drone.evmAddress.toLowerCase());
+        
+        return {
+          cairnDroneId: drone.cairnId,
+          evmAddress: drone.evmAddress,
+          batteryLevel: realtimeStatus?.batteryLevel || 50,
+          location: {
+            lat: realtimeStatus?.currentLat || 11.6,
+            lng: realtimeStatus?.currentLng || 76.1,
+          },
+          health: realtimeStatus?.sensorHealth || "good",
+          agentTopicId: drone.agentTopicId,
+        };
+      });
+
+    if (dronesForAnalysis.length === 0) {
+      return NextResponse.json(
+        { success: false, error: "No active drones available for analysis" },
+        { status: 404 }
+      );
+    }
 
     // Run Eliza-inspired analysis
-    console.log(`🤖 Starting Eliza analysis (ID: ${analysisId}) with ${dronesForAnalysis.length} drones...`);
+    console.log(`🤖 Starting Eliza analysis (ID: ${analysisId}) with ${dronesForAnalysis.length} drones from blockchain...`);
     
     const analysisResults = await analyzeWithEliza(
       dronesForAnalysis,
@@ -172,24 +230,41 @@ export async function POST(req: NextRequest) {
     const rankedDrones = Array.from(analysisResults.entries())
       .map(([address, analysis]) => {
         const drone = dronesForAnalysis.find(d => d.evmAddress === address);
+        const realtimeStatus = statusMap.get(address.toLowerCase());
         return {
           drone,
           ...analysis,
+          batteryLevel: realtimeStatus?.batteryLevel,
+          distance: calculateDistance(
+            drone?.location.lat || 0,
+            drone?.location.lng || 0,
+            boundary.coordinates.reduce((sum: number, c: any) => sum + c.lat, 0) / boundary.coordinates.length,
+            boundary.coordinates.reduce((sum: number, c: any) => sum + c.lng, 0) / boundary.coordinates.length
+          ),
         };
       })
       .sort((a, b) => b.score - a.score);
 
-    console.log(`✅ Analysis complete. Top recommendation: ${rankedDrones[0]?.drone?.cairnDroneId} (Score: ${rankedDrones[0]?.score}/100)`);
+    const topDrone = rankedDrones[0];
+    console.log(`✅ Analysis complete. Top recommendation: ${topDrone?.drone?.cairnDroneId} (Score: ${topDrone?.score}/100)`);
 
     return NextResponse.json({
       success: true,
       analysisId,
       timestamp: new Date().toISOString(),
+      selectedDrone: {
+        cairnDroneId: topDrone?.drone?.cairnDroneId,
+        evmAddress: topDrone?.drone?.evmAddress,
+        score: topDrone?.score,
+        batteryLevel: topDrone?.batteryLevel,
+        distance: topDrone?.distance,
+      },
+      score: topDrone?.score,
       summary: {
         totalDrones: dronesForAnalysis.length,
         analyzedDrones: rankedDrones.length,
-        topCandidate: rankedDrones[0]?.drone,
-        topScore: rankedDrones[0]?.score,
+        topCandidate: topDrone?.drone,
+        topScore: topDrone?.score,
       },
       analysis: rankedDrones.map(item => ({
         drone: item.drone,

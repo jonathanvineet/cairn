@@ -49,11 +49,7 @@ const stages: Stage[] = [
   },
 ];
 
-const droneDetails = [
-  "CAIRN-01: Scanning aerodynamic metrics",
-  "CAIRN-02: Checking flight hours",
-  "CAIRN-03: Verifying sensor calibration",
-];
+// Drone details will be fetched from API
 
 const elizaThoughts = [
   "Analyzing mission parameters...",
@@ -107,7 +103,8 @@ export default function AnalyseDroneStreamPage() {
             setCurrentStages((prev) => {
               const updated = [...prev];
               if (i === 0) {
-                const detail = droneDetails[Math.floor(Math.random() * droneDetails.length)];
+                // Fetch drone details from API during first stage
+                const detail = "Fetching drone registry from blockchain...";
                 if (!updated[i].details.includes(detail)) {
                   updated[i].details = [...updated[i].details.slice(-2), detail];
                 }
@@ -140,13 +137,35 @@ export default function AnalyseDroneStreamPage() {
         });
       }
 
+      // Call actual analysis API
+      try {
+        const response = await fetch('/api/analysis', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            boundary: {
+              coordinates: [
+                { lat: 11.6, lng: 76.1 },
+                { lat: 11.61, lng: 76.1 },
+                { lat: 11.61, lng: 76.11 },
+                { lat: 11.6, lng: 76.11 },
+              ]
+            }
+          })
+        });
+        const data = await response.json();
+        if (data.success && data.selectedDrone) {
+          setSelectedDrone({
+            cairnDroneId: data.selectedDrone.cairnDroneId,
+            score: data.selectedDrone.score || data.score,
+            battery: data.selectedDrone.batteryLevel,
+            distance: data.selectedDrone.distance || 0,
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching analysis:', error);
+      }
       setIsComplete(true);
-      setSelectedDrone({
-        cairnDroneId: "CAIRN-01",
-        score: 87,
-        battery: 85,
-        distance: 1.2,
-      });
     };
 
     runAnalysis();
