@@ -1,23 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ethers } from "ethers";
-import { DRONE_REGISTRY_ADDRESS, DRONE_REGISTRY_ABI } from "@/lib/contracts";
-
-const HEDERA_TESTNET_RPC = "https://testnet.hashio.io/api";
-
-// Simulate Eliza OS analysis - in production this would call actual Eliza
-interface DroneWithScore {
-  cairnDroneId: string;
-  evmAddress: string;
-  batteryLevel: number;
-  location: {
-    lat: number;
-    lng: number;
-  };
-  health: string;
-  agentTopicId?: string;
-  analysisScore?: number;
-  analysisReason?: string;
-}
+import { fetchDronesFromBlockchain, type DroneStatus } from "@/lib/droneBlockchainFetcher";
 
 function calculateDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R = 6371; // Earth's radius in km
@@ -30,104 +12,150 @@ function calculateDistance(lat1: number, lng1: number, lat2: number, lng2: numbe
   return R * c;
 }
 
-async function analyzeWithEliza(
-  drones: DroneWithScore[],
+/**
+ * Fetch real-time drone status from blockchain
+ */
+async function fetchDroneStatuses(): Promise<DroneStatus[]> {
+  try {
+    return await fetchDronesFromBlockchain();
+  } catch (error) {
+    console.error('Failed to fetch drones from blockchain:', error);
+    return [];
+  }
+}
+
+/**
+ * Score a drone based on mission requirements
+ */
+function scoreDrone(
+  drone: DroneStatus,
   boundary: { coordinates: Array<{ lat: number; lng: number }> },
-  analysisId: string
-): Promise<Map<string, { score: number; reason: string }>> {
-  const results = new Map<string, { score: number; reason: string }>();
+  missionType: 'patrol' | 'delivery' | 'surveillance' = 'patrol'
+): { score: number; reason: string; breakdown: any } {
+  const reasons: string[] = [];
+  let breakdown: any = {};
   
   // Calculate boundary center
-  const centerLat = drones.length > 0 
-    ? boundary.coordinates.reduce((sum, c) => sum + c.lat, 0) / boundary.coordinates.length 
-    : 0;
-  const centerLng = drones.length > 0 
-    ? boundary.coordinates.reduce((sum, c) => sum + c.lng, 0) / boundary.coordinates.length 
-    : 0;
-
-  // Eliza-inspired multi-criteria analysis
-  for (const drone of drones) {
-    const reasons: string[] = [];
-    let score = 50; // Base score
-
-    // Battery analysis (25 points max)
-    if (drone.batteryLevel >= 80) {
-      score += 25;
-      reasons.push(`Excellent battery: ${drone.batteryLevel}%`);
-    } else if (drone.batteryLevel >= 60) {
-      score += 18;
-      reasons.push(`Good battery: ${drone.batteryLevel}%`);
-    } else if (drone.batteryLevel >= 40) {
-      score += 10;
-      reasons.push(`Moderate battery: ${drone.batteryLevel}%`);
-    } else {
-      reasons.push(`Low battery: ${drone.batteryLevel}%`);
-    }
-
-    // Location proximity (20 points max)
-    const distance = calculateDistance(
-      drone.location.lat, 
-      drone.location.lng, 
-      centerLat, 
-      centerLng
-    );
-    
-    if (distance < 2) {
-      score += 20;
-      reasons.push(`Proximity excellent: ${distance.toFixed(2)}km from zone`);
-    } else if (distance < 5) {
-      score += 15;
-      reasons.push(`Proximity good: ${distance.toFixed(2)}km from zone`);
-    } else if (distance < 10) {
-      score += 8;
-      reasons.push(`Proximity moderate: ${distance.toFixed(2)}km from zone`);
-    } else {
-      reasons.push(`Far from zone: ${distance.toFixed(2)}km away`);
-    }
-
-    // Health status (25 points max)
-    if (drone.health === "excellent") {
-      score += 25;
-      reasons.push("System health: Excellent");
-    } else if (drone.health === "good") {
-      score += 18;
-      reasons.push("System health: Good");
-    } else if (drone.health === "fair") {
-      score += 10;
-      reasons.push("System health: Fair");
-    } else {
-      score = Math.max(0, score - 10);
-      reasons.push("System health: Poor");
-    }
-
-    // Agent validation (20 points max)
-    if (drone.agentTopicId) {
-      score += 20;
-      reasons.push("Hedera agent verified and ready");
-    } else {
-      reasons.push("No agent registered");
-    }
-
-    // Reliability bonus (10 points max)
-    if (drone.cairnDroneId) {
-      score += 5;
-      reasons.push("Registered in Cairn system");
-    }
-
-    score = Math.min(100, Math.max(0, score));
-    
-    results.set(drone.evmAddress, {
-      score: Math.round(score),
-      reason: reasons.join(" | "),
-    });
+  const centerLat = boundary.coordinates.reduce((sum, c) => sum + c.lat, 0) / boundary.coordinates.length;
+  const centerLng = boundary.coordinates.reduce((sum, c) => sum + c.lng, 0) / boundary.coordinates.length;
+  
+  // Battery scoring (weight: 0.3)
+  const battery = drone.batteryLevel;
+  const batteryScore = battery >= 80 ? 100 : battery >= 60 ? 75 : battery >= 40 ? 50 : 25;
+  breakdown.batteryScore = batteryScore;
+  reasons.push(`Battery: ${battery}% (${batteryScore}/100)`);
+  
+  // Proximity scoring (weight: 0.25)
+  const distance = calculateDistance(
+    drone.currentLat,
+    drone.currentLng,
+    centerLat,
+    centerLng
+  );
+  const proximityScore = distance < 2 ? 100 : distance < 5 ? 80 : distance < 10 ? 50 : 20;
+  reasons.push(`Distance: ${distance.toFixed(2)}km (${proximityScore}/100)`);
+  breakdown.distance = distance;
+  breakdown.proximityScore = proximityScore;
+  
+  // Flight time scoring (weight: 0.2)
+  const flightHours = drone.flightHoursRemaining;
+  const flightScore = Math.min(100, (flightHours / 2.5) * 100); // 2.5 hours = 100 pts
+  breakdown.flightTimeScore = flightScore;
+  reasons.push(`Flight time: ${flightHours.toFixed(1)}h (${flightScore.toFixed(0)}/100)`);
+  
+  // Readiness scoring (weight: 0.15)
+  const readinessScore = drone.readinessScore;
+  breakdown.readinessScore = readinessScore;
+  reasons.push(`Readiness: ${readinessScore}/100`);
+  
+  // Health scoring (weight: 0.1)
+  const healthScore = (
+    (drone.sensorHealth === 'excellent' ? 100 : drone.sensorHealth === 'good' ? 75 : drone.sensorHealth === 'fair' ? 50 : 25) * 0.4 +
+    (drone.motorHealth === 'excellent' ? 100 : drone.motorHealth === 'good' ? 75 : drone.motorHealth === 'fair' ? 50 : 25) * 0.4 +
+    (drone.cameraHealth === 'excellent' ? 100 : drone.cameraHealth === 'good' ? 75 : drone.cameraHealth === 'fair' ? 50 : 25) * 0.2
+  );
+  breakdown.healthScore = healthScore;
+  reasons.push(`Health: ${healthScore.toFixed(0)}/100`);
+  
+  // Weather bonus
+  const weatherBonus = drone.weatherSuitable ? 10 : -20;
+  breakdown.weatherBonus = weatherBonus;
+  reasons.push(`Weather: ${drone.weatherSuitable ? 'suitable' : 'unsuitable'} (${weatherBonus > 0 ? '+' : ''}${weatherBonus})`);
+  
+  // Availability check
+  const availabilityPenalty = drone.isAvailable ? 0 : -50;
+  breakdown.availabilityPenalty = availabilityPenalty;
+  if (!drone.isAvailable) reasons.push(`Unavailable (${availabilityPenalty})`);
+  
+  // Adjust weights based on mission type
+  let weights = { battery: 0.3, proximity: 0.25, flightTime: 0.2, readiness: 0.15, health: 0.1 };
+  
+  if (missionType === 'delivery') {
+    weights = { battery: 0.25, proximity: 0.35, flightTime: 0.15, readiness: 0.15, health: 0.1 };
+  } else if (missionType === 'surveillance') {
+    weights = { battery: 0.2, proximity: 0.2, flightTime: 0.35, readiness: 0.15, health: 0.1 };
   }
+  
+  // Calculate weighted score
+  const totalScore = Math.max(0, Math.min(100,
+    (batteryScore * weights.battery) +
+    (proximityScore * weights.proximity) +
+    (flightScore * weights.flightTime) +
+    (readinessScore * weights.readiness) +
+    (healthScore * weights.health) +
+    weatherBonus +
+    availabilityPenalty
+  ));
+  
+  breakdown.totalScore = Math.round(totalScore);
+  breakdown.weights = weights;
+  
+  return {
+    score: Math.round(totalScore),
+    reason: reasons.join(' | '),
+    breakdown,
+  };
+}
 
-  return results;
+/**
+ * Analyze and rank drones from blockchain
+ */
+async function analyzeDronesFromBlockchain(
+  boundary: { coordinates: Array<{ lat: number; lng: number }> },
+  analysisId: string,
+  missionType: 'patrol' | 'delivery' | 'surveillance' = 'patrol'
+): Promise<Array<{ drone: DroneStatus; score: number; reason: string; breakdown: any }>> {
+  console.log(`🚁 Fetching real-time drone status from blockchain...`);
+  
+  // Fetch all drones from blockchain
+  const allDrones = await fetchDroneStatuses();
+  
+  if (allDrones.length === 0) {
+    console.warn('⚠️  No drones found on blockchain');
+    return [];
+  }
+  
+  console.log(`📡 Found ${allDrones.length} drones on blockchain`);
+  
+  // Filter available drones
+  const availableDrones = allDrones.filter(drone => drone.isAvailable);
+  
+  console.log(`✅ ${availableDrones.length} drones available for mission`);
+  
+  // Score and rank all available drones
+  const rankedDrones = availableDrones
+    .map(drone => ({
+      drone,
+      ...scoreDrone(drone, boundary, missionType),
+    }))
+    .sort((a, b) => b.score - a.score);
+  
+  return rankedDrones;
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const { boundary, analysisId } = await req.json();
+    const { boundary, analysisId, missionType = 'patrol' } = await req.json();
 
     if (!boundary || !boundary.coordinates || boundary.coordinates.length === 0) {
       return NextResponse.json(
@@ -136,140 +164,65 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Fetch all drones from blockchain
-    const provider = new ethers.JsonRpcProvider(HEDERA_TESTNET_RPC);
-    const contract = new ethers.Contract(DRONE_REGISTRY_ADDRESS, DRONE_REGISTRY_ABI, provider);
+    console.log(`🚁 Starting blockchain drone analysis (ID: ${analysisId}, Type: ${missionType})...`);
 
-    const totalDrones = await contract.getTotalDrones();
-    const count = Number(totalDrones);
-    
-    if (count === 0) {
+    // Analyze drones from blockchain
+    const rankedDrones = await analyzeDronesFromBlockchain(boundary, analysisId, missionType);
+
+    if (rankedDrones.length === 0) {
       return NextResponse.json(
-        { success: false, error: "No drones registered on blockchain" },
+        { success: false, error: "No available drones found on blockchain" },
         { status: 404 }
       );
     }
-
-    const blockchainDrones: any[] = [];
-    const seenAddresses = new Set<string>();
-
-    for (let i = 0; i < count; i++) {
-      try {
-        const droneAddress: string = await contract.allDrones(i);
-        if (seenAddresses.has(droneAddress.toLowerCase())) continue;
-        seenAddresses.add(droneAddress.toLowerCase());
-
-        const droneData = await contract.getDrone(droneAddress);
-        
-        blockchainDrones.push({
-          cairnId: droneData.cairnId,
-          evmAddress: droneAddress,
-          model: droneData.model || "Unknown Model",
-          status: droneData.isActive ? "ACTIVE" : "INACTIVE",
-          agentTopicId: null,
-        });
-      } catch (err: any) {
-        console.error(`Error fetching drone at index ${i}:`, err.message);
-      }
-    }
-
-    // Fetch real-time status for all drones
-    const baseUrl = req.nextUrl.origin;
-    const statusResponse = await fetch(`${baseUrl}/api/drones/status`);
-    const statusData = await statusResponse.json();
-    
-    if (!statusData.success || !statusData.statuses) {
-      return NextResponse.json(
-        { success: false, error: "Failed to fetch real-time drone status" },
-        { status: 500 }
-      );
-    }
-    
-    // Create a map of statuses by evm address
-    const statusMap = new Map();
-    statusData.statuses.forEach((status: any) => {
-      statusMap.set(status.evmAddress.toLowerCase(), status);
-    });
-
-    // Prepare drones for analysis with real-time data
-    const dronesForAnalysis: DroneWithScore[] = blockchainDrones
-      .filter(drone => drone.status === "ACTIVE")
-      .map((drone: any) => {
-        const realtimeStatus = statusMap.get(drone.evmAddress.toLowerCase());
-        
-        return {
-          cairnDroneId: drone.cairnId,
-          evmAddress: drone.evmAddress,
-          batteryLevel: realtimeStatus?.batteryLevel || 50,
-          location: {
-            lat: realtimeStatus?.currentLat || 11.6,
-            lng: realtimeStatus?.currentLng || 76.1,
-          },
-          health: realtimeStatus?.sensorHealth || "good",
-          agentTopicId: drone.agentTopicId,
-        };
-      });
-
-    if (dronesForAnalysis.length === 0) {
-      return NextResponse.json(
-        { success: false, error: "No active drones available for analysis" },
-        { status: 404 }
-      );
-    }
-
-    // Run Eliza-inspired analysis
-    console.log(`🤖 Starting Eliza analysis (ID: ${analysisId}) with ${dronesForAnalysis.length} drones from blockchain...`);
-    
-    const analysisResults = await analyzeWithEliza(
-      dronesForAnalysis,
-      boundary,
-      analysisId
-    );
-
-    // Sort by score
-    const rankedDrones = Array.from(analysisResults.entries())
-      .map(([address, analysis]) => {
-        const drone = dronesForAnalysis.find(d => d.evmAddress === address);
-        const realtimeStatus = statusMap.get(address.toLowerCase());
-        return {
-          drone,
-          ...analysis,
-          batteryLevel: realtimeStatus?.batteryLevel,
-          distance: calculateDistance(
-            drone?.location.lat || 0,
-            drone?.location.lng || 0,
-            boundary.coordinates.reduce((sum: number, c: any) => sum + c.lat, 0) / boundary.coordinates.length,
-            boundary.coordinates.reduce((sum: number, c: any) => sum + c.lng, 0) / boundary.coordinates.length
-          ),
-        };
-      })
-      .sort((a, b) => b.score - a.score);
 
     const topDrone = rankedDrones[0];
-    console.log(`✅ Analysis complete. Top recommendation: ${topDrone?.drone?.cairnDroneId} (Score: ${topDrone?.score}/100)`);
+    const drone = topDrone.drone;
+    
+    console.log(`✅ Analysis complete. Top drone: ${drone.cairnDroneId} (Score: ${topDrone.score}/100)`);
+    console.log(`   Battery: ${drone.batteryLevel}%, Location: ${drone.currentLat},${drone.currentLng}`);
 
     return NextResponse.json({
       success: true,
       analysisId,
+      missionType,
       timestamp: new Date().toISOString(),
       selectedDrone: {
-        cairnDroneId: topDrone?.drone?.cairnDroneId,
-        evmAddress: topDrone?.drone?.evmAddress,
-        score: topDrone?.score,
-        batteryLevel: topDrone?.batteryLevel,
-        distance: topDrone?.distance,
+        cairnDroneId: drone.cairnDroneId,
+        evmAddress: drone.evmAddress,
+        agentTopicId: drone.agentTopicId,
+        score: topDrone.score,
+        batteryLevel: drone.batteryLevel,
+        distance: topDrone.breakdown.distance,
+        location: {
+          lat: drone.currentLat,
+          lng: drone.currentLng,
+        },
+        flightHoursRemaining: drone.flightHoursRemaining,
+        readinessScore: drone.readinessScore,
+        weatherSuitable: drone.weatherSuitable,
       },
-      score: topDrone?.score,
+      score: topDrone.score,
       summary: {
-        totalDrones: dronesForAnalysis.length,
+        totalDrones: rankedDrones.length,
         analyzedDrones: rankedDrones.length,
-        topCandidate: topDrone?.drone,
-        topScore: topDrone?.score,
+        topDrone: drone.cairnDroneId,
+        topScore: topDrone.score,
+        source: 'blockchain',
       },
       analysis: rankedDrones.map(item => ({
-        drone: item.drone,
+        cairnDroneId: item.drone.cairnDroneId,
+        evmAddress: item.drone.evmAddress,
         score: item.score,
         reason: item.reason,
+        breakdown: item.breakdown,
+        status: {
+          batteryLevel: item.drone.batteryLevel,
+          location: { lat: item.drone.currentLat, lng: item.drone.currentLng },
+          flightHoursRemaining: item.drone.flightHoursRemaining,
+          readinessScore: item.drone.readinessScore,
+          isAvailable: item.drone.isAvailable,
+        },
       })),
       boundaryCenter: {
         lat: boundary.coordinates.reduce((sum: number, c: any) => sum + c.lat, 0) / boundary.coordinates.length,
@@ -277,7 +230,7 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (error: any) {
-    console.error("❌ Analysis error:", error);
+    console.error("❌ Blockchain analysis error:", error);
     return NextResponse.json(
       { success: false, error: error.message || "Analysis failed" },
       { status: 500 }

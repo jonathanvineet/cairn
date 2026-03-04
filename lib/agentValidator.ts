@@ -6,9 +6,9 @@
  * 2. Reading the agent manifest from the topic
  * 3. Validating the manifest structure and signature
  * 
- * This is a lightweight validation approach using Hedera SDK directly,
- * without requiring the full ElizaOS runtime. It verifies that the drone
- * was properly registered as an autonomous agent with a valid HCS inbox.
+ * This is a lightweight validation approach using Hedera SDK directly.
+ * It verifies that the drone was properly registered as an autonomous 
+ * agent with a valid HCS inbox.
  */
 
 import {

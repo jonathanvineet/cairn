@@ -117,7 +117,7 @@ export function HeroScene() {
             />
 
             {/* Environment for reflections */}
-            <Environment preset="forest" />
+            <Environment preset="dawn" />
 
             {/* Fog for depth */}
             <fog attach="fog" args={["#020d06", 15, 50]} />
