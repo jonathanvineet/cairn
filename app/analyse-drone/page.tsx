@@ -72,6 +72,27 @@ export default function AnalyseDroneStreamPage() {
   const [currentStageIdx, setCurrentStageIdx] = useState(0);
   const [isComplete, setIsComplete] = useState(false);
   const [selectedDrone, setSelectedDrone] = useState<any>(null);
+  const [boundaryCoords, setBoundaryCoords] = useState<any>(null);
+  const [zoneId, setZoneId] = useState<string>("");
+
+  useEffect(() => {
+    // Load zone data from sessionStorage
+    const storedBoundary = sessionStorage.getItem("pendingBoundary");
+    const storedZoneId = sessionStorage.getItem("pendingZoneId");
+    
+    if (storedBoundary) {
+      try {
+        const parsedBoundary = JSON.parse(storedBoundary);
+        setBoundaryCoords(parsedBoundary);
+      } catch (e) {
+        console.error("Error parsing boundary:", e);
+      }
+    }
+    
+    if (storedZoneId) {
+      setZoneId(storedZoneId);
+    }
+  }, []);
 
   useEffect(() => {
     let timeout: NodeJS.Timeout;
@@ -137,20 +158,29 @@ export default function AnalyseDroneStreamPage() {
         });
       }
 
-      // Call actual analysis API
+      // Call actual analysis API with the actual boundary coordinates
       try {
+        // Use actual boundary coordinates or fallback to default
+        const coordinates = boundaryCoords && boundaryCoords.length > 0 
+          ? boundaryCoords 
+          : [
+              { lat: 11.6, lng: 76.1 },
+              { lat: 11.61, lng: 76.1 },
+              { lat: 11.61, lng: 76.11 },
+              { lat: 11.6, lng: 76.11 },
+            ];
+        
+        console.log("Analyzing with boundary:", coordinates);
+        console.log("Zone ID:", zoneId);
+        
         const response = await fetch('/api/analysis', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             boundary: {
-              coordinates: [
-                { lat: 11.6, lng: 76.1 },
-                { lat: 11.61, lng: 76.1 },
-                { lat: 11.61, lng: 76.11 },
-                { lat: 11.6, lng: 76.11 },
-              ]
-            }
+              coordinates
+            },
+            analysisId: zoneId || 'unknown-zone'
           })
         });
         const data = await response.json();
@@ -168,10 +198,13 @@ export default function AnalyseDroneStreamPage() {
       setIsComplete(true);
     };
 
-    runAnalysis();
+    // Only run analysis when boundary coordinates are loaded
+    if (boundaryCoords !== null) {
+      runAnalysis();
+    }
 
     return () => clearTimeout(timeout);
-  }, []);
+  }, [boundaryCoords, zoneId]);
 
   return (
     <div className="min-h-screen bg-black text-white overflow-hidden">
@@ -214,6 +247,28 @@ export default function AnalyseDroneStreamPage() {
             <div className="w-12" />
           </div>
         </div>
+
+        {/* Warning if no boundary data */}
+        {!boundaryCoords && (
+          <div className="max-w-6xl mx-auto px-6 mt-8">
+            <div className="border border-yellow-500/50 rounded-lg p-6 bg-yellow-500/10 backdrop-blur-sm">
+              <div className="flex items-start gap-4">
+                <div className="text-yellow-400 text-2xl">⚠️</div>
+                <div>
+                  <h3 className="text-lg font-bold text-yellow-400 mb-2">No Zone Selected</h3>
+                  <p className="text-gray-300 mb-4">
+                    Please go back to the Deploy page and select or create a zone before analyzing drones.
+                  </p>
+                  <Link href="/deploy">
+                    <button className="px-4 py-2 bg-yellow-500/20 border border-yellow-500/50 rounded-lg text-yellow-400 hover:bg-yellow-500/30 transition">
+                      Go to Deploy Page
+                    </button>
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Main Content */}
         <div className="max-w-6xl mx-auto px-6 py-16">
@@ -308,6 +363,23 @@ export default function AnalyseDroneStreamPage() {
             <div className="mt-16 space-y-6 animate-fade-in">
               <div className="border border-green-500/50 rounded-lg p-8 bg-green-500/5 backdrop-blur-sm">
                 <h2 className="text-2xl font-bold text-green-400 mb-6">✓ ANALYSIS COMPLETE</h2>
+
+                {/* Zone Information */}
+                {zoneId && (
+                  <div className="mb-6 p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+                    <p className="text-sm text-gray-400">ANALYZING FOR ZONE</p>
+                    <p className="text-xl font-bold text-blue-400">{zoneId}</p>
+                    {boundaryCoords && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        {boundaryCoords.length} boundary points • Center: {
+                          (boundaryCoords.reduce((sum: number, c: any) => sum + c.lat, 0) / boundaryCoords.length).toFixed(4)
+                        }, {
+                          (boundaryCoords.reduce((sum: number, c: any) => sum + c.lng, 0) / boundaryCoords.length).toFixed(4)
+                        }
+                      </p>
+                    )}
+                  </div>
+                )}
 
                 {/* Selected Drone Card */}
                 <div className="bg-gradient-to-br from-green-500/10 to-emerald-500/10 border border-green-500/30 rounded-lg p-8 mb-6">
