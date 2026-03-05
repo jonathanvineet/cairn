@@ -10,14 +10,15 @@ import {
   Zap,
   Loader2,
   CheckCircle,
-  Wallet,
   ExternalLink,
+  Wallet,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ethers } from "ethers";
 import { LocationPicker } from "@/components/LocationPicker";
 import SkyvaultShell from "../../components/world/SkyvaultShell";
+import { WalletConnect } from "@/components/WalletConnect";
+import { useWalletStore } from "@/stores/walletStore";
 
 const DRONE_MODELS = [
   {
@@ -64,8 +65,7 @@ const DRONE_MODELS = [
 
 export default function RegisterDronePage() {
   const router = useRouter();
-  const [walletConnected, setWalletConnected] = useState(false);
-  const [walletAddress, setWalletAddress] = useState<string>("");
+  const { connected, selectedAccount } = useWalletStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [registrationComplete, setRegistrationComplete] = useState(false);
   const [registeredDroneData, setRegisteredDroneData] = useState<any>(null);
@@ -82,10 +82,6 @@ export default function RegisterDronePage() {
   });
 
   useEffect(() => {
-    checkWalletConnection();
-  }, []);
-
-  useEffect(() => {
     // Update sensor type and flight time when model changes
     const model = DRONE_MODELS.find(m => m.id === formData.model);
     if (model) {
@@ -97,41 +93,6 @@ export default function RegisterDronePage() {
     }
   }, [formData.model]);
 
-  const checkWalletConnection = async () => {
-    if (typeof window.ethereum !== "undefined") {
-      try {
-        const provider = new ethers.BrowserProvider(window.ethereum as any);
-        const accounts = await provider.listAccounts();
-        if (accounts.length > 0) {
-          setWalletConnected(true);
-          setWalletAddress(accounts[0].address);
-        }
-      } catch (error) {
-        console.error("Error checking wallet:", error);
-      }
-    }
-  };
-
-  const connectWallet = async () => {
-    if (typeof window.ethereum === "undefined") {
-      alert("Please install MetaMask to use this feature");
-      return;
-    }
-    
-    try {
-      const provider = new ethers.BrowserProvider(window.ethereum as any);
-      await provider.send("eth_requestAccounts", []);
-      const signer = await provider.getSigner();
-      const address = await signer.getAddress();
-      setWalletConnected(true);
-      setWalletAddress(address);
-    } catch (err: unknown) {
-      const error = err as any;
-      console.error("Error connecting wallet:", error);
-      alert("Failed to connect wallet: " + error.message);
-    }
-  };
-
   const handleLocationSelect = (location: { lat: number; lng: number }) => {
     setCurrentLocation(location);
   };
@@ -139,7 +100,7 @@ export default function RegisterDronePage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!walletConnected) {
+    if (!connected) {
       alert("Please connect your wallet first");
       return;
     }
@@ -193,7 +154,7 @@ export default function RegisterDronePage() {
           assignedZoneId: "UNASSIGNED",
           sensorType: formData.sensorType,
           maxFlightMinutes: parseInt(formData.maxFlightMinutes),
-          registeredByOfficerId: walletAddress,
+          registeredByOfficerId: selectedAccount?.id || "",
           registrationLat: currentLocation.lat,
           registrationLng: currentLocation.lng,
         }),
@@ -293,7 +254,7 @@ export default function RegisterDronePage() {
   }
 
   // Wallet connection required view
-  if (!walletConnected) {
+  if (!connected) {
     return (
       <SkyvaultShell title="DRONE REGISTRATION">
       <div className="flex items-center justify-center min-h-screen p-4">
@@ -305,7 +266,7 @@ export default function RegisterDronePage() {
             <Card className="bg-white/5 backdrop-blur-md border-white/10">
               <CardContent className="p-8 text-center">
                 <div className="w-16 h-16 bg-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <Wallet className="h-8 w-8 text-blue-400" />
+                  <Shield className="h-8 w-8 text-blue-400" />
                 </div>
                 
                 <h2 className="text-2xl font-bold text-white mb-3">
@@ -315,13 +276,7 @@ export default function RegisterDronePage() {
                   Please connect your wallet to register a drone on the blockchain.
                 </p>
                 
-                <Button
-                  onClick={connectWallet}
-                  className="w-full bg-linear-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white"
-                >
-                  <Wallet className="h-4 w-4 mr-2" />
-                  Connect Wallet
-                </Button>
+                <WalletConnect />
               </CardContent>
             </Card>
           </motion.div>
@@ -340,7 +295,7 @@ export default function RegisterDronePage() {
           <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
           <Wallet className="h-4 w-4 text-white" />
           <span className="text-sm text-white font-medium">
-            {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}
+            {selectedAccount?.id.slice(0, 6)}...{selectedAccount?.id.slice(-4)}
           </span>
         </div>
       </div>

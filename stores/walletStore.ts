@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { persist, createJSONStorage } from "zustand/middleware";
 import {
   initializeDAppConnector,
   connectHashPack,
@@ -27,15 +28,19 @@ interface WalletState {
   disconnect: () => Promise<void>;
   error: string | null;
   isInitializing: boolean;
+  rehydrated: boolean;
 }
 
-export const useWalletStore = create<WalletState>((set, get) => ({
+export const useWalletStore = create<WalletState>()(
+  persist(
+    (set, get) => ({
   connected: false,
   walletType: null,
   selectedAccount: null,
   accounts: [],
   error: null,
   isInitializing: false,
+  rehydrated: false,
 
   connect: async (type: WalletType = "HASH_PACK") => {
     if (typeof window === 'undefined') {
@@ -143,4 +148,21 @@ export const useWalletStore = create<WalletState>((set, get) => ({
       set({ error: msg });
     }
   },
-}));
+}),
+    {
+      name: 'cairn-wallet-storage',
+      storage: createJSONStorage(() => localStorage),
+      partialPersist: true,
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          state.rehydrated = true;
+          console.log('💾 Wallet state rehydrated:', {
+            connected: state.connected,
+            walletType: state.walletType,
+            account: state.selectedAccount?.id
+          });
+        }
+      },
+    }
+  )
+);

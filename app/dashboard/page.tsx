@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ethers } from "ethers";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import {
@@ -12,12 +11,13 @@ import {
   Activity,
   Zap,
   ArrowRight,
-  Wallet,
   Plus,
   CheckCircle,
   AlertCircle,
   Battery
 } from "lucide-react";
+import { WalletConnect } from "@/components/WalletConnect";
+import { useWalletStore } from "@/stores/walletStore";
 
 interface Drone {
   cairnDroneId: string;
@@ -33,32 +33,15 @@ interface Drone {
 
 export default function DashboardPage() {
   const router = useRouter();
-  const [walletConnected, setWalletConnected] = useState(false);
-  const [walletAddress, setWalletAddress] = useState<string>("");
+  const { connected, selectedAccount } = useWalletStore();
   const [drones, setDrones] = useState<Drone[]>([]);
   const [zones, setZones] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    checkWalletAndFetchData();
-  }, []);
-
-  const checkWalletAndFetchData = async () => {
-    if (typeof window.ethereum !== "undefined") {
-      try {
-        const provider = new ethers.BrowserProvider(window.ethereum as any);
-        const accounts = await provider.listAccounts();
-        if (accounts.length > 0) {
-          setWalletConnected(true);
-          setWalletAddress(accounts[0].address);
-          await fetchData();
-        }
-      } catch (error) {
-        console.error("Wallet check error:", error);
-      }
-    }
+    fetchData();
     setLoading(false);
-  };
+  }, [connected]);
 
   const fetchData = async () => {
     try {
@@ -81,25 +64,6 @@ export default function DashboardPage() {
     }
   };
 
-  const connectWallet = async () => {
-    if (typeof window.ethereum === "undefined") {
-      alert("Please install MetaMask");
-      return;
-    }
-
-    try {
-      const provider = new ethers.BrowserProvider(window.ethereum as any);
-      await provider.send("eth_requestAccounts", []);
-      const signer = await provider.getSigner();
-      const address = await signer.getAddress();
-      setWalletConnected(true);
-      setWalletAddress(address);
-      await fetchData();
-    } catch (error: any) {
-      alert("Failed to connect wallet: " + error.message);
-    }
-  };
-
   const activeDrones = drones.filter(d => d.status === "ACTIVE");
   const assignedDrones = drones.filter(d => d.assignedZoneId !== "UNASSIGNED");
   const unassignedDrones = drones.filter(d => d.assignedZoneId === "UNASSIGNED");
@@ -115,7 +79,7 @@ export default function DashboardPage() {
     );
   }
 
-  if (!walletConnected) {
+  if (!connected) {
     return (
       <div className="min-h-screen bg-[#0a0e27]">
         <nav className="border-b border-white/5 bg-black/20 backdrop-blur-xl">
@@ -144,7 +108,7 @@ export default function DashboardPage() {
               <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/20 to-violet-500/20 rounded-2xl blur-2xl" />
               <div className="relative bg-[#0f1729] border border-white/10 rounded-2xl p-8 text-center">
                 <div className="w-16 h-16 bg-gradient-to-br from-cyan-500 to-violet-500 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                  <Wallet className="h-8 w-8 text-white" />
+                  <Shield className="h-8 w-8 text-white" />
                 </div>
                 <h2 className="text-2xl font-bold text-white mb-3">
                   Connect Your Wallet
@@ -152,12 +116,7 @@ export default function DashboardPage() {
                 <p className="text-gray-400 mb-8">
                   Connect your wallet to access the dashboard
                 </p>
-                <button
-                  onClick={connectWallet}
-                  className="w-full px-6 py-4 bg-gradient-to-r from-cyan-500 to-violet-500 rounded-xl text-white font-semibold hover:shadow-lg hover:shadow-cyan-500/50 transition-all"
-                >
-                  Connect MetaMask
-                </button>
+                <WalletConnect />
                 <Link href="/" className="block mt-4 text-sm text-gray-400 hover:text-white transition">
                   Back to Home
                 </Link>
@@ -194,7 +153,7 @@ export default function DashboardPage() {
           <div className="flex items-center gap-4">
             <div className="px-3 py-1.5 bg-[#00f5ff]/5 border border-[#00f5ff]/20 rounded font-mono text-[11px] text-[#00f5ff]/80">
               <span className="opacity-50 mr-2">//</span>
-              {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}
+              {selectedAccount?.id.slice(0, 6)}...{selectedAccount?.id.slice(-4)}
             </div>
             <Link
               href="/"

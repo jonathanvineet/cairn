@@ -1,7 +1,6 @@
 "use client";
 
 import { Suspense } from "react";
-import { ForestCanopy } from "./ForestCanopy";
 import { AtmosphereVolume } from "./AtmosphereVolume";
 import { GroundMesh } from "./GroundMesh";
 import { SkyDome } from "./SkyDome";
@@ -75,10 +74,6 @@ export function WorldOrchestrator({
       <SkyDome />
       <AtmosphereVolume />
       <GroundMesh />
-
-      <Suspense fallback={null}>
-        <ForestCanopy count={4000} />
-      </Suspense>
 
       {/* Camera system */}
       <ForwardFlightCamera />

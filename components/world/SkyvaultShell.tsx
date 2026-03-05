@@ -2,6 +2,7 @@
 import Link from 'next/link'
 import { ReactNode } from 'react'
 import { Shield } from 'lucide-react'
+import { WalletConnect } from '@/components/WalletConnect'
 
 interface SkyvaultShellProps {
   children: ReactNode
@@ -47,7 +48,7 @@ export default function SkyvaultShell({ children, title }: SkyvaultShellProps) {
           {title ?? 'Command Center'}
         </span>
 
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
           {[
             { href: '/dashboard', label: 'Dashboard', color: '#8b5cf6' },
             { href: '/register', label: 'Register', color: '#00f5ff' },
@@ -60,6 +61,8 @@ export default function SkyvaultShell({ children, title }: SkyvaultShellProps) {
               borderRadius: 4, transition: 'all 0.2s ease'
             }}>{label}</Link>
           ))}
+          <div style={{ height: 24, width: 1, background: 'rgba(255,255,255,0.1)', margin: '0 4px' }} />
+          <WalletConnect />
         </div>
       </div>
 
