@@ -252,3 +252,50 @@ canvas {
   scrollbar-width: thin;
   scrollbar-color: rgba(45, 90, 39, 0.5) rgba(255, 255, 255, 0.05);
 }
+
+/* ┌─────────────────────────────────────────────────────────────┐
+   │ SKYVAULT 3D REBUILD — Color Palette & Typography            │
+   └─────────────────────────────────────────────────────────────┘ */
+
+:root {
+  /* Core scene colors */
+  --void: #050810;
+  --navy-deep: #0a1628;
+  --navy-mid: #16213e;
+  --forest-dark: #0d2210;
+  --forest-mid: #1b3e1f;
+  --forest-glow: #2d5a22;
+  
+  /* Interface colors */
+  --purple-deep: #2d1b69;
+  --purple-mid: #533a88;
+  --electric: #8b5cf6;
+  --breach-red: #e94560;
+  --breach-glow: #ff1744;
+  --cyan-scan: #00f5ff;
+  --gold-done: #f59e0b;
+  --white-holo: rgba(255, 255, 255, 0.92);
+  
+  /* Typography */
+  --font-display: var(--font-rajdhani), sans-serif;
+  --font-mono: var(--font-jetbrains), monospace;
+  --font-body: var(--font-exo2), sans-serif;
+}
+
+/* Custom scrollbar for HUD elements */
+.scrollbar-thin {
+  scrollbar-width: thin;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 4px;
+}
+
+.scrollbar-thumb-purple::-webkit-scrollbar-thumb {
+  background-color: rgba(139, 92, 246, 0.3);
+  border-radius: 2px;
+}
+
+.scrollbar-track-transparent::-webkit-scrollbar-track {
+  background: transparent;
+}

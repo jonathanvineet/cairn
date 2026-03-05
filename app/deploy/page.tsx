@@ -29,7 +29,7 @@ export default function DeployPage() {
   const [autoAssignedDrones, setAutoAssignedDrones] = useState<string[]>([]);
   const [isPaymentProcessing, setIsPaymentProcessing] = useState(false);
   const [selectedZone, setSelectedZone] = useState<any | null>(null);
-  
+
   // Drone selection states
   const [isSelectingDrone, setIsSelectingDrone] = useState(false);
   const [selectedDrone, setSelectedDrone] = useState<any | null>(null);
@@ -41,10 +41,8 @@ export default function DeployPage() {
     fetch("/api/sync-blockchain", { method: "POST" })
       .then(() => refetchDrones())
       .catch((e) => console.warn("Background sync failed:", e));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-    }
-  };
 
   // Fetch all zones
   const { data: zonesData, refetch: refetchZones } = useQuery({
@@ -146,11 +144,11 @@ export default function DeployPage() {
       setSavedZoneId(zoneId);
       setAutoAssignedDrones(zonesResData.autoAssignedDrones || []);
       setIsPaymentProcessing(false);
-      
+
       // Refetch both zones and drones to show updated assignments
       refetchZones();
       refetchDrones();
-      
+
       alert(`✅ Zone "${zoneId}" saved on blockchain!\n${zonesResData.autoAssignedCount || 0} drone(s) assigned.`);
     } catch (error: any) {
       setIsPaymentProcessing(false);
@@ -158,7 +156,7 @@ export default function DeployPage() {
         alert("Transaction cancelled.");
       } else if (error.message?.includes("execution reverted") && error.message?.includes("require(false)")) {
         console.error("❌ Error saving zone:", error);
-        alert(`❌ Zone creation failed!\n\nThis usually means the Zone ID "${zoneId}" already exists on the blockchain.\n\nPlease try a different Zone ID:\n• ${zoneId}-2\n• ${zoneId}-${new Date().toISOString().slice(0,10)}\n• ${zoneId}-patrol-${Math.floor(Math.random()*1000)}`);
+        alert(`❌ Zone creation failed!\n\nThis usually means the Zone ID "${zoneId}" already exists on the blockchain.\n\nPlease try a different Zone ID:\n• ${zoneId}-2\n• ${zoneId}-${new Date().toISOString().slice(0, 10)}\n• ${zoneId}-patrol-${Math.floor(Math.random() * 1000)}`);
       } else {
         console.error("❌ Error saving zone:", error);
         alert("Error: " + (error.reason || error.message));
@@ -170,7 +168,7 @@ export default function DeployPage() {
     // Can work with either a selected existing zone OR a newly saved zone
     const activeZoneId = selectedZone?.zoneId || savedZoneId;
     const activeBoundary = selectedZone?.coordinates || boundaryCoords;
-    
+
     if (!activeZoneId || !activeBoundary || activeBoundary.length === 0) {
       alert("Please select an existing zone or create and save a new boundary first");
       return;
@@ -179,7 +177,7 @@ export default function DeployPage() {
     // Store zone data for the analysis page to use
     sessionStorage.setItem("pendingZoneId", activeZoneId);
     sessionStorage.setItem("pendingBoundary", JSON.stringify(activeBoundary));
-    
+
     // Redirect to the analysis page
     window.location.href = "/analyse-drone";
   };
@@ -215,11 +213,11 @@ export default function DeployPage() {
           </Link>
         </div>
       </header>
-      
+
       {/* Full map with side panel */}
       <div className="flex-1 flex">
         <div className="flex-1">
-          <InteractiveMap 
+          <InteractiveMap
             onBoundaryComplete={handleBoundaryComplete}
             drones={dronesData?.drones || []}
             selectedZone={selectedZone}
@@ -250,7 +248,7 @@ export default function DeployPage() {
                 </CardContent>
               </Card>
             )}
-            
+
             {/* Select Existing Zone for Deployment */}
             <Card className="bg-white/5 border-violet-500/30">
               <CardHeader>
@@ -284,11 +282,10 @@ export default function DeployPage() {
                         <div
                           key={zone.zoneId}
                           onClick={() => setSelectedZone(isSelected ? null : zone)}
-                          className={`p-2.5 rounded border transition-colors cursor-pointer ${
-                            isSelected
+                          className={`p-2.5 rounded border transition-colors cursor-pointer ${isSelected
                               ? "bg-violet-500/20 border-violet-500/60"
                               : "bg-white/5 border-white/10 hover:border-violet-500/30"
-                          }`}
+                            }`}
                         >
                           <div className="flex items-center justify-between">
                             <div className="flex-1 min-w-0">
@@ -313,9 +310,9 @@ export default function DeployPage() {
                 )}
               </CardContent>
             </Card>
-            
 
-            
+
+
             {/* OR Divider */}
             <div className="relative py-2">
               <div className="absolute inset-0 flex items-center">
@@ -332,7 +329,7 @@ export default function DeployPage() {
               </CardHeader>
               <CardContent className="space-y-3">
 
-                
+
                 <div>
                   <label className="text-xs text-gray-400 block mb-1">
                     Zone ID
@@ -356,14 +353,14 @@ export default function DeployPage() {
                     </p>
                   )}
                 </div>
-                
+
                 {/* Status indicator */}
                 {boundaryCoords && (
                   <Badge variant="outline" className="w-full justify-center bg-cyan-500/10 text-cyan-400 border-cyan-500/30">
                     ✓ {boundaryCoords.length} points
                   </Badge>
                 )}
-                
+
                 <Button
                   onClick={handleSaveBoundary}
                   disabled={!boundaryCoords || !zoneId || isPaymentProcessing || !!savedZoneId}
@@ -432,32 +429,32 @@ export default function DeployPage() {
 
             {/* Selected Drone Report */}
             {selectedDrone && selectionReport && (
-                <Card className="bg-white/5 border-violet-500/30">
-                  <CardHeader>
-                    <CardTitle className="text-sm text-violet-400 flex items-center gap-2">
-                      <CheckCircle2 className="h-4 w-4" />
-                      Selected Drone
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="p-3 bg-violet-500/10 rounded border border-violet-500/20">
-                      <p className="font-bold text-lg text-violet-300">{selectedDrone.drone.cairnDroneId}</p>
+              <Card className="bg-white/5 border-violet-500/30">
+                <CardHeader>
+                  <CardTitle className="text-sm text-violet-400 flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4" />
+                    Selected Drone
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="p-3 bg-violet-500/10 rounded border border-violet-500/20">
+                    <p className="font-bold text-lg text-violet-300">{selectedDrone.drone.cairnDroneId}</p>
                     <p className="text-xs text-gray-400 mt-0.5">{selectedDrone.drone.evmAddress.slice(0, 10)}...{selectedDrone.drone.evmAddress.slice(-8)}</p>
                     {selectedDrone.drone.agentTopicId && (
-                        <Badge className="mt-2 bg-violet-500/20 text-violet-300 border-violet-500/30 text-[10px]">
-                          ✓ HCS AGENT VERIFIED
-                        </Badge>
-                      )}
-                    </div>
+                      <Badge className="mt-2 bg-violet-500/20 text-violet-300 border-violet-500/30 text-[10px]">
+                        ✓ HCS AGENT VERIFIED
+                      </Badge>
+                    )}
+                  </div>
 
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-xs">
-                        <span className="text-gray-400">Overall Score:</span>
-                        <span className="font-bold text-violet-400">{selectedDrone.totalScore}/100</span>
-                      </div>
-                      <div className="w-full bg-white/5 rounded-full h-2">
-                        <div 
-                          className="bg-gradient-to-r from-violet-500 to-cyan-500 h-2 rounded-full transition-all"
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-gray-400">Overall Score:</span>
+                      <span className="font-bold text-violet-400">{selectedDrone.totalScore}/100</span>
+                    </div>
+                    <div className="w-full bg-white/5 rounded-full h-2">
+                      <div
+                        className="bg-gradient-to-r from-violet-500 to-cyan-500 h-2 rounded-full transition-all"
                       />
                     </div>
                   </div>
@@ -551,8 +548,8 @@ export default function DeployPage() {
                                 </p>
                               )}
                             </div>
-                            <Badge 
-                              variant="outline" 
+                            <Badge
+                              variant="outline"
                               className={`text-xs font-mono shrink-0 ${drone.assignedZoneId === "UNASSIGNED" ? "bg-yellow-500/10 text-yellow-400 border-yellow-500/30" : "bg-green-500/10 text-green-400 border-green-500/30"}`}
                             >
                               {drone.assignedZoneId || "UNASSIGNED"}

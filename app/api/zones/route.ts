@@ -21,7 +21,13 @@ export async function GET(req: NextRequest) {
     const rawZones = await Promise.all(
       zoneIdsBytes32.map(async (zoneIdBytes32: string) => {
         try {
-          const [creator, timestamp, coordsBytes]: [string, bigint, string] = await contract.getZone(zoneIdBytes32);
+          // Fetch from contract and DB in parallel where possible
+          const [contractData,] = await Promise.all([
+            contract.getZone(zoneIdBytes32),
+            null // Placeholder if we wanted more parallel calls
+          ]);
+
+          const [creator, timestamp, coordsBytes]: [string, bigint, string] = contractData;
 
           // Decode bytes: format is "zoneName|lat0,lng0,lat1,lng1,..."
           const coordsStr = ethers.toUtf8String(coordsBytes);

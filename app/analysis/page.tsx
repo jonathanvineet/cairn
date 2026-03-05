@@ -1,12 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Zap, Loader2, CheckCircle2, AlertCircle, MapPin, Zap as Battery } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { Zap, Loader2, CheckCircle2, AlertCircle, MapPin, Zap as Battery } from "lucide-react";
+import SkyvaultShell from "../../components/world/SkyvaultShell";
 
 interface Coordinate {
   lat: number;
@@ -27,13 +26,24 @@ interface DroneAnalysis {
   location: { lat: number; lng: number };
   health: string;
   agentTopicId?: string;
-  score: number;
-  reason: string;
+  score?: number;
+  reason?: string;
   rank?: number;
 }
 
+interface AnalysisResultItem {
+  drone: DroneAnalysis;
+  score: number;
+  reason: string;
+}
+
+interface AnalysisResults {
+  success: boolean;
+  analysis: AnalysisResultItem[];
+  error?: string;
+}
+
 export default function AnalysisPage() {
-  const router = useRouter();
   const [boundaryCoords, setBoundaryCoords] = useState<Coordinate[] | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [steps, setSteps] = useState<AnalysisStep[]>([
@@ -43,7 +53,7 @@ export default function AnalysisPage() {
     { name: "Running Eliza-inspired analysis", status: "pending", message: "" },
     { name: "Ranking candidates", status: "pending", message: "" },
   ]);
-  const [results, setResults] = useState<any>(null);
+  const [results, setResults] = useState<AnalysisResults | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedDrone, setSelectedDrone] = useState<DroneAnalysis | null>(null);
 
@@ -139,9 +149,10 @@ export default function AnalysisPage() {
         });
       }
 
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Analysis failed";
       console.error("Analysis error:", err);
-      setError(err.message || "Analysis failed");
+      setError(message);
       setSteps(prev => {
         const newSteps = [...prev];
         for (let i = 0; i < newSteps.length; i++) {
@@ -159,20 +170,8 @@ export default function AnalysisPage() {
   };
 
   return (
-    <div className="min-h-screen bg-forest-900 text-white">
-      {/* Header */}
-      <header className="border-b border-green-500/20 glass-dark backdrop-blur-xl px-6 py-4">
-        <div className="flex items-center justify-between max-w-6xl mx-auto">
-          <Link href="/deploy">
-            <Button variant="ghost" size="sm" className="gap-2">
-              <ArrowLeft className="h-4 w-4" />
-              Back to Deploy
-            </Button>
-          </Link>
-          <h1 className="text-2xl font-bold text-green-400">🤖 Eliza Analysis</h1>
-          <div className="w-24" />
-        </div>
-      </header>
+    <SkyvaultShell title="ANALYSIS REPORTS">
+    <div className="min-h-screen text-white">
 
       <div className="max-w-6xl mx-auto px-6 py-8 space-y-8">
         {/* Main Action Card */}
@@ -188,7 +187,7 @@ export default function AnalysisPage() {
             <Button
               onClick={runAnalysis}
               disabled={isAnalyzing}
-              className="w-full gap-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 h-12 text-base"
+              className="w-full gap-2 bg-linear-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 h-12 text-base"
             >
               {isAnalyzing ? (
                 <>
@@ -337,7 +336,7 @@ export default function AnalysisPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {results.analysis.map((item: any, idx: number) => (
+                  {results.analysis.map((item: AnalysisResultItem, idx: number) => (
                     <div
                       key={item.drone.evmAddress}
                       onClick={() => setSelectedDrone({ ...item.drone, score: item.score, reason: item.reason, rank: idx + 1 })}
@@ -366,5 +365,6 @@ export default function AnalysisPage() {
         )}
       </div>
     </div>
+    </SkyvaultShell>
   );
 }
