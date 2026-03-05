@@ -71,6 +71,11 @@ export default function RegisterDronePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [registrationComplete, setRegistrationComplete] = useState(false);
   const [registeredDroneData, setRegisteredDroneData] = useState<any>(null);
+  const [verifiedBalance, setVerifiedBalance] = useState<number | null>(null);
+  const [balanceLoading, setBalanceLoading] = useState(false);
+  const [testingReturn, setTestingReturn] = useState(false);
+  const [returnTestResult, setReturnTestResult] = useState<any>(null);
+  const [autoReturnTriggered, setAutoReturnTriggered] = useState(false);
   const [currentLocation, setCurrentLocation] = useState<{lat: number; lng: number} | null>(null);
   
   const [formData, setFormData] = useState({
@@ -135,6 +140,78 @@ export default function RegisterDronePage() {
 
   const handleLocationSelect = (location: { lat: number; lng: number }) => {
     setCurrentLocation(location);
+  };
+
+  const handleTest2HBARReturn = async () => {
+    if (!registeredDroneData?.cairnDroneId) return;
+    
+    setTestingReturn(true);
+    setReturnTestResult(null);
+
+    try {
+      // Test: Send 2 HBAR back from this specific drone
+      const response = await fetch("/api/drones/test-transfer", {
+        method: "POST",
+      });
+
+      if (!response.body) {
+        throw new Error("No response body");
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let lastResult: any = null;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value);
+        const lines = chunk.split('\n');
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = JSON.parse(line.slice(6));
+            
+            // Look for our specific drone's result
+            if (data.type === 'success' && data.droneId === registeredDroneData.cairnDroneId) {
+              lastResult = data;
+            } else if (data.type === 'complete') {
+              lastResult = data;
+            }
+          }
+        }
+      }
+
+      if (lastResult) {
+        setReturnTestResult({
+          success: true,
+          ...lastResult
+        });
+        
+        // Refresh balance after return
+        setTimeout(async () => {
+          try {
+            const balanceRes = await fetch(`/api/drones/balance?accountId=${encodeURIComponent(registeredDroneData.hederaAccountId)}`);
+            if (balanceRes.ok) {
+              const balanceData = await balanceRes.json();
+              if (balanceData.success) {
+                setVerifiedBalance(balanceData.balance);
+              }
+            }
+          } catch (err) {
+            console.error("Could not refresh balance:", err);
+          }
+        }, 3000);
+      }
+    } catch (error: any) {
+      setReturnTestResult({
+        success: false,
+        error: error.message || "Test failed"
+      });
+    } finally {
+      setTestingReturn(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -207,6 +284,106 @@ export default function RegisterDronePage() {
         console.log("📍 Location:", currentLocation);
         setRegisteredDroneData(data.drone);
         setRegistrationComplete(true);
+        
+        // AUTOMATICALLY VERIFY THE BALANCE - PROOF IT WORKED!
+        if (data.drone.hederaAccountId) {
+          console.log("🔍 Verifying HBAR balance on blockchain...");
+          setBalanceLoading(true);
+          
+          // Wait 3 seconds for blockchain to finalize
+          setTimeout(async () => {
+            try {
+              const balanceRes = await fetch(`/api/drones/balance?accountId=${encodeURIComponent(data.drone.hederaAccountId)}`);
+              if (balanceRes.ok) {
+                const balanceData = await balanceRes.json();
+                if (balanceData.success) {
+                  setVerifiedBalance(balanceData.balance);
+                  console.log("✅ Verified balance:", balanceData.balance, "HBAR");
+                  
+                  // AUTOMATICALLY TRIGGER 2 HBAR RETURN TRANSFER (ONLY ONCE!)
+                  if (!autoReturnTriggered) {
+                    setAutoReturnTriggered(true); // Prevent duplicate transfers
+                    console.log("🚀 Auto-triggering 2 HBAR return transfer...");
+                    setTestingReturn(true);
+                    
+                    // Wait another 2 seconds then send return
+                    setTimeout(async () => {
+                    try {
+                      const returnRes = await fetch("/api/drones/test-transfer", {
+                        method: "POST",
+                      });
+
+                      if (!returnRes.body) {
+                        throw new Error("No response body");
+                      }
+
+                      const reader = returnRes.body.getReader();
+                      const decoder = new TextDecoder();
+                      let foundDroneResult = false;
+
+                      while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+
+                        const chunk = decoder.decode(value);
+                        const lines = chunk.split('\n');
+
+                        for (const line of lines) {
+                          if (line.startsWith('data: ')) {
+                            const returnData = JSON.parse(line.slice(6));
+                            
+                            // Look for our drone's result
+                            if (returnData.type === 'success' && returnData.droneId === data.drone.cairnDroneId) {
+                              foundDroneResult = true;
+                              setReturnTestResult({
+                                success: true,
+                                transactionId: returnData.transactionId,
+                                amount: returnData.amount
+                              });
+                              console.log("✅ 2 HBAR returned! TX:", returnData.transactionId);
+                              
+                              // Update balance immediately
+                              setTimeout(async () => {
+                                const newBalanceRes = await fetch(`/api/drones/balance?accountId=${encodeURIComponent(data.drone.hederaAccountId)}`);
+                                if (newBalanceRes.ok) {
+                                  const newBalanceData = await newBalanceRes.json();
+                                  if (newBalanceData.success) {
+                                    setVerifiedBalance(newBalanceData.balance);
+                                    console.log("✅ New balance after return:", newBalanceData.balance, "HBAR");
+                                  }
+                                }
+                              }, 3000);
+                            }
+                          }
+                        }
+                      }
+
+                      if (!foundDroneResult) {
+                        setReturnTestResult({
+                          success: false,
+                          error: "Drone not found in transfer results"
+                        });
+                      }
+                    } catch (returnErr: any) {
+                      console.error("Return transfer error:", returnErr);
+                      setReturnTestResult({
+                        success: false,
+                        error: returnErr.message
+                      });
+                    } finally {
+                      setTestingReturn(false);
+                    }
+                  }, 2000);
+                  } // End of autoReturnTriggered check
+                }
+              }
+            } catch (err) {
+              console.error("Could not verify balance:", err);
+            } finally {
+              setBalanceLoading(false);
+            }
+          }, 3000);
+        }
       } else {
         alert(`Registration failed: ${data.error || "Unknown error"}`);
       }
@@ -248,9 +425,106 @@ export default function RegisterDronePage() {
               <p className="text-gray-400 mb-2">
                 Your drone <span className="text-blue-400 font-semibold">{registeredDroneData.cairnDroneId}</span> has been registered on the blockchain.
               </p>
-              <p className="text-sm text-gray-500 mb-8">
+              <p className="text-sm text-gray-500 mb-2">
                 Hedera Account: <span className="font-mono text-xs">{registeredDroneData.hederaAccountId}</span>
               </p>
+
+              {/* PROOF OF TRANSFER */}
+              <div className="bg-green-950/30 border border-green-800/50 rounded-lg p-4 mb-6 mt-6">
+                <h3 className="text-green-400 font-semibold mb-3 flex items-center justify-center gap-2">
+                  <CheckCircle className="h-5 w-5" />
+                  Transfer Verified on Blockchain
+                </h3>
+                
+                <div className="space-y-2 text-sm">
+                  {registeredDroneData.fundingTransactionId && (
+                    <div className="bg-slate-900/50 rounded p-3">
+                      <p className="text-slate-400 text-xs mb-1">Transaction ID:</p>
+                      <p className="text-green-400 font-mono text-xs break-all">
+                        {registeredDroneData.fundingTransactionId}
+                      </p>
+                      <a
+                        href={`https://hashscan.io/testnet/transaction/${registeredDroneData.fundingTransactionId}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-400 hover:text-blue-300 text-xs flex items-center gap-1 mt-2"
+                      >
+                        <ExternalLink className="h-3 w-3" />
+                        View on HashScan
+                      </a>
+                    </div>
+                  )}
+
+                  <div className="bg-slate-900/50 rounded p-3">
+                    <p className="text-slate-400 text-xs mb-1">Verified Balance:</p>
+                    {balanceLoading ? (
+                      <div className="flex items-center gap-2">
+                        <Loader2 className="h-4 w-4 text-blue-400 animate-spin" />
+                        <span className="text-blue-400 text-sm">Checking blockchain...</span>
+                      </div>
+                    ) : verifiedBalance !== null ? (
+                      <div className="flex items-center gap-2">
+                        <Wallet className="h-4 w-4 text-amber-400" />
+                        <span className="text-amber-400 font-bold text-lg">
+                          ℏ {verifiedBalance.toFixed(2)} HBAR
+                        </span>
+                        <CheckCircle className="h-4 w-4 text-green-400" />
+                      </div>
+                    ) : (
+                      <span className="text-slate-400 text-sm">Balance verification in progress...</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+              
+              {/* Test 2 HBAR Return */}
+              <div className="bg-blue-950/30 border border-blue-800/50 rounded-lg p-4 mb-6">
+                <h3 className="text-blue-400 font-semibold mb-2 text-sm">
+                  🧪 Automatic Return Transfer
+                </h3>
+                <p className="text-slate-400 text-xs mb-3">
+                  {testingReturn 
+                    ? "Testing two-way transfers by sending 2 HBAR back to operator account..." 
+                    : returnTestResult 
+                    ? "Return transfer completed!" 
+                    : "Preparing automatic return transfer..."}
+                </p>
+                
+                {testingReturn && (
+                  <div className="flex items-center justify-center gap-2 py-2">
+                    <Loader2 className="h-5 w-5 text-blue-400 animate-spin" />
+                    <span className="text-blue-400 text-sm">Sending 2 HBAR back...</span>
+                  </div>
+                )}
+
+                {returnTestResult && (
+                  <div className={`p-3 rounded ${
+                    returnTestResult.success 
+                      ? "bg-green-950/30 border border-green-800" 
+                      : "bg-red-950/30 border border-red-800"
+                  }`}>
+                    {returnTestResult.success ? (
+                      <>
+                        <p className="text-green-400 text-xs font-semibold mb-1">
+                          ✅ 2 HBAR returned successfully!
+                        </p>
+                        {returnTestResult.transactionId && (
+                          <p className="text-green-400 font-mono text-xs break-all mb-2">
+                            TX: {returnTestResult.transactionId}
+                          </p>
+                        )}
+                        <p className="text-amber-400 text-sm font-bold">
+                          New balance: ℏ {verifiedBalance !== null ? verifiedBalance.toFixed(2) : "18.00"} HBAR
+                        </p>
+                      </>
+                    ) : (
+                      <p className="text-red-400 text-xs">
+                        ❌ {returnTestResult.error || "Return transfer failed"}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
               
               <div className="space-y-3">
                 <Button

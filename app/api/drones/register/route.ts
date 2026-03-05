@@ -4,6 +4,7 @@ import {
     AccountCreateTransaction,
     Hbar,
     AccountId,
+    AccountBalanceQuery,
 } from "@hiero-ledger/sdk";
 import { db } from "@/lib/db";
 import { encrypt } from "@/lib/encryption";
@@ -121,6 +122,34 @@ export async function POST(req: Request) {
                 ),
             ]);
 
+        // ─────────────────────────────────────────
+        // STEP 1.5: Check operator account has sufficient balance
+        // ─────────────────────────────────────────
+        const REQUIRED_HBAR = 20.5; // 20 for drone + 0.5 buffer for tx fees
+        
+        try {
+            const operatorBalance = await withTimeout(
+                new AccountBalanceQuery()
+                    .setAccountId(operatorId)
+                    .execute(client),
+                15000,
+                "AccountBalanceQuery"
+            );
+            
+            const currentHbar = operatorBalance.hbars.toBigNumber().toNumber();
+            
+            if (currentHbar < REQUIRED_HBAR) {
+                return Response.json({
+                    success: false,
+                    error: `Insufficient HBAR balance. Your operator account (${operatorId}) has ${currentHbar.toFixed(2)} HBAR but needs at least ${REQUIRED_HBAR} HBAR to register a drone (20 HBAR + fees). Get free testnet HBAR at https://portal.hedera.com`
+                }, { status: 402 }); // 402 Payment Required
+            }
+            
+            console.log(`✓ Operator balance: ${currentHbar.toFixed(2)} HBAR (sufficient)`);
+        } catch (balanceError: any) {
+            console.error("Balance check failed:", balanceError);
+            // Non-fatal: proceed anyway (balance check might fail due to network issues)
+        }
 
         // ─────────────────────────────────────────
         // STEP 2: Generate drone's own keypair
@@ -148,6 +177,7 @@ export async function POST(req: Request) {
         );
         const droneAccountId = receipt.accountId!.toString();
         const droneEvmAddress = `0x${dronePublicKey.toEvmAddress()}`;
+        const accountCreationTxId = txResponse.transactionId.toString();
 
         // ─────────────────────────────────────────
         // STEP 4: Use custom CAIRN drone ID from user
@@ -277,11 +307,13 @@ export async function POST(req: Request) {
                 status: "ACTIVE",
                 initialBalance: "20 HBAR",
                 nftSerialNumber: nftResult.serialNumber,
+                // PROOF: Transaction ID for the 20 HBAR transfer
+                fundingTransactionId: accountCreationTxId,
                 // AI Agent fields
                 agentTopicId,
                 agentManifestSequence,
                 isAgent: agentTopicId !== null,
-                message: `Drone ${cairnDroneId} registered as Hedera AI Agent${agentTopicId ? ` (topic: ${agentTopicId})` : ""}.`
+                message: `Drone ${cairnDroneId} registered as Hedera AI Agent${agentTopicId ? ` (topic: ${agentTopicId})` : ""}. 20 HBAR transferred (TX: ${accountCreationTxId})`
             }
         });
 
