@@ -103,7 +103,7 @@ export default function RegisterDronePage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!connected) {
+    if (!connected || !selectedAccount) {
       alert("Please connect your wallet first");
       return;
     }

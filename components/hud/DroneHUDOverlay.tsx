@@ -258,22 +258,22 @@ export function DroneHUDOverlay() {
                                 <button 
                                     onClick={async () => {
                                         try {
-                                            await connect("META_MASK");
+                                            await connect();
                                             setWalletOpen(false);
                                         } catch (error) {
-                                            console.error("Failed to connect MetaMask:", error);
+                                            console.error("Failed to connect HashPack:", error);
                                         }
                                     }}
-                                    style={{ background: "rgba(255,165,0,0.1)", border: "1px solid rgba(255,165,0,0.3)", color: "#fff", padding: "12px", textAlign: "left", fontSize: 11, cursor: "pointer", borderRadius: 4, transition: "all 0.2s", fontWeight: 600, width: "100%", marginBottom: 6 }}
-                                    onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,165,0,0.2)")}
-                                    onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(255,165,0,0.1)")}
+                                    style={{ background: "rgba(0,150,255,0.1)", border: "1px solid rgba(0,150,255,0.3)", color: "#fff", padding: "12px", textAlign: "left", fontSize: 11, cursor: "pointer", borderRadius: 4, transition: "all 0.2s", fontWeight: 600, width: "100%", marginBottom: 6 }}
+                                    onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(0,150,255,0.2)")}
+                                    onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(0,150,255,0.1)")}
                                 >
                                     🦊 METAMASK_AGENT
                                 </button>
                                 <button 
                                     onClick={async () => {
                                         try {
-                                            await connect("HASH_PACK");
+                                            await connect();
                                             setWalletOpen(false);
                                         } catch (error) {
                                             console.error("Failed to connect HashPack:", error);

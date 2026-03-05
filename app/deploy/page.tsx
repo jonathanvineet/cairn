@@ -27,6 +27,7 @@ interface Coordinate {
 interface DeployZone {
   zoneId: string;
   drones: string[];
+  coordinates?: Coordinate[];
 }
 
 interface DeployDrone {
@@ -293,7 +294,7 @@ export default function DeployPage() {
                           >
                             <div className="flex items-center justify-between">
                               <div className="flex-1 min-w-0">
-                                <p className="text-sm font-semibold text-white truncate">{zone.zoneName || zone.zoneId}</p>
+                                <p className="text-sm font-semibold text-white truncate">{zone.zoneId}</p>
                                 <p className="text-xs text-gray-400 mt-0.5">{zone.coordinates?.length ?? 0} boundary points</p>
                               </div>
                               <div className="flex items-center gap-1.5 ml-2 shrink-0">
@@ -303,7 +304,7 @@ export default function DeployPage() {
                                   </Badge>
                                 )}
                                 <Badge variant="outline" className="text-xs bg-purple-500/10 text-purple-400 border-purple-500/30">
-                                  {zone.assignedDrones?.length ?? 0} drones
+                                  {zone.drones?.length ?? 0} drones
                                 </Badge>
                               </div>
                             </div>

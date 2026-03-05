@@ -31,7 +31,7 @@ export function WalletConnect() {
   const handleConnect = async () => {
     setShowError(false);
     try {
-      await connect('HASH_PACK');
+      await connect();
     } catch {
       setShowError(true);
     }
