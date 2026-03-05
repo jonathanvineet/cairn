@@ -4,23 +4,23 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
-  ArrowLeft,
   Plane,
   MapPin,
-  Calendar,
   Shield,
   Zap,
   Loader2,
   CheckCircle,
-  Wallet,
   ExternalLink,
+  Wallet,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import Link from "next/link";
 import { LocationPicker } from "@/components/LocationPicker";
+import SkyvaultShell from "../../components/world/SkyvaultShell";
+import { WalletConnect } from "@/components/WalletConnect";
 import { useWalletStore } from "@/stores/walletStore";
 import { useHederaWallet } from "@/lib/useHederaWallet";
+import { DRONE_REGISTRY_ADDRESS } from "@/lib/contracts";
 
 const DRONE_MODELS = [
   {
@@ -67,16 +67,11 @@ const DRONE_MODELS = [
 
 export default function RegisterDronePage() {
   const router = useRouter();
-  const { connected, selectedAccount, connect, disconnect } = useWalletStore();
+  const { connected, selectedAccount } = useWalletStore();
   const { signAndExecuteTransaction } = useHederaWallet();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [registrationComplete, setRegistrationComplete] = useState(false);
   const [registeredDroneData, setRegisteredDroneData] = useState<any>(null);
-  const [verifiedBalance, setVerifiedBalance] = useState<number | null>(null);
-  const [balanceLoading, setBalanceLoading] = useState(false);
-  const [testingReturn, setTestingReturn] = useState(false);
-  const [returnTestResult, setReturnTestResult] = useState<any>(null);
-  const [autoReturnTriggered, setAutoReturnTriggered] = useState(false);
   const [currentLocation, setCurrentLocation] = useState<{lat: number; lng: number} | null>(null);
   
   const [formData, setFormData] = useState({
@@ -105,83 +100,11 @@ export default function RegisterDronePage() {
     setCurrentLocation(location);
   };
 
-  const handleTest2HBARReturn = async () => {
-    if (!registeredDroneData?.cairnDroneId) return;
-    
-    setTestingReturn(true);
-    setReturnTestResult(null);
-
-    try {
-      // Test: Send 2 HBAR back from this specific drone
-      const response = await fetch("/api/drones/test-transfer", {
-        method: "POST",
-      });
-
-      if (!response.body) {
-        throw new Error("No response body");
-      }
-
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let lastResult: any = null;
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        const chunk = decoder.decode(value);
-        const lines = chunk.split('\n');
-
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const data = JSON.parse(line.slice(6));
-            
-            // Look for our specific drone's result
-            if (data.type === 'success' && data.droneId === registeredDroneData.cairnDroneId) {
-              lastResult = data;
-            } else if (data.type === 'complete') {
-              lastResult = data;
-            }
-          }
-        }
-      }
-
-      if (lastResult) {
-        setReturnTestResult({
-          success: true,
-          ...lastResult
-        });
-        
-        // Refresh balance after return
-        setTimeout(async () => {
-          try {
-            const balanceRes = await fetch(`/api/drones/balance?accountId=${encodeURIComponent(registeredDroneData.hederaAccountId)}`);
-            if (balanceRes.ok) {
-              const balanceData = await balanceRes.json();
-              if (balanceData.success) {
-                setVerifiedBalance(balanceData.balance);
-              }
-            }
-          } catch (err) {
-            console.error("Could not refresh balance:", err);
-          }
-        }, 3000);
-      }
-    } catch (error: any) {
-      setReturnTestResult({
-        success: false,
-        error: error.message || "Test failed"
-      });
-    } finally {
-      setTestingReturn(false);
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!connected || !selectedAccount) {
-      alert("Please connect your HashPack wallet first");
+    if (!connected) {
+      alert("Please connect your wallet first");
       return;
     }
 
@@ -199,26 +122,74 @@ export default function RegisterDronePage() {
 
     try {
       const selectedModel = DRONE_MODELS.find(m => m.id === formData.model);
-      
-      // Import Hedera SDK
-      const { 
-        ContractExecuteTransaction, 
-        ContractFunctionParameters, 
-        ContractId, 
-        AccountId,
-        Client,
-      } = await import("@hiero-ledger/sdk");
-      
-      const { DRONE_REGISTRY_ADDRESS } = await import("@/lib/contracts");
 
-      // STEP 1: Backend creates drone account and gets Hedera account ID
-      console.log("🚁 Step 1: Creating drone account on Hedera...");
+      // STEP 1-2: Create Drone Account & Fund with 20 HBAR
+      console.log("🚁 STEP 1: Creating drone account on Hedera...");
       
-      const createResponse = await fetch("/api/drones/register", {
+      const createAccRes = await fetch("/api/drones/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "createDroneAccount",
+          cairnDroneId: formData.droneName.trim(),
+          serialNumber: formData.serialNumber,
+          model: selectedModel?.name,
+          registrationLat: currentLocation.lat,
+          registrationLng: currentLocation.lng,
+        }),
+      });
+
+      const createAccData = await createAccRes.json();
+      if (!createAccRes.ok) throw new Error(createAccData.error || "Failed to create drone account");
+
+      const { droneAccountId, evmAddress, encryptedPrivateKey, encryptedPublicKey } = createAccData;
+      console.log(`✅ Drone account created: ${droneAccountId} (${evmAddress})`);
+
+      // STEP 3: User Contract Registration via HashPack
+      console.log("⛓️ STEP 3: Please approve contract transaction in HashPack...");
+      
+      let contractTransactionIdString = "";
+      try {
+        const { ContractExecuteTransaction, ContractFunctionParameters, ContractId, AccountId } = 
+          await import("@hiero-ledger/sdk");
+        
+        const droneTx = new ContractExecuteTransaction()
+          .setContractId(ContractId.fromEvmAddress(0, 0, DRONE_REGISTRY_ADDRESS))
+          .setGas(300000)
+          .setFunction(
+            "registerDrone",
+            new ContractFunctionParameters()
+              .addString(formData.droneName.trim())
+              .addAddress(AccountId.fromString(droneAccountId).toEvmAddress())
+              .addString("UNASSIGNED")
+              .addString(selectedModel?.name || "Unknown")
+          );
+        
+        const contractResult = await signAndExecuteTransaction(droneTx);
+        
+        if (contractResult && contractResult.transactionId) {
+          contractTransactionIdString = contractResult.transactionId.toString();
+          console.log("✅ Contract registration successful! TX:", contractTransactionIdString);
+        } else {
+          throw new Error("Contract registration failed - no transaction ID returned");
+        }
+      } catch (contractErr: any) {
+        console.error("⚠️ Contract registration error:", contractErr);
+        throw new Error(`Contract registration failed: ${contractErr.message}`);
+      }
+
+      // STEP 4-7: Backend completes registration
+      console.log("📝 STEP 4-7: Finalizing registration (DB, NFT, HCS Agent, 2 HBAR Return)...");
+
+      const finalizeRes = await fetch("/api/drones/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "completeRegistration",
+          droneAccountId,
+          evmAddress,
+          encryptedPrivateKey,
+          encryptedPublicKey,
           cairnDroneId: formData.droneName.trim(),
           serialNumber: formData.serialNumber,
           model: selectedModel?.name,
@@ -231,198 +202,20 @@ export default function RegisterDronePage() {
           userWalletAddress: selectedAccount.id,
           registrationLat: currentLocation.lat,
           registrationLng: currentLocation.lng,
+          contractTransactionId: contractTransactionIdString
         }),
       });
 
-      if (!createResponse.ok) {
-        const errorData = await createResponse.json();
-        throw new Error(errorData.error || "Failed to create drone account");
-      }
+      const finalizeData = await finalizeRes.json();
+      if (!finalizeRes.ok) throw new Error(finalizeData.error || "Failed to finalize registration");
 
-      const { droneAccountId, evmAddress, cairnDroneId } = await createResponse.json();
-      console.log(`✅ Drone account created: ${droneAccountId} (${evmAddress})`);
+      console.log("✅ Registration complete!", finalizeData.drone);
+      setRegisteredDroneData(finalizeData.drone);
+      setRegistrationComplete(true);
 
-      // STEP 2: User signs contract registration with HashPack
-      console.log("📝 Step 2: Registering drone on smart contract...");
-      console.log("📱 Please approve the contract transaction in HashPack...");
-      
-      const droneTx = new ContractExecuteTransaction()
-        .setContractId(ContractId.fromEvmAddress(0, 0, DRONE_REGISTRY_ADDRESS))
-        .setGas(300000)
-        .setFunction(
-          "registerDrone",
-          new ContractFunctionParameters()
-            .addString(cairnDroneId)
-            .addAddress(AccountId.fromString(droneAccountId).toEvmAddress())
-            .addString("UNASSIGNED")
-            .addString(selectedModel?.name || "Unknown")
-        );
-
-      let contractTxResult;
-      try {
-        // HashPack will handle freezing and signing internally
-        const result = await signAndExecuteTransaction(droneTx);
-        console.log("✅ Drone registered on smart contract!", result);
-        contractTxResult = result;
-      } catch (contractErr: any) {
-        if (contractErr.message?.includes("already registered")) {
-          console.log("⚠️  Drone already registered on-chain, continuing...");
-        } else {
-          throw contractErr;
-        }
-      }
-
-      // STEP 3: Complete registration (NFT minting, HCS agent registration, etc.)
-      console.log("🔄 Step 3: Completing registration (NFT, HCS agent, return transfer)...");
-      
-      const response = await fetch("/api/drones/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "completeRegistration",
-          droneAccountId,
-          cairnDroneId,
-          evmAddress,
-          serialNumber: formData.serialNumber,
-          model: selectedModel?.name,
-          dgcaCertNumber: formData.dgcaCertNumber,
-          certExpiryDate: formData.certExpiryDate,
-          assignedZoneId: "UNASSIGNED",
-          sensorType: formData.sensorType,
-          maxFlightMinutes: parseInt(formData.maxFlightMinutes),
-          registeredByOfficerId: selectedAccount.id,
-          userWalletAddress: selectedAccount.id,
-          registrationLat: currentLocation.lat,
-          registrationLng: currentLocation.lng,
-          contractTransactionId: contractTxResult?.transactionId || null,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        console.log("✅ Drone registered successfully:", data.drone);
-        console.log("📍 Location:", currentLocation);
-        setRegisteredDroneData(data.drone);
-        setRegistrationComplete(true);
-        
-        // Check if 2 HBAR was automatically returned during registration
-        if (data.drone.testReturnTransactionId) {
-          console.log("💸 2 HBAR automatically returned! TX:", data.drone.testReturnTransactionId);
-          setTestingReturn(false);
-          setReturnTestResult({
-            success: true,
-            transactionId: data.drone.testReturnTransactionId,
-            amount: "2 HBAR"
-          });
-        }
-        
-        // AUTOMATICALLY VERIFY THE BALANCE - PROOF IT WORKED!
-        if (data.drone.hederaAccountId) {
-          console.log("🔍 Verifying HBAR balance on blockchain...");
-          setBalanceLoading(true);
-          
-          // Wait 3 seconds for blockchain to finalize
-          setTimeout(async () => {
-            try {
-              const balanceRes = await fetch(`/api/drones/balance?accountId=${encodeURIComponent(data.drone.hederaAccountId)}`);
-              if (balanceRes.ok) {
-                const balanceData = await balanceRes.json();
-                if (balanceData.success) {
-                  setVerifiedBalance(balanceData.balance);
-                  console.log("✅ Verified balance:", balanceData.balance, "HBAR");
-                  
-                  // Skip the old manual return transfer since it's now automatic during registration
-                  // The return transfer already happened via Hedera Agent Kit during registration
-                  if (false && !autoReturnTriggered) {
-                    setAutoReturnTriggered(true); // Prevent duplicate transfers
-                    console.log("🚀 Auto-triggering 2 HBAR return transfer...");
-                    setTestingReturn(true);
-                    
-                    // Wait another 2 seconds then send return
-                    setTimeout(async () => {
-                    try {
-                      const returnRes = await fetch("/api/drones/test-transfer", {
-                        method: "POST",
-                      });
-
-                      if (!returnRes.body) {
-                        throw new Error("No response body");
-                      }
-
-                      const reader = returnRes.body.getReader();
-                      const decoder = new TextDecoder();
-                      let foundDroneResult = false;
-
-                      while (true) {
-                        const { done, value } = await reader.read();
-                        if (done) break;
-
-                        const chunk = decoder.decode(value);
-                        const lines = chunk.split('\n');
-
-                        for (const line of lines) {
-                          if (line.startsWith('data: ')) {
-                            const returnData = JSON.parse(line.slice(6));
-                            
-                            // Look for our drone's result
-                            if (returnData.type === 'success' && returnData.droneId === data.drone.cairnDroneId) {
-                              foundDroneResult = true;
-                              setReturnTestResult({
-                                success: true,
-                                transactionId: returnData.transactionId,
-                                amount: returnData.amount
-                              });
-                              console.log("✅ 2 HBAR returned! TX:", returnData.transactionId);
-                              
-                              // Update balance immediately
-                              setTimeout(async () => {
-                                const newBalanceRes = await fetch(`/api/drones/balance?accountId=${encodeURIComponent(data.drone.hederaAccountId)}`);
-                                if (newBalanceRes.ok) {
-                                  const newBalanceData = await newBalanceRes.json();
-                                  if (newBalanceData.success) {
-                                    setVerifiedBalance(newBalanceData.balance);
-                                    console.log("✅ New balance after return:", newBalanceData.balance, "HBAR");
-                                  }
-                                }
-                              }, 3000);
-                            }
-                          }
-                        }
-                      }
-
-                      if (!foundDroneResult) {
-                        setReturnTestResult({
-                          success: false,
-                          error: "Drone not found in transfer results"
-                        });
-                      }
-                    } catch (returnErr: any) {
-                      console.error("Return transfer error:", returnErr);
-                      setReturnTestResult({
-                        success: false,
-                        error: returnErr.message
-                      });
-                    } finally {
-                      setTestingReturn(false);
-                    }
-                  }, 2000);
-                  } // End of autoReturnTriggered check
-                }
-              }
-            } catch (err) {
-              console.error("Could not verify balance:", err);
-            } finally {
-              setBalanceLoading(false);
-            }
-          }, 3000);
-        }
-      } else {
-        alert(`Registration failed: ${data.error || "Unknown error"}`);
-      }
     } catch (error: any) {
-      console.error("Registration error:", error);
-      alert("Failed to register drone: " + error.message);
+      console.error("❌ Registration error:", error);
+      alert(error.message || "Failed to register drone. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -433,7 +226,8 @@ export default function RegisterDronePage() {
   // Success view after registration
   if (registrationComplete && registeredDroneData) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center p-4">
+      <SkyvaultShell title="DRONE REGISTRATION">
+      <div className="min-h-screen flex items-center justify-center p-4">
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -452,130 +246,14 @@ export default function RegisterDronePage() {
               <p className="text-gray-400 mb-2">
                 Your drone <span className="text-blue-400 font-semibold">{registeredDroneData.cairnDroneId}</span> has been registered on the blockchain.
               </p>
-              <p className="text-sm text-gray-500 mb-2">
+              <p className="text-sm text-gray-500 mb-8">
                 Hedera Account: <span className="font-mono text-xs">{registeredDroneData.hederaAccountId}</span>
               </p>
-
-              {/* PROOF OF TRANSFER */}
-              <div className="bg-green-950/30 border border-green-800/50 rounded-lg p-4 mb-6 mt-6">
-                <h3 className="text-green-400 font-semibold mb-3 flex items-center justify-center gap-2">
-                  <CheckCircle className="h-5 w-5" />
-                  Transfer Verified on Blockchain
-                </h3>
-                
-                <div className="space-y-2 text-sm">
-                  {registeredDroneData.fundingTransactionId && (
-                    <div className="bg-slate-900/50 rounded p-3">
-                      <p className="text-slate-400 text-xs mb-1">Transaction ID:</p>
-                      <p className="text-green-400 font-mono text-xs break-all">
-                        {registeredDroneData.fundingTransactionId}
-                      </p>
-                      <a
-                        href={`https://hashscan.io/testnet/transaction/${registeredDroneData.fundingTransactionId}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-400 hover:text-blue-300 text-xs flex items-center gap-1 mt-2"
-                      >
-                        <ExternalLink className="h-3 w-3" />
-                        View on HashScan
-                      </a>
-                    </div>
-                  )}
-
-                  <div className="bg-slate-900/50 rounded p-3">
-                    <p className="text-slate-400 text-xs mb-1">Verified Balance:</p>
-                    {balanceLoading ? (
-                      <div className="flex items-center gap-2">
-                        <Loader2 className="h-4 w-4 text-blue-400 animate-spin" />
-                        <span className="text-blue-400 text-sm">Checking blockchain...</span>
-                      </div>
-                    ) : verifiedBalance !== null ? (
-                      <div className="flex items-center gap-2">
-                        <Wallet className="h-4 w-4 text-amber-400" />
-                        <span className="text-amber-400 font-bold text-lg">
-                          ℏ {verifiedBalance.toFixed(2)} HBAR
-                        </span>
-                        <CheckCircle className="h-4 w-4 text-green-400" />
-                      </div>
-                    ) : (
-                      <span className="text-slate-400 text-sm">Balance verification in progress...</span>
-                    )}
-                  </div>
-                </div>
-              </div>
-              
-              {/* Test 2 HBAR Return */}
-              <div className="bg-blue-950/30 border border-blue-800/50 rounded-lg p-4 mb-6">
-                <h3 className="text-blue-400 font-semibold mb-2 text-sm">
-                  🧪 Automatic Return Transfer (via Hedera Agent Kit)
-                </h3>
-                <p className="text-slate-400 text-xs mb-3">
-                  {testingReturn 
-                    ? "Testing two-way transfers by sending 2 HBAR back..." 
-                    : returnTestResult || registeredDroneData.testReturnTransactionId
-                    ? "Return transfer completed! 2 HBAR sent to operator account." 
-                    : registeredDroneData.testReturnTransactionId ? "Return transfer completed!" : "Preparing automatic return transfer..."}
-                </p>
-                <div className="bg-green-900/20 border border-green-600/30 rounded p-2 mb-2">
-                  <p className="text-green-300 text-xs">
-                    ✅ <strong>HashPack Connected:</strong> 2 HBAR will be sent directly to your account!
-                  </p>
-                  <p className="text-green-200 text-[10px] mt-1">
-                    Account: {selectedAccount.id}
-                  </p>
-                </div>
-                
-                {testingReturn && (
-                  <div className="flex items-center justify-center gap-2 py-2">
-                    <Loader2 className="h-5 w-5 text-blue-400 animate-spin" />
-                    <span className="text-blue-400 text-sm">Sending 2 HBAR back...</span>
-                  </div>
-                )}
-
-                {(returnTestResult || registeredDroneData.testReturnTransactionId) && (
-                  <div className={`p-3 rounded ${
-                    (returnTestResult?.success || registeredDroneData.testReturnTransactionId)
-                      ? "bg-green-950/30 border border-green-800" 
-                      : "bg-red-950/30 border border-red-800"
-                  }`}>
-                    {(returnTestResult?.success || registeredDroneData.testReturnTransactionId) ? (
-                      <>
-                        <p className="text-green-400 text-xs font-semibold mb-1">
-                          ✅ 2 HBAR returned successfully via Hedera Agent Kit!
-                        </p>
-                        {(returnTestResult?.transactionId || registeredDroneData.testReturnTransactionId) && (
-                          <>
-                            <p className="text-green-400 font-mono text-xs break-all mb-2">
-                              TX: {returnTestResult?.transactionId || registeredDroneData.testReturnTransactionId}
-                            </p>
-                            <a
-                              href={`https://hashscan.io/testnet/transaction/${returnTestResult?.transactionId || registeredDroneData.testReturnTransactionId}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-blue-400 hover:text-blue-300 text-xs flex items-center gap-1"
-                            >
-                              <ExternalLink className="h-3 w-3" />
-                              View on HashScan
-                            </a>
-                          </>
-                        )}
-                        <p className="text-amber-400 text-sm font-bold mt-2">
-                          New balance: ℏ {verifiedBalance !== null ? verifiedBalance.toFixed(2) : "18.00"} HBAR
-                        </p>
-                      </>
-                    ) : (
-                      <p className="text-red-400 text-xs">
-                        ❌ {returnTestResult?.error || "Return transfer failed"}
-                      </p>
-                    )}
-                  </div>
-                )}
-              </div>
               
               <div className="space-y-3">
                 <Button
                   onClick={() => router.push("/dashboard")}
-                  className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white"
+                  className="w-full bg-linear-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white"
                 >
                   View Drone Dashboard
                 </Button>
@@ -607,25 +285,15 @@ export default function RegisterDronePage() {
           </Card>
         </motion.div>
       </div>
+      </SkyvaultShell>
     );
   }
 
   // Wallet connection required view
   if (!connected) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
-        <nav className="border-b border-white/10 backdrop-blur-md bg-black/20">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center h-16">
-              <Link href="/" className="flex items-center gap-3 text-gray-400 hover:text-white transition">
-                <ArrowLeft className="h-5 w-5" />
-                <span>Back</span>
-              </Link>
-            </div>
-          </div>
-        </nav>
-
-        <div className="flex items-center justify-center min-h-[calc(100vh-4rem)] p-4">
+      <SkyvaultShell title="DRONE REGISTRATION">
+      <div className="flex items-center justify-center min-h-screen p-4">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -634,7 +302,7 @@ export default function RegisterDronePage() {
             <Card className="bg-white/5 backdrop-blur-md border-white/10">
               <CardContent className="p-8 text-center">
                 <div className="w-16 h-16 bg-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <Wallet className="h-8 w-8 text-blue-400" />
+                  <Shield className="h-8 w-8 text-blue-400" />
                 </div>
                 
                 <h2 className="text-2xl font-bold text-white mb-3">
@@ -644,43 +312,29 @@ export default function RegisterDronePage() {
                   Please connect your wallet to register a drone on the blockchain.
                 </p>
                 
-                <Button
-                  onClick={() => connect('HASH_PACK')}
-                  className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white"
-                >
-                  <Wallet className="h-4 w-4 mr-2" />
-                  Connect HashPack
-                </Button>
+                <WalletConnect />
               </CardContent>
             </Card>
           </motion.div>
-        </div>
-      </div>
+          </div>
+      </SkyvaultShell>
     );
   }
 
   // Main registration form
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
-      {/* Navigation */}
-      <nav className="border-b border-white/10 backdrop-blur-md bg-black/20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <Link href="/" className="flex items-center gap-3 text-gray-400 hover:text-white transition">
-              <ArrowLeft className="h-5 w-5" />
-              <span>Back to Home</span>
-            </Link>
-            
-            <div className="flex items-center gap-3 bg-white/10 backdrop-blur-md px-4 py-2 rounded-lg border border-white/20">
-              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-              <Wallet className="h-4 w-4 text-white" />
-              <span className="text-sm text-white font-medium">
-                {selectedAccount?.id}
-              </span>
-            </div>
-          </div>
+    <SkyvaultShell title="DRONE REGISTRATION">
+    <div className="min-h-screen">
+      {/* Wallet status bar */}
+      <div className="border-b border-white/10 backdrop-blur-md bg-black/40 px-4 py-2 flex items-center justify-end">
+        <div className="flex items-center gap-3 bg-white/10 backdrop-blur-md px-4 py-1.5 rounded-lg border border-white/20">
+          <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+          <Wallet className="h-4 w-4 text-white" />
+          <span className="text-sm text-white font-medium">
+            {selectedAccount?.id.slice(0, 6)}...{selectedAccount?.id.slice(-4)}
+          </span>
         </div>
-      </nav>
+      </div>
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <motion.div
@@ -825,7 +479,7 @@ export default function RegisterDronePage() {
           {/* Right Column - Location & Model Info */}
           <div className="space-y-6">
             {/* Model Specs Display */}
-            <Card className="bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border-blue-500/30">
+            <Card className="bg-linear-to-br from-blue-500/10 to-cyan-500/10 border-blue-500/30">
               <CardHeader>
                 <CardTitle className="text-white">{selectedModel?.name}</CardTitle>
               </CardHeader>
@@ -869,39 +523,11 @@ export default function RegisterDronePage() {
               </CardContent>
             </Card>
 
-            {/* How it Works */}
-            <Card className="bg-blue-500/10 border-blue-500/30">
-              <CardContent className="pt-6">
-                <div className="flex items-start gap-3">
-                  <Shield className="h-5 w-5 text-blue-400 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <h3 className="text-blue-400 font-semibold text-sm mb-2">
-                      Registration Process
-                    </h3>
-                    <ol className="text-blue-200/80 text-xs space-y-1 list-decimal list-inside">
-                      <li>Create drone account (20 HBAR funded by operator)</li>
-                      <li>Sign contract registration via HashPack</li>
-                      <li>Mint credential NFT & register HCS agent</li>
-                      <li>Receive 2 HBAR back automatically</li>
-                    </ol>
-                    <div className="bg-green-900/20 border border-green-600/30 rounded p-2 mt-2">
-                      <p className="text-green-300 text-[10px]">
-                        🎁 You pay: <strong>Gas fees only (~$0.01)</strong>
-                      </p>
-                      <p className="text-green-300 text-[10px]">
-                        💰 You receive: <strong>2 HBAR (~$0.20)</strong>
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
             {/* Submit Button */}
             <Button
               type="submit"
               disabled={isSubmitting || !currentLocation}
-              className="w-full h-14 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white text-lg disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full h-14 bg-linear-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white text-lg disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isSubmitting ? (
                 <>
@@ -919,5 +545,6 @@ export default function RegisterDronePage() {
         </form>
       </div>
     </div>
+    </SkyvaultShell>
   );
 }

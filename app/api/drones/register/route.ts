@@ -86,6 +86,26 @@ export async function POST(req: Request) {
             const client = Client.forTestnet()
                 .setOperator(AccountId.fromString(operatorId), operatorPrivKey);
 
+            // Check operator balance before proceeding
+            try {
+                const operatorBalance = await new AccountBalanceQuery()
+                    .setAccountId(AccountId.fromString(operatorId))
+                    .execute(client);
+                
+                const hbarBalance = operatorBalance.hbars.toBigNumber().toNumber();
+                console.log(`💰 Operator balance: ${hbarBalance} HBAR`);
+                
+                if (hbarBalance < 21) {
+                    client.close();
+                    return Response.json({
+                        success: false,
+                        error: `Insufficient operator balance. Current: ${hbarBalance} HBAR, Required: 21 HBAR. Please fund operator account ${operatorId}`
+                    }, { status: 400 });
+                }
+            } catch (balanceErr: any) {
+                console.error("Balance check failed:", balanceErr);
+            }
+
             // STEP 1: Generate drone's keypair
             const dronePrivateKey = PrivateKey.generateECDSA();
             const dronePublicKey = dronePrivateKey.publicKey;
@@ -101,32 +121,10 @@ export async function POST(req: Request) {
             const droneAccountId = receipt.accountId!.toString();
             const droneEvmAddress = `0x${dronePublicKey.toEvmAddress()}`;
 
-            // Store temporarily in database with pending status
+            // STEP 3: Encrypt and return keys (do NOT save to DB yet - only after contract registration)
             const encryptionSecret = process.env.ENCRYPTION_SECRET || "";
             const encryptedPrivateKey = encrypt(dronePrivateKey.toString(), encryptionSecret);
-
-            await db.drones.create({
-                cairnDroneId,
-                hederaAccountId: droneAccountId,
-                hederaPublicKey: dronePublicKey.toString(),
-                hederaPrivateKeyEncrypted: encryptedPrivateKey,
-                evmAddress: droneEvmAddress,
-                serialNumber,
-                model: body.model || "Unknown",
-                dgcaCertNumber: body.dgcaCertNumber || "PENDING",
-                certExpiryDate: body.certExpiryDate ? new Date(body.certExpiryDate) : new Date(),
-                assignedZoneId: "UNASSIGNED",
-                sensorType: body.sensorType || "Unknown",
-                maxFlightMinutes: Number(body.maxFlightMinutes) || 30,
-                registeredByOfficerId: body.registeredByOfficerId || "unknown",
-                status: "PENDING", // Will be updated to ACTIVE after contract registration
-                missionCount: 0,
-                completionRate: null,
-                registeredAt: new Date(),
-                initialHBARBalance: 20,
-                registrationLat: Number(registrationLat) || 0,
-                registrationLng: Number(registrationLng) || 0,
-            });
+            const encryptedPublicKey = encrypt(dronePublicKey.toString(), encryptionSecret);
 
             client.close();
 
@@ -135,18 +133,22 @@ export async function POST(req: Request) {
                 droneAccountId,
                 evmAddress: droneEvmAddress,
                 cairnDroneId,
+                encryptedPrivateKey,
+                encryptedPublicKey,
                 message: "Drone account created with 20 HBAR. Ready for contract registration."
             });
         }
 
         // ─────────────────────────────────────────
-        // ACTION 2: Complete Registration (Steps 4-8: DB update, NFT, Contract confirmation, HCS, Return 2 HBAR)
+        // ACTION 2: Complete Registration (Steps 4-8: CREATE in DB, NFT, HCS, Return 2 HBAR)
         // ─────────────────────────────────────────
         if (body.action === "completeRegistration") {
             const {
                 droneAccountId,
                 cairnDroneId,
                 evmAddress,
+                encryptedPrivateKey,
+                encryptedPublicKey,
                 serialNumber,
                 model,
                 dgcaCertNumber,
@@ -161,12 +163,11 @@ export async function POST(req: Request) {
                 contractTransactionId,
             } = body;
 
-            // Get the drone from DB
-            const drone = await db.drones.findByCairnId(cairnDroneId);
-            if (!drone) {
+            // Verify contract registration was successful
+            if (!contractTransactionId || contractTransactionId === "0.0.contract-tx-placeholder") {
                 return Response.json({
                     success: false,
-                    error: "Drone not found. Please create account first."
+                    error: "Contract registration transaction ID is required"
                 }, { status: 400 });
             }
 
@@ -204,9 +205,17 @@ export async function POST(req: Request) {
             const client = Client.forTestnet()
                 .setOperator(AccountId.fromString(operatorId), operatorPrivKey);
 
-            // STEP 4: Update drone status to ACTIVE
-            await db.drones.update(drone.id, {
-                status: "ACTIVE",
+            // STEP 4: CREATE drone in database (only now after contract success)
+            const { decrypt } = await import("@/lib/encryption");
+            const dronePublicKey = decrypt(encryptedPublicKey, encryptionSecret);
+            
+            const drone = await db.drones.create({
+                cairnDroneId,
+                hederaAccountId: droneAccountId,
+                hederaPublicKey: dronePublicKey,
+                hederaPrivateKeyEncrypted: encryptedPrivateKey,
+                evmAddress,
+                serialNumber,
                 model,
                 dgcaCertNumber,
                 certExpiryDate: new Date(certExpiryDate),
@@ -214,6 +223,11 @@ export async function POST(req: Request) {
                 sensorType,
                 maxFlightMinutes: Number(maxFlightMinutes),
                 registeredByOfficerId,
+                status: "ACTIVE",
+                missionCount: 0,
+                completionRate: null,
+                registeredAt: new Date(),
+                initialHBARBalance: 20,
                 registrationLat: Number(registrationLat),
                 registrationLng: Number(registrationLng),
             });
@@ -235,8 +249,7 @@ export async function POST(req: Request) {
             let agentTopicId: string | null = null;
             let agentManifestSequence: number | null = null;
             try {
-                const { decrypt } = await import("@/lib/encryption");
-                const dronePrivateKeyString = decrypt(drone.hederaPrivateKeyEncrypted, encryptionSecret);
+                const dronePrivateKeyString = decrypt(encryptedPrivateKey, encryptionSecret);
                 const dronePrivateKey = PrivateKey.fromStringECDSA(dronePrivateKeyString);
 
                 const agentResult = await registerDroneAsAgent(
@@ -274,8 +287,7 @@ export async function POST(req: Request) {
                 const hashgraphSdk = await import("@hashgraph/sdk");
                 const { HederaLangchainToolkit, AgentMode } = await import("hedera-agent-kit");
                 
-                const { decrypt } = await import("@/lib/encryption");
-                const dronePrivateKeyString = decrypt(drone.hederaPrivateKeyEncrypted, encryptionSecret);
+                const dronePrivateKeyString = decrypt(encryptedPrivateKey, encryptionSecret);
                 
                 const droneClient = hashgraphSdk.Client.forTestnet().setOperator(
                     hashgraphSdk.AccountId.fromString(droneAccountId),
