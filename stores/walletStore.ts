@@ -8,22 +8,18 @@ import {
   extractAccounts,
   type AccountInfo,
 } from "@/lib/hedera-connector";
-import { connectMetaMask as connectMM, isMetaMaskInstalled } from "@/lib/metamask-connector";
-
-export type WalletType = "HASH_PACK" | "META_MASK";
 
 interface Account {
-  id: string; // EVM address or Hedera Account ID
+  id: string; // Hedera Account ID
   network: string;
   chainId: string;
 }
 
 interface WalletState {
   connected: boolean;
-  walletType: WalletType | null;
   selectedAccount: Account | null;
   accounts: Account[];
-  connect: (type?: WalletType) => Promise<void>;
+  connect: () => Promise<void>;
   disconnect: () => Promise<void>;
   error: string | null;
   isInitializing: boolean;
@@ -31,13 +27,12 @@ interface WalletState {
 
 export const useWalletStore = create<WalletState>((set, get) => ({
   connected: false,
-  walletType: null,
   selectedAccount: null,
   accounts: [],
   error: null,
   isInitializing: false,
 
-  connect: async (type: WalletType = "HASH_PACK") => {
+  connect: async () => {
     if (typeof window === 'undefined') {
       set({ error: 'Wallet connection only available on client side' });
       return;
@@ -46,32 +41,7 @@ export const useWalletStore = create<WalletState>((set, get) => ({
     try {
       set({ error: null, isInitializing: true });
 
-      if (type === "META_MASK") {
-        if (!isMetaMaskInstalled()) {
-          throw new Error("MetaMask is not installed");
-        }
-
-        const { address } = await connectMM();
-        const account = {
-          id: address,
-          network: "testnet",
-          chainId: "296"
-        };
-
-        set({
-          connected: true,
-          walletType: "META_MASK",
-          selectedAccount: account,
-          accounts: [account],
-          isInitializing: false,
-          error: null
-        });
-
-        console.log('✅ Connected to MetaMask:', address);
-        return;
-      }
-
-      // Default: HashPack
+      // HashPack connection
       console.log('🔵 [1/2] Initializing DAppConnector (HashPack)...');
       await initializeDAppConnector();
 
@@ -86,7 +56,6 @@ export const useWalletStore = create<WalletState>((set, get) => ({
 
       set({
         connected: true,
-        walletType: "HASH_PACK",
         selectedAccount: accounts[0],
         accounts,
         isInitializing: false,
@@ -103,13 +72,10 @@ export const useWalletStore = create<WalletState>((set, get) => ({
         errorMessage = "Connection cancelled by user.";
       }
 
-      if (type === "HASH_PACK") {
-        resetConnector();
-      }
+      resetConnector();
 
       set({
         connected: false,
-        walletType: null,
         selectedAccount: null,
         accounts: [],
         error: errorMessage,
@@ -121,17 +87,12 @@ export const useWalletStore = create<WalletState>((set, get) => ({
 
   disconnect: async () => {
     if (typeof window === 'undefined') return;
-    const { walletType } = get();
 
     try {
-      if (walletType === "HASH_PACK") {
-        await disconnectHashPack();
-      }
-      // MetaMask disconnection is handled client-side usually by just clearing state
+      await disconnectHashPack();
 
       set({
         connected: false,
-        walletType: null,
         selectedAccount: null,
         accounts: [],
         error: null,

@@ -2,7 +2,6 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import { ethers } from "ethers";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Plane, 
@@ -14,46 +13,21 @@ import {
   Zap,
   Activity
 } from "lucide-react";
+import { useWalletStore } from "@/stores/walletStore";
 
 export default function HomePage() {
   const router = useRouter();
-  const [walletConnected, setWalletConnected] = useState(false);
-  const [walletAddress, setWalletAddress] = useState<string>("");
+  const { connected, selectedAccount, connect } = useWalletStore();
   const [showConnectModal, setShowConnectModal] = useState(false);
   const [targetAction, setTargetAction] = useState<string>("");
 
   useEffect(() => {
-    checkWalletConnection();
+    // Wallet connection handled by store
   }, []);
 
-  const checkWalletConnection = async () => {
-    if (typeof window.ethereum !== "undefined") {
-      try {
-        const provider = new ethers.BrowserProvider(window.ethereum as any);
-        const accounts = await provider.listAccounts();
-        if (accounts.length > 0) {
-          setWalletConnected(true);
-          setWalletAddress(accounts[0].address);
-        }
-      } catch (error) {
-        console.error("Wallet check error:", error);
-      }
-    }
-  };
-
   const connectWallet = async () => {
-    if (typeof window.ethereum === "undefined") {
-      alert("Please install MetaMask to use this application");
-      return;
-    }
-    
     try {
-      const provider = new ethers.BrowserProvider(window.ethereum as any);
-      await provider.send("eth_requestAccounts", []);
-      const signer = await provider.getSigner();
-      const address = await signer.getAddress();
-      setWalletConnected(true);
-      setWalletAddress(address);
+      await connect();
       setShowConnectModal(false);
       
       // Proceed to target action if one was set
@@ -67,7 +41,7 @@ export default function HomePage() {
   };
 
   const handleAction = (path: string) => {
-    if (!walletConnected) {
+    if (!connected) {
       setTargetAction(path);
       setShowConnectModal(true);
       return;
@@ -120,13 +94,13 @@ export default function HomePage() {
               </div>
             </div>
 
-            {walletConnected ? (
+            {connected ? (
               <div className="flex items-center gap-3">
                 <div className="px-4 py-2 bg-gradient-to-r from-emerald-500/10 to-cyan-500/10 border border-emerald-500/30 rounded-lg">
                   <div className="flex items-center gap-2">
                     <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
                     <span className="text-sm text-emerald-400 font-medium">
-                      {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}
+                      {selectedAccount?.id}
                     </span>
                   </div>
                 </div>
@@ -144,7 +118,7 @@ export default function HomePage() {
               >
                 <span className="flex items-center gap-2">
                   <Wallet className="h-4 w-4" />
-                  Connect Wallet
+                  Connect HashPack
                 </span>
               </button>
             )}
@@ -337,14 +311,14 @@ export default function HomePage() {
                   Connect Your Wallet
                 </h3>
                 <p className="text-gray-400 text-center mb-8">
-                  Connect your MetaMask wallet to access the drone registry
+                  Connect your HashPack wallet to access the drone registry
                 </p>
 
                 <button
                   onClick={connectWallet}
                   className="w-full px-6 py-4 bg-gradient-to-r from-cyan-500 to-violet-500 rounded-xl text-white font-semibold hover:shadow-lg hover:shadow-cyan-500/50 transition-all mb-4"
                 >
-                  Connect MetaMask
+                  Connect HashPack
                 </button>
 
                 <button

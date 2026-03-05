@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import { useWalletStore } from "@/stores/walletStore";
-import { getDAppConnector } from "@/lib/walletConfig";
-import { Transaction, AccountId } from "@hiero-ledger/sdk";
+import { getConnector } from "@/lib/hedera-connector";
+import { Transaction, AccountId, Client } from "@hiero-ledger/sdk";
 import {
   transactionToBase64String,
   transactionFromBase64String,
@@ -12,7 +12,7 @@ export function useHederaWallet() {
   const { connected, selectedAccount, error } = useWalletStore();
 
   const getSigner = useCallback(() => {
-    const connector = getDAppConnector();
+    const connector = getConnector();
     if (!connector || !selectedAccount) {
       throw new Error("Wallet not connected");
     }
@@ -44,10 +44,21 @@ export function useHederaWallet() {
       }
 
       try {
+        // Create a client with the user's account as operator for freezing
+        const client = Client.forTestnet();
+        client.setOperator(
+          AccountId.fromString(selectedAccount.id),
+          // We don't have the private key, but we can set a dummy one
+          // since we're only using this for freezing, not signing
+          "0000000000000000000000000000000000000000000000000000000000000000"
+        );
+        
+        // Freeze the transaction with the client
+        await transaction.freezeWith(client);
+        
+        // Now sign and execute with the wallet
         const signer = getSigner();
-        // Sign the transaction
         const signedTx = await signer.signTransaction(transaction);
-        // Execute the signed transaction using the signer's call method
         const result = await signer.call(signedTx);
         return result;
       } catch (err) {

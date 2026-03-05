@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Save, CheckCircle2, Wallet, Loader2, Send, Zap, Brain } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { DRONE_REGISTRY_ADDRESS, BOUNDARY_ZONE_REGISTRY_ADDRESS, BOUNDARY_ZONE_REGISTRY_ABI } from "@/lib/contracts";
-import { ethers } from "ethers";
+import { useWalletStore } from "@/stores/walletStore";
 
 const InteractiveMap = dynamic(
   () => import("@/components/InteractiveMap").then((mod) => mod.InteractiveMap),
@@ -22,12 +22,11 @@ interface Coordinate {
 }
 
 export default function DeployPage() {
+  const { connected, selectedAccount, connect } = useWalletStore();
   const [boundaryCoords, setBoundaryCoords] = useState<Coordinate[] | null>(null);
   const [zoneId, setZoneId] = useState("");
   const [savedZoneId, setSavedZoneId] = useState<string | null>(null);
   const [autoAssignedDrones, setAutoAssignedDrones] = useState<string[]>([]);
-  const [walletConnected, setWalletConnected] = useState(false);
-  const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [isPaymentProcessing, setIsPaymentProcessing] = useState(false);
   const [selectedZone, setSelectedZone] = useState<any | null>(null);
   
@@ -38,46 +37,12 @@ export default function DeployPage() {
 
   // Check wallet connection and auto-sync drones on mount
   useEffect(() => {
-    checkWalletConnection();
     // Silently sync drones from blockchain in the background
     fetch("/api/sync-blockchain", { method: "POST" })
       .then(() => refetchDrones())
       .catch((e) => console.warn("Background sync failed:", e));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const checkWalletConnection = async () => {
-    if (typeof window.ethereum !== "undefined") {
-      try {
-        const provider = new ethers.BrowserProvider(window.ethereum as any);
-        const accounts = await provider.listAccounts();
-        if (accounts.length > 0) {
-          setWalletConnected(true);
-          setWalletAddress(accounts[0].address);
-        }
-      } catch (error) {
-        console.error("Error checking wallet:", error);
-      }
-    }
-  };
-
-  const connectWallet = async () => {
-    if (typeof window.ethereum === "undefined") {
-      alert("Please install MetaMask to use this feature");
-      return;
-    }
-    
-    try {
-      const provider = new ethers.BrowserProvider(window.ethereum as any);
-      await provider.send("eth_requestAccounts", []);
-      const signer = await provider.getSigner();
-      const address = await signer.getAddress();
-      setWalletConnected(true);
-      setWalletAddress(address);
-      alert("Wallet connected successfully!");
-    } catch (error: any) {
-      console.error("Error connecting wallet:", error);
-      alert("Failed to connect wallet: " + error.message);
     }
   };
 
@@ -118,15 +83,17 @@ export default function DeployPage() {
       alert("Please draw a boundary first (click 'Create Boundary', add points, then click 'Complete')");
       return;
     }
-    if (!walletConnected) {
-      alert("Please connect MetaMask — coordinates are saved directly to the blockchain.");
+    if (!connected) {
+      alert("Please connect HashPack — coordinates are saved directly to the blockchain.");
       return;
     }
 
     setIsPaymentProcessing(true);
     try {
-      const provider = new ethers.BrowserProvider(window.ethereum as any);
-      const signer = await provider.getSigner();
+      // Note: Deploy page currently uses ethers for contract interaction
+      // This would need to be migrated to Hedera SDK if full HashPack support needed
+      alert("Contract deployment requires additional HashPack integration");
+      return;
 
       // Convert zone ID to bytes32
       const zoneIdBytes32 = ethers.id(zoneId);
@@ -229,15 +196,15 @@ export default function DeployPage() {
         </Link>
         <h1 className="text-lg font-bold text-cyan-400">Deploy Mission</h1>
         <div className="flex items-center gap-3">
-          {walletConnected ? (
+          {connected ? (
             <Badge variant="outline" className="bg-emerald-500/10 text-emerald-400 border-emerald-500/30">
               <Wallet className="h-3 w-3 mr-1" />
-              {walletAddress?.slice(0, 6)}...{walletAddress?.slice(-4)}
+              {selectedAccount?.id}
             </Badge>
           ) : (
-            <Button variant="outline" size="sm" onClick={connectWallet} className="gap-2">
+            <Button variant="outline" size="sm" onClick={() => connect()} className="gap-2">
               <Wallet className="h-4 w-4" />
-              Connect
+              Connect HashPack
             </Button>
           )}
           <Link href="/eliza-thinking">
@@ -263,7 +230,7 @@ export default function DeployPage() {
         <div className="w-80 bg-[#0f1729] border-l border-white/10 p-4 overflow-y-auto">
           <div className="space-y-4">
             {/* Wallet Connection */}
-            {!walletConnected && (
+            {!connected && (
               <Card className="bg-white/5 border-cyan-500/30">
                 <CardContent className="pt-6">
                   <div className="text-center mb-3">
@@ -272,13 +239,13 @@ export default function DeployPage() {
                     <p className="text-xs text-gray-400">Required to save zones to blockchain</p>
                   </div>
                   <Button
-                    onClick={connectWallet}
+                    onClick={() => connect()}
                     variant="outline"
                     className="w-full"
                     size="sm"
                   >
                     <Wallet className="h-4 w-4 mr-2" />
-                    Connect MetaMask
+                    Connect HashPack
                   </Button>
                 </CardContent>
               </Card>

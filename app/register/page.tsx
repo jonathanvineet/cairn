@@ -17,9 +17,10 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ethers } from "ethers";
 import Link from "next/link";
 import { LocationPicker } from "@/components/LocationPicker";
+import { useWalletStore } from "@/stores/walletStore";
+import { useHederaWallet } from "@/lib/useHederaWallet";
 
 const DRONE_MODELS = [
   {
@@ -66,8 +67,8 @@ const DRONE_MODELS = [
 
 export default function RegisterDronePage() {
   const router = useRouter();
-  const [walletConnected, setWalletConnected] = useState(false);
-  const [walletAddress, setWalletAddress] = useState<string>("");
+  const { connected, selectedAccount, connect, disconnect } = useWalletStore();
+  const { signAndExecuteTransaction } = useHederaWallet();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [registrationComplete, setRegistrationComplete] = useState(false);
   const [registeredDroneData, setRegisteredDroneData] = useState<any>(null);
@@ -89,10 +90,6 @@ export default function RegisterDronePage() {
   });
 
   useEffect(() => {
-    checkWalletConnection();
-  }, []);
-
-  useEffect(() => {
     // Update sensor type and flight time when model changes
     const model = DRONE_MODELS.find(m => m.id === formData.model);
     if (model) {
@@ -103,40 +100,6 @@ export default function RegisterDronePage() {
       }));
     }
   }, [formData.model]);
-
-  const checkWalletConnection = async () => {
-    if (typeof window.ethereum !== "undefined") {
-      try {
-        const provider = new ethers.BrowserProvider(window.ethereum as any);
-        const accounts = await provider.listAccounts();
-        if (accounts.length > 0) {
-          setWalletConnected(true);
-          setWalletAddress(accounts[0].address);
-        }
-      } catch (error) {
-        console.error("Error checking wallet:", error);
-      }
-    }
-  };
-
-  const connectWallet = async () => {
-    if (typeof window.ethereum === "undefined") {
-      alert("Please install MetaMask to use this feature");
-      return;
-    }
-    
-    try {
-      const provider = new ethers.BrowserProvider(window.ethereum as any);
-      await provider.send("eth_requestAccounts", []);
-      const signer = await provider.getSigner();
-      const address = await signer.getAddress();
-      setWalletConnected(true);
-      setWalletAddress(address);
-    } catch (error: any) {
-      console.error("Error connecting wallet:", error);
-      alert("Failed to connect wallet: " + error.message);
-    }
-  };
 
   const handleLocationSelect = (location: { lat: number; lng: number }) => {
     setCurrentLocation(location);
@@ -217,8 +180,8 @@ export default function RegisterDronePage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!walletConnected) {
-      alert("Please connect your wallet first");
+    if (!connected || !selectedAccount) {
+      alert("Please connect your HashPack wallet first");
       return;
     }
 
@@ -237,32 +200,25 @@ export default function RegisterDronePage() {
     try {
       const selectedModel = DRONE_MODELS.find(m => m.id === formData.model);
       
-      // STEP 1: MetaMask Payment Transaction (0.1 HBAR registration fee)
-      console.log("💰 Requesting payment for drone registration...");
-      const provider = new ethers.BrowserProvider(window.ethereum as any);
-      const signer = await provider.getSigner();
+      // Import Hedera SDK
+      const { 
+        ContractExecuteTransaction, 
+        ContractFunctionParameters, 
+        ContractId, 
+        AccountId,
+        Client,
+      } = await import("@hiero-ledger/sdk");
       
-      const registrationFee = ethers.parseEther("0.1"); // 0.1 HBAR fee
-      const operatorAddress = await signer.getAddress(); // Self-payment for demo
+      const { DRONE_REGISTRY_ADDRESS } = await import("@/lib/contracts");
+
+      // STEP 1: Backend creates drone account and gets Hedera account ID
+      console.log("🚁 Step 1: Creating drone account on Hedera...");
       
-      console.log("🔐 MetaMask will prompt for payment approval...");
-      const paymentTx = await signer.sendTransaction({
-        to: operatorAddress,
-        value: registrationFee,
-        // No data field - Hedera doesn't allow data in transactions to self
-      });
-      
-      console.log("⏳ Waiting for payment confirmation...");
-      const receipt = await paymentTx.wait();
-      console.log("✅ Payment confirmed! Transaction hash:", receipt?.hash);
-      
-      // STEP 2: Register drone with backend
-      console.log("🚁 Registering drone on Hedera blockchain...");
-      
-      const response = await fetch("/api/drones/register", {
+      const createResponse = await fetch("/api/drones/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          action: "createDroneAccount",
           cairnDroneId: formData.droneName.trim(),
           serialNumber: formData.serialNumber,
           model: selectedModel?.name,
@@ -271,9 +227,74 @@ export default function RegisterDronePage() {
           assignedZoneId: "UNASSIGNED",
           sensorType: formData.sensorType,
           maxFlightMinutes: parseInt(formData.maxFlightMinutes),
-          registeredByOfficerId: walletAddress,
+          registeredByOfficerId: selectedAccount.id,
+          userWalletAddress: selectedAccount.id,
           registrationLat: currentLocation.lat,
           registrationLng: currentLocation.lng,
+        }),
+      });
+
+      if (!createResponse.ok) {
+        const errorData = await createResponse.json();
+        throw new Error(errorData.error || "Failed to create drone account");
+      }
+
+      const { droneAccountId, evmAddress, cairnDroneId } = await createResponse.json();
+      console.log(`✅ Drone account created: ${droneAccountId} (${evmAddress})`);
+
+      // STEP 2: User signs contract registration with HashPack
+      console.log("📝 Step 2: Registering drone on smart contract...");
+      console.log("📱 Please approve the contract transaction in HashPack...");
+      
+      const droneTx = new ContractExecuteTransaction()
+        .setContractId(ContractId.fromEvmAddress(0, 0, DRONE_REGISTRY_ADDRESS))
+        .setGas(300000)
+        .setFunction(
+          "registerDrone",
+          new ContractFunctionParameters()
+            .addString(cairnDroneId)
+            .addAddress(AccountId.fromString(droneAccountId).toEvmAddress())
+            .addString("UNASSIGNED")
+            .addString(selectedModel?.name || "Unknown")
+        );
+
+      let contractTxResult;
+      try {
+        // HashPack will handle freezing and signing internally
+        const result = await signAndExecuteTransaction(droneTx);
+        console.log("✅ Drone registered on smart contract!", result);
+        contractTxResult = result;
+      } catch (contractErr: any) {
+        if (contractErr.message?.includes("already registered")) {
+          console.log("⚠️  Drone already registered on-chain, continuing...");
+        } else {
+          throw contractErr;
+        }
+      }
+
+      // STEP 3: Complete registration (NFT minting, HCS agent registration, etc.)
+      console.log("🔄 Step 3: Completing registration (NFT, HCS agent, return transfer)...");
+      
+      const response = await fetch("/api/drones/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "completeRegistration",
+          droneAccountId,
+          cairnDroneId,
+          evmAddress,
+          serialNumber: formData.serialNumber,
+          model: selectedModel?.name,
+          dgcaCertNumber: formData.dgcaCertNumber,
+          certExpiryDate: formData.certExpiryDate,
+          assignedZoneId: "UNASSIGNED",
+          sensorType: formData.sensorType,
+          maxFlightMinutes: parseInt(formData.maxFlightMinutes),
+          registeredByOfficerId: selectedAccount.id,
+          userWalletAddress: selectedAccount.id,
+          registrationLat: currentLocation.lat,
+          registrationLng: currentLocation.lng,
+          contractTransactionId: contractTxResult?.transactionId || null,
         }),
       });
 
@@ -284,6 +305,17 @@ export default function RegisterDronePage() {
         console.log("📍 Location:", currentLocation);
         setRegisteredDroneData(data.drone);
         setRegistrationComplete(true);
+        
+        // Check if 2 HBAR was automatically returned during registration
+        if (data.drone.testReturnTransactionId) {
+          console.log("💸 2 HBAR automatically returned! TX:", data.drone.testReturnTransactionId);
+          setTestingReturn(false);
+          setReturnTestResult({
+            success: true,
+            transactionId: data.drone.testReturnTransactionId,
+            amount: "2 HBAR"
+          });
+        }
         
         // AUTOMATICALLY VERIFY THE BALANCE - PROOF IT WORKED!
         if (data.drone.hederaAccountId) {
@@ -300,8 +332,9 @@ export default function RegisterDronePage() {
                   setVerifiedBalance(balanceData.balance);
                   console.log("✅ Verified balance:", balanceData.balance, "HBAR");
                   
-                  // AUTOMATICALLY TRIGGER 2 HBAR RETURN TRANSFER (ONLY ONCE!)
-                  if (!autoReturnTriggered) {
+                  // Skip the old manual return transfer since it's now automatic during registration
+                  // The return transfer already happened via Hedera Agent Kit during registration
+                  if (false && !autoReturnTriggered) {
                     setAutoReturnTriggered(true); // Prevent duplicate transfers
                     console.log("🚀 Auto-triggering 2 HBAR return transfer...");
                     setTestingReturn(true);
@@ -389,13 +422,7 @@ export default function RegisterDronePage() {
       }
     } catch (error: any) {
       console.error("Registration error:", error);
-      if (error.code === "ACTION_REJECTED" || error.code === 4001) {
-        alert("Transaction was rejected. Please approve the payment in MetaMask to register the drone.");
-      } else if (error.message?.includes("user rejected")) {
-        alert("You rejected the payment. Please approve it in MetaMask to continue.");
-      } else {
-        alert("Failed to register drone: " + error.message);
-      }
+      alert("Failed to register drone: " + error.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -480,15 +507,23 @@ export default function RegisterDronePage() {
               {/* Test 2 HBAR Return */}
               <div className="bg-blue-950/30 border border-blue-800/50 rounded-lg p-4 mb-6">
                 <h3 className="text-blue-400 font-semibold mb-2 text-sm">
-                  🧪 Automatic Return Transfer
+                  🧪 Automatic Return Transfer (via Hedera Agent Kit)
                 </h3>
                 <p className="text-slate-400 text-xs mb-3">
                   {testingReturn 
-                    ? "Testing two-way transfers by sending 2 HBAR back to operator account..." 
-                    : returnTestResult 
-                    ? "Return transfer completed!" 
-                    : "Preparing automatic return transfer..."}
+                    ? "Testing two-way transfers by sending 2 HBAR back..." 
+                    : returnTestResult || registeredDroneData.testReturnTransactionId
+                    ? "Return transfer completed! 2 HBAR sent to operator account." 
+                    : registeredDroneData.testReturnTransactionId ? "Return transfer completed!" : "Preparing automatic return transfer..."}
                 </p>
+                <div className="bg-green-900/20 border border-green-600/30 rounded p-2 mb-2">
+                  <p className="text-green-300 text-xs">
+                    ✅ <strong>HashPack Connected:</strong> 2 HBAR will be sent directly to your account!
+                  </p>
+                  <p className="text-green-200 text-[10px] mt-1">
+                    Account: {selectedAccount.id}
+                  </p>
+                </div>
                 
                 {testingReturn && (
                   <div className="flex items-center justify-center gap-2 py-2">
@@ -497,29 +532,40 @@ export default function RegisterDronePage() {
                   </div>
                 )}
 
-                {returnTestResult && (
+                {(returnTestResult || registeredDroneData.testReturnTransactionId) && (
                   <div className={`p-3 rounded ${
-                    returnTestResult.success 
+                    (returnTestResult?.success || registeredDroneData.testReturnTransactionId)
                       ? "bg-green-950/30 border border-green-800" 
                       : "bg-red-950/30 border border-red-800"
                   }`}>
-                    {returnTestResult.success ? (
+                    {(returnTestResult?.success || registeredDroneData.testReturnTransactionId) ? (
                       <>
                         <p className="text-green-400 text-xs font-semibold mb-1">
-                          ✅ 2 HBAR returned successfully!
+                          ✅ 2 HBAR returned successfully via Hedera Agent Kit!
                         </p>
-                        {returnTestResult.transactionId && (
-                          <p className="text-green-400 font-mono text-xs break-all mb-2">
-                            TX: {returnTestResult.transactionId}
-                          </p>
+                        {(returnTestResult?.transactionId || registeredDroneData.testReturnTransactionId) && (
+                          <>
+                            <p className="text-green-400 font-mono text-xs break-all mb-2">
+                              TX: {returnTestResult?.transactionId || registeredDroneData.testReturnTransactionId}
+                            </p>
+                            <a
+                              href={`https://hashscan.io/testnet/transaction/${returnTestResult?.transactionId || registeredDroneData.testReturnTransactionId}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-400 hover:text-blue-300 text-xs flex items-center gap-1"
+                            >
+                              <ExternalLink className="h-3 w-3" />
+                              View on HashScan
+                            </a>
+                          </>
                         )}
-                        <p className="text-amber-400 text-sm font-bold">
+                        <p className="text-amber-400 text-sm font-bold mt-2">
                           New balance: ℏ {verifiedBalance !== null ? verifiedBalance.toFixed(2) : "18.00"} HBAR
                         </p>
                       </>
                     ) : (
                       <p className="text-red-400 text-xs">
-                        ❌ {returnTestResult.error || "Return transfer failed"}
+                        ❌ {returnTestResult?.error || "Return transfer failed"}
                       </p>
                     )}
                   </div>
@@ -565,7 +611,7 @@ export default function RegisterDronePage() {
   }
 
   // Wallet connection required view
-  if (!walletConnected) {
+  if (!connected) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
         <nav className="border-b border-white/10 backdrop-blur-md bg-black/20">
@@ -599,11 +645,11 @@ export default function RegisterDronePage() {
                 </p>
                 
                 <Button
-                  onClick={connectWallet}
+                  onClick={() => connect('HASH_PACK')}
                   className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white"
                 >
                   <Wallet className="h-4 w-4 mr-2" />
-                  Connect Wallet
+                  Connect HashPack
                 </Button>
               </CardContent>
             </Card>
@@ -629,7 +675,7 @@ export default function RegisterDronePage() {
               <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
               <Wallet className="h-4 w-4 text-white" />
               <span className="text-sm text-white font-medium">
-                {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}
+                {selectedAccount?.id}
               </span>
             </div>
           </div>
@@ -820,6 +866,34 @@ export default function RegisterDronePage() {
                     </p>
                   </div>
                 )}
+              </CardContent>
+            </Card>
+
+            {/* How it Works */}
+            <Card className="bg-blue-500/10 border-blue-500/30">
+              <CardContent className="pt-6">
+                <div className="flex items-start gap-3">
+                  <Shield className="h-5 w-5 text-blue-400 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <h3 className="text-blue-400 font-semibold text-sm mb-2">
+                      Registration Process
+                    </h3>
+                    <ol className="text-blue-200/80 text-xs space-y-1 list-decimal list-inside">
+                      <li>Create drone account (20 HBAR funded by operator)</li>
+                      <li>Sign contract registration via HashPack</li>
+                      <li>Mint credential NFT & register HCS agent</li>
+                      <li>Receive 2 HBAR back automatically</li>
+                    </ol>
+                    <div className="bg-green-900/20 border border-green-600/30 rounded p-2 mt-2">
+                      <p className="text-green-300 text-[10px]">
+                        🎁 You pay: <strong>Gas fees only (~$0.01)</strong>
+                      </p>
+                      <p className="text-green-300 text-[10px]">
+                        💰 You receive: <strong>2 HBAR (~$0.20)</strong>
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </CardContent>
             </Card>
 

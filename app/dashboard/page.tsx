@@ -2,8 +2,8 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { ethers } from "ethers";
 import { motion } from "framer-motion";
+import { useWalletStore } from "@/stores/walletStore";
 import Link from "next/link";
 import {
   Plane,
@@ -37,32 +37,17 @@ interface Drone {
 
 export default function DashboardPage() {
   const router = useRouter();
-  const [walletConnected, setWalletConnected] = useState(false);
-  const [walletAddress, setWalletAddress] = useState<string>("");
+  const { connected, selectedAccount, connect } = useWalletStore();
   const [drones, setDrones] = useState<Drone[]>([]);
   const [zones, setZones] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    checkWalletAndFetchData();
-  }, []);
-
-  const checkWalletAndFetchData = async () => {
-    if (typeof window.ethereum !== "undefined") {
-      try {
-        const provider = new ethers.BrowserProvider(window.ethereum as any);
-        const accounts = await provider.listAccounts();
-        if (accounts.length > 0) {
-          setWalletConnected(true);
-          setWalletAddress(accounts[0].address);
-          await fetchData();
-        }
-      } catch (error) {
-        console.error("Wallet check error:", error);
-      }
+    if (connected) {
+      fetchData();
     }
     setLoading(false);
-  };
+  }, [connected]);
 
   const fetchHbarBalance = async (accountId: string): Promise<number | null> => {
     try {
@@ -124,25 +109,6 @@ export default function DashboardPage() {
     }
   };
 
-  const connectWallet = async () => {
-    if (typeof window.ethereum === "undefined") {
-      alert("Please install MetaMask");
-      return;
-    }
-
-    try {
-      const provider = new ethers.BrowserProvider(window.ethereum as any);
-      await provider.send("eth_requestAccounts", []);
-      const signer = await provider.getSigner();
-      const address = await signer.getAddress();
-      setWalletConnected(true);
-      setWalletAddress(address);
-      await fetchData();
-    } catch (error: any) {
-      alert("Failed to connect wallet: " + error.message);
-    }
-  };
-
   const activeDrones = drones.filter(d => d.status === "ACTIVE");
   const assignedDrones = drones.filter(d => d.assignedZoneId !== "UNASSIGNED");
   const unassignedDrones = drones.filter(d => d.assignedZoneId === "UNASSIGNED");
@@ -158,7 +124,7 @@ export default function DashboardPage() {
     );
   }
 
-  if (!walletConnected) {
+  if (!connected) {
     return (
       <div className="min-h-screen bg-[#0a0e27]">
         <nav className="border-b border-white/5 bg-black/20 backdrop-blur-xl">
@@ -196,10 +162,10 @@ export default function DashboardPage() {
                   Connect your wallet to access the dashboard
                 </p>
                 <button
-                  onClick={connectWallet}
+                  onClick={() => connect()}
                   className="w-full px-6 py-4 bg-gradient-to-r from-cyan-500 to-violet-500 rounded-xl text-white font-semibold hover:shadow-lg hover:shadow-cyan-500/50 transition-all"
                 >
-                  Connect MetaMask
+                  Connect HashPack
                 </button>
                 <Link href="/" className="block mt-4 text-sm text-gray-400 hover:text-white transition">
                   Back to Home
