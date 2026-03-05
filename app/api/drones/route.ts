@@ -24,10 +24,10 @@ export async function GET(req: NextRequest) {
         seenAddresses.add(droneAddress.toLowerCase());
 
         const droneData = await contract.getDrone(droneAddress);
-        
+
         // Merge with local DB data to get location info and updated zone assignment
         const localDrone = await db.drones.findByEvmAddress(droneAddress);
-        
+
         drones.push({
           cairnDroneId: droneData.cairnId,
           evmAddress: droneAddress,
@@ -43,6 +43,8 @@ export async function GET(req: NextRequest) {
           agentTopicId: localDrone?.agentTopicId || null,
           agentManifestSequence: localDrone?.agentManifestSequence || null,
           isAgent: !!localDrone?.agentTopicId,
+          // Hedera account for balance lookup
+          hederaAccountId: localDrone?.hederaAccountId || null,
         });
       } catch (err: any) {
         console.error(`  ❌ Error fetching drone at index ${i}:`, err.message);
@@ -57,7 +59,7 @@ export async function GET(req: NextRequest) {
     // ALSO include drones that are in local DB but not yet on blockchain
     const allLocalDrones = await db.drones.findMany();
     const blockchainAddresses = new Set(unique.map(d => d.evmAddress.toLowerCase()));
-    
+
     for (const localDrone of allLocalDrones) {
       if (!blockchainAddresses.has(localDrone.evmAddress.toLowerCase())) {
         console.log(`📝 Adding local-only drone: ${localDrone.cairnDroneId} (not yet on blockchain)`);
@@ -74,6 +76,7 @@ export async function GET(req: NextRequest) {
           agentManifestSequence: localDrone.agentManifestSequence || null,
           isAgent: !!localDrone.agentTopicId,
           serialNumber: localDrone.serialNumber,
+          hederaAccountId: localDrone.hederaAccountId || null,
         });
       }
     }

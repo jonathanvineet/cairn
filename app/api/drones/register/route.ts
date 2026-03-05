@@ -21,7 +21,7 @@ export async function POST(req: Request) {
                 error: "Invalid JSON in request body"
             }, { status: 400 });
         }
-        
+
         const {
             cairnDroneId,  // User's custom drone name like "drone-mumbai-andheri"
             serialNumber,
@@ -85,7 +85,7 @@ export async function POST(req: Request) {
         try {
             // Strip 0x prefix if present
             let keyString = operatorKey.startsWith("0x") ? operatorKey.slice(2) : operatorKey;
-            
+
             if (keyString.startsWith("302e") || keyString.startsWith("3030")) {
                 // DER-encoded ED25519 key from Hedera Portal
                 operatorPrivKey = PrivateKey.fromStringED25519(keyString);
@@ -108,10 +108,18 @@ export async function POST(req: Request) {
             }, { status: 500 });
         }
 
-        const client = Client.forTestnet().setOperator(
-            AccountId.fromString(operatorId),
-            operatorPrivKey
-        );
+        const client = Client.forTestnet()
+            .setOperator(AccountId.fromString(operatorId), operatorPrivKey)
+            .setRequestTimeout(30000); // 30 second network timeout
+
+        // Helper: fail fast instead of hanging forever
+        const withTimeout = <T>(promise: Promise<T>, ms: number, label: string): Promise<T> =>
+            Promise.race([
+                promise,
+                new Promise<T>((_, reject) =>
+                    setTimeout(() => reject(new Error(`Hedera ${label} timed out after ${ms / 1000}s. Check your HEDERA_OPERATOR_ID and network connectivity.`)), ms)
+                ),
+            ]);
 
 
         // ─────────────────────────────────────────
@@ -128,8 +136,16 @@ export async function POST(req: Request) {
             .setInitialBalance(new Hbar(20))          // 20 HBAR initial funding
             .setAccountMemo(`CAIRN-DRONE-${serialNumber}`);
 
-        const txResponse = await accountCreateTx.execute(client);
-        const receipt = await txResponse.getReceipt(client);
+        const txResponse = await withTimeout(
+            accountCreateTx.execute(client),
+            30000,
+            "AccountCreateTransaction"
+        );
+        const receipt = await withTimeout(
+            txResponse.getReceipt(client),
+            30000,
+            "getReceipt"
+        );
         const droneAccountId = receipt.accountId!.toString();
         const droneEvmAddress = `0x${dronePublicKey.toEvmAddress()}`;
 

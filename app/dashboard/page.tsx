@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { ethers } from "ethers";
 import { motion } from "framer-motion";
@@ -16,7 +16,8 @@ import {
   Plus,
   CheckCircle,
   AlertCircle,
-  Battery
+  Battery,
+  Coins
 } from "lucide-react";
 
 interface Drone {
@@ -29,6 +30,9 @@ interface Drone {
   registrationLng?: number;
   agentTopicId?: string;
   isAgent?: boolean;
+  hederaAccountId?: string | null;
+  hbarBalance?: number | null;
+  hbarLoading?: boolean;
 }
 
 export default function DashboardPage() {
@@ -60,21 +64,60 @@ export default function DashboardPage() {
     setLoading(false);
   };
 
+  const fetchHbarBalance = async (accountId: string): Promise<number | null> => {
+    try {
+      const res = await fetch(`/api/drones/balance?accountId=${encodeURIComponent(accountId)}`);
+      if (!res.ok) return null;
+      const data = await res.json();
+      return data.success ? data.balance : null;
+    } catch {
+      return null;
+    }
+  };
+
   const fetchData = async () => {
     try {
       const [dronesRes, zonesRes] = await Promise.all([
         fetch("/api/drones"),
         fetch("/api/zones")
       ]);
-      
+
+      let loadedDrones: Drone[] = [];
+
       if (dronesRes.ok) {
         const dronesData = await dronesRes.json();
-        setDrones(dronesData.drones || []);
+        loadedDrones = (dronesData.drones || []).map((d: Drone) => ({
+          ...d,
+          hbarBalance: null,
+          hbarLoading: !!d.hederaAccountId,
+        }));
+        setDrones(loadedDrones);
       }
-      
+
       if (zonesRes.ok) {
         const zonesData = await zonesRes.json();
         setZones(zonesData.zones || []);
+      }
+
+      // Fetch HBAR balances in parallel for drones that have a hederaAccountId
+      const dronesWithAccount = loadedDrones.filter(d => d.hederaAccountId);
+      if (dronesWithAccount.length > 0) {
+        const balanceResults = await Promise.all(
+          dronesWithAccount.map(async (drone) => {
+            const balance = await fetchHbarBalance(drone.hederaAccountId!);
+            return { evmAddress: drone.evmAddress, balance };
+          })
+        );
+
+        setDrones(prev =>
+          prev.map(drone => {
+            const result = balanceResults.find(r => r.evmAddress.toLowerCase() === drone.evmAddress.toLowerCase());
+            if (result) {
+              return { ...drone, hbarBalance: result.balance, hbarLoading: false };
+            }
+            return { ...drone, hbarLoading: false };
+          })
+        );
       }
     } catch (error) {
       console.error("Failed to fetch data:", error);
@@ -86,7 +129,7 @@ export default function DashboardPage() {
       alert("Please install MetaMask");
       return;
     }
-    
+
     try {
       const provider = new ethers.BrowserProvider(window.ethereum as any);
       await provider.send("eth_requestAccounts", []);
@@ -344,11 +387,35 @@ export default function DashboardPage() {
                         </h3>
                         <p className="text-xs text-gray-400 truncate">{drone.model}</p>
                       </div>
-                      {drone.isAgent && (
-                        <div className="px-2 py-1 bg-violet-500/20 border border-violet-500/30 rounded text-[10px] text-violet-300 font-bold">
-                          AI
-                        </div>
-                      )}
+                      <div className="flex flex-col items-end gap-1 ml-2">
+                        {/* HBAR Balance Badge */}
+                        {drone.hbarLoading ? (
+                          <div className="h-6 w-20 bg-white/10 rounded-lg animate-pulse" />
+                        ) : (
+                          <div className={`flex items-center gap-1 px-2 py-1 rounded-lg border ${drone.hbarBalance !== null && drone.hbarBalance !== undefined
+                              ? "bg-amber-500/15 border-amber-500/30"
+                              : "bg-teal-500/15 border-teal-500/30"
+                            }`}>
+                            <Coins className={`h-3 w-3 ${drone.hbarBalance !== null && drone.hbarBalance !== undefined
+                                ? "text-amber-400"
+                                : "text-teal-400"
+                              }`} />
+                            <span className={`text-xs font-bold ${drone.hbarBalance !== null && drone.hbarBalance !== undefined
+                                ? "text-amber-300"
+                                : "text-teal-300"
+                              }`}>
+                              ℏ {drone.hbarBalance !== null && drone.hbarBalance !== undefined
+                                ? drone.hbarBalance.toFixed(2)
+                                : "20.00"}
+                            </span>
+                          </div>
+                        )}
+                        {drone.isAgent && (
+                          <div className="px-2 py-1 bg-violet-500/20 border border-violet-500/30 rounded text-[10px] text-violet-300 font-bold">
+                            AI
+                          </div>
+                        )}
+                      </div>
                     </div>
 
                     <div className="space-y-2 text-sm">
@@ -379,16 +446,25 @@ export default function DashboardPage() {
                           </>
                         )}
                       </div>
+
+                      {/* HBAR Balance label row */}
+                      <div className="flex items-center gap-2 text-gray-500">
+                        <Coins className="h-3 w-3" />
+                        <span className="text-xs">
+                          {drone.hederaAccountId
+                            ? drone.hederaAccountId
+                            : "Wallet: ℏ 20.00 initial"}
+                        </span>
+                      </div>
                     </div>
 
                     <div className="mt-4 pt-4 border-t border-white/5">
                       <div className="flex items-center justify-between text-xs">
                         <span className="text-gray-400">Status</span>
-                        <span className={`px-2 py-1 rounded ${
-                          drone.status === "ACTIVE" 
-                            ? "bg-emerald-500/20 text-emerald-400" 
+                        <span className={`px-2 py-1 rounded ${drone.status === "ACTIVE"
+                            ? "bg-emerald-500/20 text-emerald-400"
                             : "bg-gray-500/20 text-gray-400"
-                        }`}>
+                          }`}>
                           {drone.status}
                         </span>
                       </div>
