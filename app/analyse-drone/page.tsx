@@ -3,7 +3,20 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import SkyvaultShell from "../../components/world/SkyvaultShell";
+
+interface Coordinate {
+  lat: number;
+  lng: number;
+}
+
+interface Drone {
+  cairnDroneId: string;
+  evmAddress?: string;
+  battery: number;
+  distance: number;
+  score: number;
+}
 
 interface Stage {
   id: string;
@@ -71,8 +84,8 @@ export default function AnalyseDroneStreamPage() {
   const [currentStages, setCurrentStages] = useState<Stage[]>(stages);
   const [currentStageIdx, setCurrentStageIdx] = useState(0);
   const [isComplete, setIsComplete] = useState(false);
-  const [selectedDrone, setSelectedDrone] = useState<any>(null);
-  const [boundaryCoords, setBoundaryCoords] = useState<any>(null);
+  const [selectedDrone, setSelectedDrone] = useState<Drone | null>(null);
+  const [boundaryCoords, setBoundaryCoords] = useState<Coordinate[] | null>(null);
   const [zoneId, setZoneId] = useState<string>("");
 
   useEffect(() => {
@@ -208,36 +221,10 @@ export default function AnalyseDroneStreamPage() {
   }, [boundaryCoords, zoneId]);
 
   return (
-    <div className="min-h-screen bg-[#0a0e27] text-white overflow-hidden">
-      {/* Animated background */}
-      <div className="fixed inset-0 z-0">
-        <div className="absolute inset-0 bg-gradient-to-br from-cyan-950/20 via-[#0a0e27] to-violet-950/20" />
-        <div className="absolute top-0 right-0 w-96 h-96 bg-cyan-500/5 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute bottom-0 left-0 w-96 h-96 bg-violet-500/5 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(6, 182, 212, 0.15) 1px, transparent 0)', backgroundSize: '40px 40px' }} />
-        </div>
-      </div>
+    <SkyvaultShell title="ELIZA ANALYSIS">
+    <div className="min-h-screen text-white overflow-hidden">
 
-      {/* Content */}
-      <div className="relative z-10">
-        {/* Header */}
-        <div className="border-b border-cyan-500/20 backdrop-blur-xl bg-[#0a0e27]/80 px-6 py-4 sticky top-0">
-          <div className="max-w-6xl mx-auto flex items-center justify-between">
-            <Link href="/deploy">
-              <button className="flex items-center gap-2 text-gray-400 hover:text-cyan-400 transition">
-                <ArrowLeft className="h-5 w-5" />
-                Back
-              </button>
-            </Link>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-cyan-400 via-blue-400 to-violet-400 bg-clip-text text-transparent">
-              DRONE ANALYSIS SYSTEM
-            </h1>
-            <div className="w-12" />
-          </div>
-        </div>
-
-        {/* Warning if no boundary data */}
+      {/* Warning if no boundary data */}
         {!boundaryCoords && (
           <div className="max-w-6xl mx-auto px-6 mt-8">
             <div className="border border-yellow-500/50 rounded-lg p-6 bg-yellow-500/10 backdrop-blur-sm">
@@ -276,12 +263,12 @@ export default function AnalyseDroneStreamPage() {
                     <div className="relative h-12 w-12">
                       {stage.status === "loading" && (
                         <>
-                          <div className="absolute inset-0 bg-gradient-to-r from-cyan-500 to-violet-500 rounded-full animate-spin opacity-75" />
+                          <div className="absolute inset-0 bg-linear-to-r from-cyan-500 to-violet-500 rounded-full animate-spin opacity-75" />
                           <div className="absolute inset-1 bg-[#0a0e27] rounded-full" />
                         </>
                       )}
                       {stage.status === "complete" && (
-                        <div className="absolute inset-0 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full flex items-center justify-center">
+                        <div className="absolute inset-0 bg-linear-to-r from-cyan-500 to-blue-500 rounded-full flex items-center justify-center">
                           <div className="text-2xl">✓</div>
                         </div>
                       )}
@@ -299,7 +286,7 @@ export default function AnalyseDroneStreamPage() {
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="text-3xl font-bold bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
+                    <div className="text-3xl font-bold bg-linear-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
                       {Math.round(stage.progress)}%
                     </div>
                   </div>
@@ -308,11 +295,11 @@ export default function AnalyseDroneStreamPage() {
                 {/* Progress Bar */}
                 <div className="relative h-2 bg-slate-900 rounded-full overflow-hidden border border-slate-800">
                   <div
-                    className="h-full bg-gradient-to-r from-cyan-500 via-blue-500 to-violet-500 transition-all duration-300"
+                    className="h-full bg-linear-to-r from-cyan-500 via-blue-500 to-violet-500 transition-all duration-300"
                     style={{ width: `${stage.progress}%` }}
                   />
                   {stage.status === "loading" && (
-                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-30 animate-pulse" />
+                    <div className="absolute inset-0 bg-linear-to-r from-transparent via-white to-transparent opacity-30 animate-pulse" />
                   )}
                 </div>
 
@@ -361,9 +348,9 @@ export default function AnalyseDroneStreamPage() {
                     {boundaryCoords && (
                       <p className="text-xs text-gray-500 mt-1">
                         {boundaryCoords.length} boundary points • Center: {
-                          (boundaryCoords.reduce((sum: number, c: any) => sum + c.lat, 0) / boundaryCoords.length).toFixed(4)
+                          (boundaryCoords.reduce((sum: number, c: Coordinate) => sum + c.lat, 0) / boundaryCoords.length).toFixed(4)
                         }, {
-                          (boundaryCoords.reduce((sum: number, c: any) => sum + c.lng, 0) / boundaryCoords.length).toFixed(4)
+                          (boundaryCoords.reduce((sum: number, c: Coordinate) => sum + c.lng, 0) / boundaryCoords.length).toFixed(4)
                         }
                       </p>
                     )}
@@ -371,7 +358,7 @@ export default function AnalyseDroneStreamPage() {
                 )}
 
                 {/* Selected Drone Card */}
-                <div className="bg-gradient-to-br from-green-500/10 to-emerald-500/10 border border-green-500/30 rounded-lg p-8 mb-6">
+                <div className="bg-linear-to-br from-green-500/10 to-emerald-500/10 border border-green-500/30 rounded-lg p-8 mb-6">
                   <div className="grid grid-cols-2 gap-8">
                     <div>
                       <p className="text-gray-400 text-sm mb-2">SELECTED DRONE</p>
@@ -411,7 +398,7 @@ export default function AnalyseDroneStreamPage() {
                             </div>
                             <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
                               <div
-                                className="h-full bg-gradient-to-r from-cyan-500 to-violet-500"
+                                className="h-full bg-linear-to-r from-cyan-500 to-violet-500"
                                 style={{ width: `${item.value}%` }}
                               />
                             </div>
@@ -424,7 +411,7 @@ export default function AnalyseDroneStreamPage() {
 
                 {/* Action Buttons */}
                 <div className="grid grid-cols-2 gap-4">
-                  <button className="px-8 py-3 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 rounded-lg font-semibold transition transform hover:scale-105">
+                  <button className="px-8 py-3 bg-linear-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 rounded-lg font-semibold transition transform hover:scale-105">
                     DEPLOY DRONE
                   </button>
                   <button
@@ -439,23 +426,6 @@ export default function AnalyseDroneStreamPage() {
           )}
         </div>
       </div>
-
-      <style jsx>{`
-        @keyframes fade-in {
-          from {
-            opacity: 0;
-            transform: translateY(-10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        .animate-fade-in {
-          animation: fade-in 0.5s ease-out;
-        }
-      `}</style>
-    </div>
+    </SkyvaultShell>
   );
 }

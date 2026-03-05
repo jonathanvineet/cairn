@@ -10,6 +10,7 @@ import { ArrowLeft, Save, CheckCircle2, Wallet, Loader2, Send, Zap, Brain } from
 import { useQuery } from "@tanstack/react-query";
 import { DRONE_REGISTRY_ADDRESS, BOUNDARY_ZONE_REGISTRY_ADDRESS, BOUNDARY_ZONE_REGISTRY_ABI } from "@/lib/contracts";
 import { ethers } from "ethers";
+import SkyvaultShell from "../../components/world/SkyvaultShell";
 
 const InteractiveMap = dynamic(
   () => import("@/components/InteractiveMap").then((mod) => mod.InteractiveMap),
@@ -19,6 +20,22 @@ const InteractiveMap = dynamic(
 interface Coordinate {
   lat: number;
   lng: number;
+}
+
+interface DeployZone {
+  zoneId: string;
+  drones: string[];
+}
+
+interface DeployDrone {
+  evmAddress: string;
+  cairnDroneId: string;
+  isAgent?: boolean;
+  agentTopicId?: string;
+  model?: string;
+  assignedZoneId?: string;
+  registrationLat?: number;
+  registrationLng?: number;
 }
 
 export default function DeployPage() {
@@ -75,7 +92,8 @@ export default function DeployPage() {
       setWalletConnected(true);
       setWalletAddress(address);
       alert("Wallet connected successfully!");
-    } catch (error: any) {
+    } catch (err: unknown) {
+      const error = err as any;
       console.error("Error connecting wallet:", error);
       alert("Failed to connect wallet: " + error.message);
     }
@@ -185,7 +203,8 @@ export default function DeployPage() {
       refetchDrones();
       
       alert(`✅ Zone "${zoneId}" saved on blockchain!\n${zonesResData.autoAssignedCount || 0} drone(s) assigned.`);
-    } catch (error: any) {
+    } catch (err: unknown) {
+      const error = err as any;
       setIsPaymentProcessing(false);
       if (error.code === 4001 || error.code === "ACTION_REJECTED") {
         alert("Transaction cancelled.");
@@ -218,36 +237,28 @@ export default function DeployPage() {
   };
 
   return (
-    <div className="h-screen w-screen bg-[#0a0e27] flex flex-col">
-      {/* Minimal header */}
-      <header className="border-b border-white/10 bg-black/20 backdrop-blur-xl px-4 py-3 flex items-center justify-between">
-        <Link href="/dashboard">
-          <Button variant="ghost" size="sm" className="gap-2">
-            <ArrowLeft className="h-4 w-4" />
-            Back to Dashboard
+    <SkyvaultShell title="DEPLOY MISSION">
+    <div className="h-screen w-screen flex flex-col" style={{ paddingTop: 0 }}>
+      {/* Wallet + tools bar */}
+      <div className="border-b border-white/10 bg-black/40 backdrop-blur-xl px-4 py-2 flex items-center justify-end gap-3 shrink-0">
+        {walletConnected ? (
+          <Badge variant="outline" className="bg-emerald-500/10 text-emerald-400 border-emerald-500/30">
+            <Wallet className="h-3 w-3 mr-1" />
+            {walletAddress?.slice(0, 6)}...{walletAddress?.slice(-4)}
+          </Badge>
+        ) : (
+          <Button variant="outline" size="sm" onClick={connectWallet} className="gap-2">
+            <Wallet className="h-4 w-4" />
+            Connect
+          </Button>
+        )}
+        <Link href="/eliza-thinking">
+          <Button variant="outline" size="sm" className="gap-2 bg-cyan-500/10 text-cyan-400 border-cyan-500/30 hover:bg-cyan-500/20">
+            <Brain className="h-4 w-4" />
+            Eliza AI
           </Button>
         </Link>
-        <h1 className="text-lg font-bold text-cyan-400">Deploy Mission</h1>
-        <div className="flex items-center gap-3">
-          {walletConnected ? (
-            <Badge variant="outline" className="bg-emerald-500/10 text-emerald-400 border-emerald-500/30">
-              <Wallet className="h-3 w-3 mr-1" />
-              {walletAddress?.slice(0, 6)}...{walletAddress?.slice(-4)}
-            </Badge>
-          ) : (
-            <Button variant="outline" size="sm" onClick={connectWallet} className="gap-2">
-              <Wallet className="h-4 w-4" />
-              Connect
-            </Button>
-          )}
-          <Link href="/eliza-thinking">
-            <Button variant="outline" size="sm" className="gap-2 bg-cyan-500/10 text-cyan-400 border-cyan-500/30 hover:bg-cyan-500/20">
-              <Brain className="h-4 w-4" />
-              Eliza AI
-            </Button>
-          </Link>
-        </div>
-      </header>
+      </div>
       
       {/* Full map with side panel */}
       <div className="flex-1 flex">
@@ -311,7 +322,7 @@ export default function DeployPage() {
                   <p className="text-xs text-gray-500 text-center py-2">No zones saved yet</p>
                 ) : (
                   <div className="max-h-48 overflow-y-auto space-y-2">
-                    {zonesData.zones?.map((zone: any) => {
+                    {zonesData.zones?.map((zone: DeployZone) => {
                       const isSelected = selectedZone?.zoneId === zone.zoneId;
                       return (
                         <div
@@ -452,7 +463,7 @@ export default function DeployPage() {
                     <Button
                       onClick={handleConfirmAndProceed}
                       disabled={isSelectingDrone}
-                      className="w-full gap-2 bg-gradient-to-r from-cyan-600 to-violet-600 hover:from-cyan-500 hover:to-violet-500"
+                      className="w-full gap-2 bg-linear-to-r from-cyan-600 to-violet-600 hover:from-cyan-500 hover:to-violet-500"
                       size="sm"
                     >
                       <Zap className="h-4 w-4" />
@@ -490,7 +501,7 @@ export default function DeployPage() {
                       </div>
                       <div className="w-full bg-white/5 rounded-full h-2">
                         <div 
-                          className="bg-gradient-to-r from-violet-500 to-cyan-500 h-2 rounded-full transition-all"
+                          className="bg-linear-to-r from-violet-500 to-cyan-500 h-2 rounded-full transition-all"
                       />
                     </div>
                   </div>
@@ -530,7 +541,7 @@ export default function DeployPage() {
                   </div>
 
                   <Button
-                    className="w-full gap-2 bg-gradient-to-r from-emerald-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500"
+                    className="w-full gap-2 bg-linear-to-r from-emerald-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500"
                     size="sm"
                   >
                     <Send className="h-4 w-4" />
@@ -554,7 +565,7 @@ export default function DeployPage() {
                 <CardContent>
                   <div className="max-h-48 overflow-y-auto space-y-2">
                     {dronesData.drones
-                      ?.map((drone: any) => (
+                      ?.map((drone: DeployDrone) => (
                         <div
                           key={drone.evmAddress}
                           className="p-2.5 rounded bg-white/5 border border-white/10 hover:border-blue-500/30 transition-colors"
@@ -634,5 +645,6 @@ export default function DeployPage() {
         </div>
       </div>
     </div>
+    </SkyvaultShell>
   );
 }

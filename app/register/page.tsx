@@ -4,10 +4,8 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
-  ArrowLeft,
   Plane,
   MapPin,
-  Calendar,
   Shield,
   Zap,
   Loader2,
@@ -18,8 +16,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ethers } from "ethers";
-import Link from "next/link";
 import { LocationPicker } from "@/components/LocationPicker";
+import SkyvaultShell from "../../components/world/SkyvaultShell";
 
 const DRONE_MODELS = [
   {
@@ -127,7 +125,8 @@ export default function RegisterDronePage() {
       const address = await signer.getAddress();
       setWalletConnected(true);
       setWalletAddress(address);
-    } catch (error: any) {
+    } catch (err: unknown) {
+      const error = err as any;
       console.error("Error connecting wallet:", error);
       alert("Failed to connect wallet: " + error.message);
     }
@@ -210,7 +209,8 @@ export default function RegisterDronePage() {
       } else {
         alert(`Registration failed: ${data.error || "Unknown error"}`);
       }
-    } catch (error: any) {
+    } catch (err: unknown) {
+      const error = err as any;
       console.error("Registration error:", error);
       if (error.code === "ACTION_REJECTED" || error.code === 4001) {
         alert("Transaction was rejected. Please approve the payment in MetaMask to register the drone.");
@@ -229,7 +229,8 @@ export default function RegisterDronePage() {
   // Success view after registration
   if (registrationComplete && registeredDroneData) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center p-4">
+      <SkyvaultShell title="DRONE REGISTRATION">
+      <div className="min-h-screen flex items-center justify-center p-4">
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -255,7 +256,7 @@ export default function RegisterDronePage() {
               <div className="space-y-3">
                 <Button
                   onClick={() => router.push("/dashboard")}
-                  className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white"
+                  className="w-full bg-linear-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white"
                 >
                   View Drone Dashboard
                 </Button>
@@ -287,25 +288,15 @@ export default function RegisterDronePage() {
           </Card>
         </motion.div>
       </div>
+      </SkyvaultShell>
     );
   }
 
   // Wallet connection required view
   if (!walletConnected) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
-        <nav className="border-b border-white/10 backdrop-blur-md bg-black/20">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center h-16">
-              <Link href="/" className="flex items-center gap-3 text-gray-400 hover:text-white transition">
-                <ArrowLeft className="h-5 w-5" />
-                <span>Back</span>
-              </Link>
-            </div>
-          </div>
-        </nav>
-
-        <div className="flex items-center justify-center min-h-[calc(100vh-4rem)] p-4">
+      <SkyvaultShell title="DRONE REGISTRATION">
+      <div className="flex items-center justify-center min-h-screen p-4">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -326,7 +317,7 @@ export default function RegisterDronePage() {
                 
                 <Button
                   onClick={connectWallet}
-                  className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white"
+                  className="w-full bg-linear-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white"
                 >
                   <Wallet className="h-4 w-4 mr-2" />
                   Connect Wallet
@@ -334,33 +325,25 @@ export default function RegisterDronePage() {
               </CardContent>
             </Card>
           </motion.div>
-        </div>
-      </div>
+          </div>
+      </SkyvaultShell>
     );
   }
 
   // Main registration form
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
-      {/* Navigation */}
-      <nav className="border-b border-white/10 backdrop-blur-md bg-black/20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <Link href="/" className="flex items-center gap-3 text-gray-400 hover:text-white transition">
-              <ArrowLeft className="h-5 w-5" />
-              <span>Back to Home</span>
-            </Link>
-            
-            <div className="flex items-center gap-3 bg-white/10 backdrop-blur-md px-4 py-2 rounded-lg border border-white/20">
-              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-              <Wallet className="h-4 w-4 text-white" />
-              <span className="text-sm text-white font-medium">
-                {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}
-              </span>
-            </div>
-          </div>
+    <SkyvaultShell title="DRONE REGISTRATION">
+    <div className="min-h-screen">
+      {/* Wallet status bar */}
+      <div className="border-b border-white/10 backdrop-blur-md bg-black/40 px-4 py-2 flex items-center justify-end">
+        <div className="flex items-center gap-3 bg-white/10 backdrop-blur-md px-4 py-1.5 rounded-lg border border-white/20">
+          <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+          <Wallet className="h-4 w-4 text-white" />
+          <span className="text-sm text-white font-medium">
+            {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}
+          </span>
         </div>
-      </nav>
+      </div>
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <motion.div
@@ -505,7 +488,7 @@ export default function RegisterDronePage() {
           {/* Right Column - Location & Model Info */}
           <div className="space-y-6">
             {/* Model Specs Display */}
-            <Card className="bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border-blue-500/30">
+            <Card className="bg-linear-to-br from-blue-500/10 to-cyan-500/10 border-blue-500/30">
               <CardHeader>
                 <CardTitle className="text-white">{selectedModel?.name}</CardTitle>
               </CardHeader>
@@ -553,7 +536,7 @@ export default function RegisterDronePage() {
             <Button
               type="submit"
               disabled={isSubmitting || !currentLocation}
-              className="w-full h-14 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white text-lg disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full h-14 bg-linear-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white text-lg disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isSubmitting ? (
                 <>
@@ -571,5 +554,6 @@ export default function RegisterDronePage() {
         </form>
       </div>
     </div>
+    </SkyvaultShell>
   );
 }
