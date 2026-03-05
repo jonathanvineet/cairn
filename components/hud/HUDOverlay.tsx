@@ -18,7 +18,7 @@ export function HUDOverlay({ drones = [] }: HUDOverlayProps) {
   const thermalMode = useWorldStore((state) => state.thermalMode);
   const voiceInput = useUIStore((state) => state.voiceInput);
   const breachCount = useUIStore((state) => state.breachCount);
-  
+
   return (
     <div
       className="fixed inset-0 pointer-events-none z-10"
@@ -26,15 +26,15 @@ export function HUDOverlay({ drones = [] }: HUDOverlayProps) {
     >
       {/* Top Left */}
       <div className="absolute top-6 left-6 space-y-3">
-        <div className="space-y-2">
+        <div className="space-y-1">
           <div className="text-[#00f5ff] text-xs font-bold tracking-[0.3em] uppercase">
-            SKYVAULT OPS
+            CAIRN
           </div>
           <div className="text-white/60 text-[9px] font-mono tracking-wider">
-            ZONE DELTA-7 // ACTIVE
+            AIRSPACE REGISTRY // HEDERA TESTNET
           </div>
         </div>
-        
+
         {/* Quick Access Menu */}
         <div className="space-y-1 pointer-events-auto">
           <div className="text-[#8b5cf6]/60 text-[9px] font-bold tracking-widest mb-2">
@@ -66,7 +66,7 @@ export function HUDOverlay({ drones = [] }: HUDOverlayProps) {
           </Link>
         </div>
       </div>
-      
+
       {/* Top Right */}
       <div className="absolute top-6 right-6 flex flex-col items-end gap-3">
         {/* Navigation Menu */}
@@ -84,7 +84,7 @@ export function HUDOverlay({ drones = [] }: HUDOverlayProps) {
             Register Drone
           </Link>
         </div>
-        
+
         <OperatorStatus />
         {thermalMode && (
           <div className="inline-block px-3 py-1 bg-[#e94560]/20 border border-[#e94560]/50 rounded text-[#e94560] text-[10px] font-bold tracking-widest">
@@ -92,22 +92,22 @@ export function HUDOverlay({ drones = [] }: HUDOverlayProps) {
           </div>
         )}
       </div>
-      
+
       {/* Bottom Left */}
       <div className="absolute bottom-6 left-6">
         <RadarMinimap />
       </div>
-      
+
       {/* Bottom Right */}
       <div className="absolute bottom-6 right-6">
         <DroneRoster drones={drones} />
       </div>
-      
+
       {/* Center Bottom */}
       <div className="absolute bottom-12 left-1/2 -translate-x-1/2">
         <BreachCounter count={breachCount} />
       </div>
-      
+
       {/* Voice Input Indicator */}
       {voiceInput.isListening && (
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">

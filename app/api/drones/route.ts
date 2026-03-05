@@ -14,40 +14,40 @@ export async function GET(req: NextRequest) {
     const count = Number(totalDrones);
     console.log(`📡 DroneRegistry has ${count} drones on-chain`);
 
-    const drones: any[] = [];
-    const seenAddresses = new Set<string>();
+    const droneIndices = Array.from({ length: count }, (_, i) => i);
+    const droneDataResults = await Promise.all(
+      droneIndices.map(async (i) => {
+        try {
+          const droneAddress: string = await contract.allDrones(i);
+          const droneData = await contract.getDrone(droneAddress);
 
-    for (let i = 0; i < count; i++) {
-      try {
-        const droneAddress: string = await contract.allDrones(i);
-        if (seenAddresses.has(droneAddress.toLowerCase())) continue;
-        seenAddresses.add(droneAddress.toLowerCase());
+          // Merge with local DB data to get location info and updated zone assignment
+          const localDrone = await db.drones.findByEvmAddress(droneAddress);
 
-        const droneData = await contract.getDrone(droneAddress);
-        
-        // Merge with local DB data to get location info and updated zone assignment
-        const localDrone = await db.drones.findByEvmAddress(droneAddress);
-        
-        drones.push({
-          cairnDroneId: droneData.cairnId,
-          evmAddress: droneAddress,
-          model: droneData.model || "Unknown Model",
-          // Prioritize local DB zone assignment (updated by boundary API) over blockchain
-          assignedZoneId: localDrone?.assignedZoneId || droneData.zoneId || "UNASSIGNED",
-          status: droneData.isActive ? "ACTIVE" : "INACTIVE",
-          registeredAt: new Date(Number(droneData.registeredAt) * 1000).toISOString(),
-          // Add location data from local DB
-          registrationLat: localDrone?.registrationLat,
-          registrationLng: localDrone?.registrationLng,
-          // AI Agent fields from local DB
-          agentTopicId: localDrone?.agentTopicId || null,
-          agentManifestSequence: localDrone?.agentManifestSequence || null,
-          isAgent: !!localDrone?.agentTopicId,
-        });
-      } catch (err: any) {
-        console.error(`  ❌ Error fetching drone at index ${i}:`, err.message);
-      }
-    }
+          return {
+            cairnDroneId: droneData.cairnId,
+            evmAddress: droneAddress,
+            model: droneData.model || "Unknown Model",
+            // Prioritize local DB zone assignment (updated by boundary API) over blockchain
+            assignedZoneId: localDrone?.assignedZoneId || droneData.zoneId || "UNASSIGNED",
+            status: droneData.isActive ? "ACTIVE" : "INACTIVE",
+            registeredAt: new Date(Number(droneData.registeredAt) * 1000).toISOString(),
+            // Add location data from local DB
+            registrationLat: localDrone?.registrationLat,
+            registrationLng: localDrone?.registrationLng,
+            // AI Agent fields from local DB
+            agentTopicId: localDrone?.agentTopicId || null,
+            agentManifestSequence: localDrone?.agentManifestSequence || null,
+            isAgent: !!localDrone?.agentTopicId,
+          };
+        } catch (err: any) {
+          console.error(`  ❌ Error fetching drone at index ${i}:`, err.message);
+          return null;
+        }
+      })
+    );
+
+    const drones = droneDataResults.filter((d): d is any => d !== null);
 
     // Deduplicate by evmAddress (keep first occurrence) - this is the unique identifier on-chain
     const unique = Array.from(
@@ -57,7 +57,7 @@ export async function GET(req: NextRequest) {
     // ALSO include drones that are in local DB but not yet on blockchain
     const allLocalDrones = await db.drones.findMany();
     const blockchainAddresses = new Set(unique.map(d => d.evmAddress.toLowerCase()));
-    
+
     for (const localDrone of allLocalDrones) {
       if (!blockchainAddresses.has(localDrone.evmAddress.toLowerCase())) {
         console.log(`📝 Adding local-only drone: ${localDrone.cairnDroneId} (not yet on blockchain)`);

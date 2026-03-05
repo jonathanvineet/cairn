@@ -3,28 +3,19 @@
 export function AtmosphereVolume() {
   return (
     <>
-      {/* Fog */}
-      <fog attach="fog" args={["#050810", 30, 600]} />
-      
-      {/* God rays effect - ambient light */}
-      <ambientLight intensity={0.15} color="#16213e" />
-      
-      {/* Directional light for atmosphere */}
+      {/* Fog - bring it closer to reduce fill rate */}
+      <fog attach="fog" args={["#050810", 50, 400]} />
+
+      {/* Ambient light only */}
+      <ambientLight intensity={0.2} color="#16213e" />
+
+      {/* Single directional light, no shadows */}
       <directionalLight
         position={[100, 200, 100]}
-        intensity={0.8}
+        intensity={0.6}
         color="#2d5a22"
-        castShadow
-        shadow-mapSize={[2048, 2048]}
-        shadow-camera-far={1000}
-        shadow-camera-left={-400}
-        shadow-camera-right={400}
-        shadow-camera-top={400}
-        shadow-camera-bottom={-400}
+        castShadow={false}
       />
-      
-      {/* Atmospheric backlight */}
-      <pointLight position={[0, 150, -200]} intensity={2} distance={800} color="#0a1628" />
     </>
   );
 }

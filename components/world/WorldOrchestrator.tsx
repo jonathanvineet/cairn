@@ -75,17 +75,17 @@ export function WorldOrchestrator({
       <SkyDome />
       <AtmosphereVolume />
       <GroundMesh />
-      
+
       <Suspense fallback={null}>
-        <ForestCanopy count={8000} />
+        <ForestCanopy count={4000} />
       </Suspense>
-      
+
       {/* Camera system */}
       <ForwardFlightCamera />
-      
+
       {/* Drone swarm - receives YOUR existing drone data */}
       <DroneSwarm drones={drones} registeredDroneData={registeredDroneData} />
-      
+
       {/* Breach and boundary system */}
       <BreachPointSystem
         zones={zones}
@@ -94,7 +94,7 @@ export function WorldOrchestrator({
         registrationSuccess={registrationSuccess}
         registeredDroneData={registeredDroneData}
       />
-      
+
       <BoundaryWireframe
         zones={zones}
         registrationSuccess={registrationSuccess}

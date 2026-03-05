@@ -66,12 +66,12 @@ export default function DashboardPage() {
         fetch("/api/drones"),
         fetch("/api/zones")
       ]);
-      
+
       if (dronesRes.ok) {
         const dronesData = await dronesRes.json();
         setDrones(dronesData.drones || []);
       }
-      
+
       if (zonesRes.ok) {
         const zonesData = await zonesRes.json();
         setZones(zonesData.zones || []);
@@ -86,7 +86,7 @@ export default function DashboardPage() {
       alert("Please install MetaMask");
       return;
     }
-    
+
     try {
       const provider = new ethers.BrowserProvider(window.ethereum as any);
       await provider.send("eth_requestAccounts", []);
@@ -170,227 +170,190 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0e27]">
-      {/* Background Effects */}
-      <div className="fixed inset-0 bg-[linear-gradient(to_right,#1a1f3a_1px,transparent_1px),linear-gradient(to_bottom,#1a1f3a_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_0%,#000_70%,transparent_110%)]" />
-      <motion.div
-        className="fixed top-20 right-10 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl"
-        animate={{
-          x: [0, 50, 0],
-          y: [0, -30, 0],
-        }}
-        transition={{
-          duration: 15,
-          repeat: Infinity,
-          ease: "easeInOut"
-        }}
-      />
+    <div className="min-h-screen bg-[#050810] text-white" style={{ fontFamily: "Rajdhani, sans-serif" }}>
+      {/* HUD-style background */}
+      <div className="fixed inset-0 pointer-events-none z-0">
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#1a1f3a_1px,transparent_1px),linear-gradient(to_bottom,#1a1f3a_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_0%,#000_70%,transparent_110%)] opacity-30" />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#0a1628]/0 via-[#0a1628]/10 to-[#0a1628]/60" />
+        <div className="absolute inset-0 scanline-effect opacity-5 pointer-events-none" />
+      </div>
 
       {/* Navigation */}
-      <nav className="relative z-20 border-b border-white/5 bg-black/20 backdrop-blur-xl">
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <div className="flex justify-between items-center">
-            <Link href="/" className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-cyan-400 to-violet-500 rounded-lg flex items-center justify-center">
-                <Shield className="h-6 w-6 text-white" />
-              </div>
-              <div>
-                <h1 className="text-xl font-bold text-white tracking-tight">CAIRN</h1>
-                <p className="text-[10px] text-gray-400 uppercase tracking-wider">Dashboard</p>
-              </div>
-            </Link>
-
-            <div className="flex items-center gap-3">
-              <div className="px-4 py-2 bg-gradient-to-r from-emerald-500/10 to-cyan-500/10 border border-emerald-500/30 rounded-lg">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
-                  <span className="text-sm text-emerald-400 font-medium">
-                    {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}
-                  </span>
-                </div>
-              </div>
+      <nav className="relative z-20 border-b border-[#00f5ff]/20 bg-black/40 backdrop-blur-md">
+        <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
+          <Link href="/" className="flex items-center gap-3 group">
+            <div className="w-10 h-10 bg-[#00f5ff]/10 border border-[#00f5ff]/40 rounded-lg flex items-center justify-center group-hover:bg-[#00f5ff]/20 transition-all">
+              <Shield className="h-6 w-6 text-[#00f5ff]" />
             </div>
+            <div>
+              <h1 className="text-xl font-bold text-white tracking-[0.2em] uppercase">CAIRN</h1>
+              <p className="text-[9px] text-[#00f5ff]/60 uppercase tracking-[0.3em] font-mono">Operator Dashboard</p>
+            </div>
+          </Link>
+
+          <div className="flex items-center gap-4">
+            <div className="px-3 py-1.5 bg-[#00f5ff]/5 border border-[#00f5ff]/20 rounded font-mono text-[11px] text-[#00f5ff]/80">
+              <span className="opacity-50 mr-2">//</span>
+              {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}
+            </div>
+            <Link
+              href="/"
+              className="px-4 py-1.5 border border-white/10 hover:border-white/30 rounded text-xs font-bold tracking-widest uppercase transition-all"
+            >
+              Return to HUD
+            </Link>
           </div>
         </div>
       </nav>
 
       {/* Main Content */}
       <div className="relative z-10 max-w-7xl mx-auto px-6 py-12">
-        {/* Header */}
+        {/* Header Section */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-8"
+          className="mb-12 border-l-2 border-[#00f5ff] pl-6"
         >
-          <h1 className="text-4xl font-bold text-white mb-2">Fleet Overview</h1>
-          <p className="text-gray-400">Monitor and manage your drone network</p>
+          <div className="text-[#00f5ff] text-xs font-bold tracking-[0.4em] uppercase mb-2">FLEET_OVERVIEW_V1.0</div>
+          <h1 className="text-4xl font-bold text-white tracking-widest uppercase mb-2">Operational Status</h1>
+          <p className="text-white/40 font-mono text-sm tracking-tighter">TIMESTAMP: {new Date().toISOString().replace('T', ' ').slice(0, 19)} // ZONE: DELTA-7</p>
         </motion.div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        {/* HUD Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-12">
           {[
-            { label: "Total Drones", value: drones.length, icon: Plane, color: "cyan" },
-            { label: "Active Drones", value: activeDrones.length, icon: Activity, color: "emerald" },
-            { label: "Assigned", value: assignedDrones.length, icon: CheckCircle, color: "violet" },
-            { label: "Patrol Zones", value: zones.length, icon: MapPin, color: "fuchsia" }
+            { label: "Total Asset Count", value: drones.length, icon: Plane, color: "#00f5ff", id: "DRN" },
+            { label: "Active Drones", value: activeDrones.length, icon: Activity, color: "#10b981", id: "ACT" },
+            { label: "Assigned Assets", value: assignedDrones.length, icon: CheckCircle, color: "#8b5cf6", id: "ASG" },
+            { label: "Patrol Sectors", value: zones.length, icon: MapPin, color: "#f59e0b", id: "SCT" }
           ].map((stat, i) => (
             <motion.div
               key={stat.label}
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.1 }}
-              className="group relative"
+              transition={{ delay: i * 0.05 }}
+              className="relative group overflow-hidden"
             >
-              <div className={`absolute inset-0 bg-gradient-to-br from-${stat.color}-500/20 to-${stat.color}-600/10 rounded-xl blur-xl group-hover:blur-2xl transition`} />
-              <div className="relative bg-[#0f1729] border border-white/10 rounded-xl p-6 hover:border-white/20 transition">
-                <div className="flex items-center justify-between mb-4">
-                  <stat.icon className={`h-8 w-8 text-${stat.color}-400`} />
-                  <span className={`text-3xl font-bold text-${stat.color}-400`}>{stat.value}</span>
+              <div className="absolute inset-0 bg-[#0a1628]/40 border border-white/10 group-hover:border-[#00f5ff]/40 transition-all rounded" />
+              <div className="relative p-6">
+                <div className="flex justify-between items-start mb-4">
+                  <div className="text-[10px] font-mono opacity-40">[{stat.id}-00X]</div>
+                  <stat.icon size={18} style={{ color: stat.color }} className="opacity-80" />
                 </div>
-                <p className="text-sm text-gray-400 uppercase tracking-wider">{stat.label}</p>
+                <div className="text-3xl font-bold tracking-wider mb-1">{stat.value}</div>
+                <div className="text-[10px] uppercase tracking-[0.2em] font-mono text-white/40">{stat.label}</div>
               </div>
+              <div className="absolute bottom-0 left-0 h-0.5 bg-[#00f5ff]/20 group-hover:w-full transition-all w-0" />
             </motion.div>
           ))}
         </div>
 
         {/* Quick Actions */}
-        <div className="grid md:grid-cols-2 gap-6 mb-8">
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.4 }}
-            onClick={() => router.push("/register")}
-            className="group relative cursor-pointer"
-          >
-            <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 rounded-xl blur-xl group-hover:blur-2xl transition" />
-            <div className="relative bg-[#0f1729] border border-white/10 rounded-xl p-6 hover:border-cyan-500/50 transition-all">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-xl font-bold text-white mb-2">Register New Drone</h3>
-                  <p className="text-gray-400 text-sm">Add a drone to the registry</p>
+        <div className="grid md:grid-cols-2 gap-6 mb-12">
+          <Link href="/register">
+            <motion.div
+              whileHover={{ scale: 1.01 }}
+              className="relative group overflow-hidden cursor-pointer"
+            >
+              <div className="absolute inset-0 bg-[#00f5ff]/5 border border-[#00f5ff]/30 group-hover:bg-[#00f5ff]/10 group-hover:border-[#00f5ff]/60 transition-all rounded-lg" />
+              <div className="relative p-8 flex justify-between items-center">
+                <div className="space-y-2">
+                  <div className="text-[#00f5ff] text-[10px] font-bold tracking-[0.3em] uppercase">SYSTEM_ACTION</div>
+                  <h3 className="text-2xl font-bold uppercase tracking-widest">Register New Asset</h3>
+                  <p className="text-white/40 text-sm font-mono tracking-tighter">Add encrypted drone identifiers to the Hedera ledger</p>
                 </div>
-                <div className="w-12 h-12 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-lg flex items-center justify-center">
-                  <Plus className="h-6 w-6 text-white" />
+                <div className="w-14 h-14 bg-[#00f5ff]/10 border border-[#00f5ff]/30 rounded flex items-center justify-center group-hover:rotate-90 transition-all">
+                  <Plus className="text-[#00f5ff]" />
                 </div>
               </div>
-            </div>
-          </motion.div>
+            </motion.div>
+          </Link>
 
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.5 }}
-            onClick={() => router.push("/deploy")}
-            className="group relative cursor-pointer"
-          >
-            <div className="absolute inset-0 bg-gradient-to-br from-violet-500/20 to-fuchsia-500/20 rounded-xl blur-xl group-hover:blur-2xl transition" />
-            <div className="relative bg-[#0f1729] border border-white/10 rounded-xl p-6 hover:border-violet-500/50 transition-all">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-xl font-bold text-white mb-2">Create Patrol Zone</h3>
-                  <p className="text-gray-400 text-sm">Define new boundary zones</p>
+          <Link href="/deploy">
+            <motion.div
+              whileHover={{ scale: 1.01 }}
+              className="relative group overflow-hidden cursor-pointer"
+            >
+              <div className="absolute inset-0 bg-[#8b5cf6]/5 border border-[#8b5cf6]/30 group-hover:bg-[#8b5cf6]/10 group-hover:border-[#8b5cf6]/60 transition-all rounded-lg" />
+              <div className="relative p-8 flex justify-between items-center">
+                <div className="space-y-2">
+                  <div className="text-[#8b5cf6] text-[10px] font-bold tracking-[0.3em] uppercase">NETWORK_ACTION</div>
+                  <h3 className="text-2xl font-bold uppercase tracking-widest">Create Patrol Zone</h3>
+                  <p className="text-white/40 text-sm font-mono tracking-tighter">Define geo-fenced boundaries for autonomous monitoring</p>
                 </div>
-                <div className="w-12 h-12 bg-gradient-to-br from-violet-500 to-fuchsia-600 rounded-lg flex items-center justify-center">
-                  <MapPin className="h-6 w-6 text-white" />
+                <div className="w-14 h-14 bg-[#8b5cf6]/10 border border-[#8b5cf6]/30 rounded flex items-center justify-center group-hover:scale-110 transition-all">
+                  <MapPin className="text-[#8b5cf6]" />
                 </div>
               </div>
-            </div>
-          </motion.div>
+            </motion.div>
+          </Link>
         </div>
 
-        {/* Drones List */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6 }}
-          className="relative"
-        >
-          <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-white/0 rounded-2xl blur-2xl" />
-          <div className="relative bg-[#0f1729] border border-white/10 rounded-2xl p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-white">Registered Drones</h2>
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
-                <span className="text-sm text-gray-400">{activeDrones.length} Active</span>
+        {/* Data Grid Section */}
+        <div className="grid lg:grid-cols-3 gap-8">
+          {/* Drones Column */}
+          <div className="lg:col-span-2 space-y-6">
+            <div className="flex justify-between items-end pb-4 border-b border-white/10">
+              <div>
+                <h2 className="text-xl font-bold uppercase tracking-[0.2em] flex items-center gap-2">
+                  <span className="w-2 h-2 bg-[#00f5ff] rounded-full animate-pulse" />
+                  Asset Inventory
+                </h2>
+                <div className="text-[10px] font-mono text-white/30 uppercase mt-1">LATEST_SYNC // {activeDrones.length} ONLINE</div>
               </div>
             </div>
 
             {drones.length === 0 ? (
-              <div className="text-center py-12">
-                <Plane className="h-16 w-16 text-gray-600 mx-auto mb-4" />
-                <p className="text-gray-400 mb-6">No drones registered yet</p>
-                <button
-                  onClick={() => router.push("/register")}
-                  className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-violet-500 rounded-lg text-white font-medium hover:shadow-lg hover:shadow-cyan-500/50 transition-all"
-                >
-                  Register Your First Drone
-                </button>
+              <div className="text-center py-20 border border-white/5 bg-white/[0.02] rounded-xl">
+                <div className="text-white/20 mb-4 flex justify-center"><Plane size={48} /></div>
+                <p className="text-white/40 font-mono text-sm">NO ASSETS DETECTED IN LOCAL RANGE</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid md:grid-cols-2 gap-4">
                 {drones.map((drone, i) => (
                   <motion.div
                     key={drone.evmAddress}
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: 0.7 + i * 0.05 }}
-                    className="bg-white/5 border border-white/10 rounded-xl p-4 hover:border-cyan-500/50 transition-all group"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.1 + i * 0.05 }}
+                    className="relative group"
                   >
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex-1 min-w-0">
-                        <h3 className="text-white font-bold truncate flex items-center gap-2">
-                          <Plane className="h-4 w-4 text-cyan-400 flex-shrink-0" />
-                          {drone.cairnDroneId}
-                        </h3>
-                        <p className="text-xs text-gray-400 truncate">{drone.model}</p>
-                      </div>
-                      {drone.isAgent && (
-                        <div className="px-2 py-1 bg-violet-500/20 border border-violet-500/30 rounded text-[10px] text-violet-300 font-bold">
-                          AI
+                    <div className="absolute inset-0 bg-[#0a1628]/60 border border-white/5 group-hover:border-[#00f5ff]/30 transition-all rounded" />
+                    <div className="relative p-5">
+                      <div className="flex justify-between items-start mb-4">
+                        <div className="min-w-0">
+                          <h4 className="font-bold text-white truncate text-base tracking-wider uppercase">{drone.cairnDroneId}</h4>
+                          <div className="text-[10px] font-mono text-white/40 uppercase mb-2">MODEL: {drone.model}</div>
                         </div>
-                      )}
-                    </div>
-
-                    <div className="space-y-2 text-sm">
-                      <div className="flex items-center gap-2 text-gray-400">
-                        <Shield className="h-3 w-3" />
-                        <span className="text-xs truncate">{drone.evmAddress.slice(0, 6)}...{drone.evmAddress.slice(-4)}</span>
-                      </div>
-
-                      {drone.registrationLat && drone.registrationLng && (
-                        <div className="flex items-center gap-2 text-gray-400">
-                          <MapPin className="h-3 w-3" />
-                          <span className="text-xs">
-                            {drone.registrationLat.toFixed(4)}, {drone.registrationLng.toFixed(4)}
-                          </span>
-                        </div>
-                      )}
-
-                      <div className="flex items-center gap-2">
-                        {drone.assignedZoneId === "UNASSIGNED" ? (
-                          <>
-                            <AlertCircle className="h-3 w-3 text-yellow-400" />
-                            <span className="text-xs text-yellow-400">Unassigned</span>
-                          </>
-                        ) : (
-                          <>
-                            <CheckCircle className="h-3 w-3 text-emerald-400" />
-                            <span className="text-xs text-emerald-400 truncate">{drone.assignedZoneId}</span>
-                          </>
+                        {drone.isAgent && (
+                          <div className="px-2 py-0.5 bg-[#8b5cf6]/20 border border-[#8b5cf6]/40 rounded text-[9px] text-[#8b5cf6] font-bold tracking-tighter">AI_UNIT</div>
                         )}
                       </div>
-                    </div>
 
-                    <div className="mt-4 pt-4 border-t border-white/5">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-gray-400">Status</span>
-                        <span className={`px-2 py-1 rounded ${
-                          drone.status === "ACTIVE" 
-                            ? "bg-emerald-500/20 text-emerald-400" 
-                            : "bg-gray-500/20 text-gray-400"
-                        }`}>
+                      <div className="space-y-2.5 mb-6">
+                        <div className="flex items-center gap-3 text-[10px] font-mono text-white/50">
+                          <Shield size={12} className="text-[#00f5ff]" />
+                          <span className="truncate">{drone.evmAddress}</span>
+                        </div>
+                        {drone.assignedZoneId !== "UNASSIGNED" ? (
+                          <div className="flex items-center gap-3 text-[10px] font-mono text-[#10b981]">
+                            <CheckCircle size={12} />
+                            <span className="uppercase">DEPLOYED: {drone.assignedZoneId}</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-3 text-[10px] font-mono text-[#f59e0b]">
+                            <AlertCircle size={12} />
+                            <span className="uppercase">AWAITING DEPLOYMENT</span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex justify-between items-center pt-4 border-t border-white/5">
+                        <div className="text-[9px] font-mono text-white/30 tracking-[0.2em] uppercase">STATUS_OPE</div>
+                        <div className={`text-[10px] font-bold tracking-widest px-2 py-0.5 rounded ${drone.status === "ACTIVE" ? "text-[#10b981] bg-[#10b981]/10" : "text-white/30 bg-white/5"
+                          }`}>
                           {drone.status}
-                        </span>
+                        </div>
                       </div>
                     </div>
                   </motion.div>
@@ -398,39 +361,37 @@ export default function DashboardPage() {
               </div>
             )}
           </div>
-        </motion.div>
 
-        {/* Patrol Zones Section */}
-        {zones.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.8 }}
-            className="relative mt-8"
-          >
-            <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-white/0 rounded-2xl blur-2xl" />
-            <div className="relative bg-[#0f1729] border border-white/10 rounded-2xl p-6">
-              <h2 className="text-2xl font-bold text-white mb-6">Patrol Zones</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {zones.map((zone, i) => (
-                  <div
-                    key={zone.zoneId}
-                    className="bg-white/5 border border-white/10 rounded-xl p-4 hover:border-violet-500/50 transition-all"
-                  >
-                    <div className="flex items-start justify-between mb-3">
-                      <h3 className="text-white font-bold">{zone.zoneName || zone.zoneId}</h3>
-                      <MapPin className="h-5 w-5 text-violet-400" />
-                    </div>
-                    <div className="space-y-2 text-sm text-gray-400">
-                      <p>{zone.coordinates?.length || 0} boundary points</p>
-                      <p>{zone.assignedDrones?.length || 0} drone{zone.assignedDrones?.length !== 1 ? 's' : ''} assigned</p>
+          {/* Zones Column */}
+          <div className="space-y-6">
+            <div className="pb-4 border-b border-white/10">
+              <h2 className="text-xl font-bold uppercase tracking-[0.2em]">Sector Data</h2>
+              <div className="text-[10px] font-mono text-white/30 uppercase mt-1">AVAILABLE_ZONES // {zones.length} TOTAL</div>
+            </div>
+
+            <div className="space-y-3">
+              {zones.map((zone, i) => (
+                <motion.div
+                  key={zone.zoneId}
+                  initial={{ opacity: 0, x: 10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.1 + i * 0.05 }}
+                  className="p-4 bg-white/[0.03] border border-white/5 hover:border-[#8b5cf6]/30 transition-all rounded flex justify-between items-center group"
+                >
+                  <div>
+                    <h4 className="text-sm font-bold text-white uppercase tracking-wider">{zone.zoneName || zone.zoneId}</h4>
+                    <div className="text-[10px] font-mono text-white/40 mt-1 uppercase">
+                      PTS: {zone.coordinates?.length || 0} // ASSETS: {zone.assignedDrones?.length || 0}
                     </div>
                   </div>
-                ))}
-              </div>
+                  <div className="w-8 h-8 rounded border border-white/10 flex items-center justify-center group-hover:bg-[#8b5cf6]/10 group-hover:border-[#8b5cf6]/40 transition-all">
+                    <MapPin size={14} className="text-[#8b5cf6]" />
+                  </div>
+                </motion.div>
+              ))}
             </div>
-          </motion.div>
-        )}
+          </div>
+        </div>
       </div>
     </div>
   );
