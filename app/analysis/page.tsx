@@ -264,22 +264,22 @@ export default function AnalysisPage() {
                 <div className="grid grid-cols-3 gap-4">
                   <div className="p-3 bg-white/5 rounded border border-white/10">
                     <p className="text-xs text-gray-400">Total Drones</p>
-                    <p className="text-2xl font-bold text-green-400">{results.summary.totalDrones}</p>
+                    <p className="text-2xl font-bold text-green-400">{results.analysis.length}</p>
                   </div>
                   <div className="p-3 bg-white/5 rounded border border-white/10">
                     <p className="text-xs text-gray-400">Analyzed</p>
-                    <p className="text-2xl font-bold text-blue-400">{results.summary.analyzedDrones}</p>
+                    <p className="text-2xl font-bold text-blue-400">{results.analysis.length}</p>
                   </div>
                   <div className="p-3 bg-white/5 rounded border border-white/10">
                     <p className="text-xs text-gray-400">Top Score</p>
-                    <p className="text-2xl font-bold text-yellow-400">{results.summary.topScore}/100</p>
+                    <p className="text-2xl font-bold text-yellow-400">{results.analysis.length > 0 ? Math.round(results.analysis[0]?.score || 0) : 0}/100</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
             {/* Top Candidate */}
-            {results.summary.topCandidate && (
+            {results.analysis.length > 0 && (
               <Card className="glass-strong border-green-500/30">
                 <CardHeader>
                   <CardTitle className="text-green-400 flex items-center gap-2">
@@ -291,28 +291,28 @@ export default function AnalysisPage() {
                   <div className="p-4 bg-green-500/10 rounded-lg border border-green-500/30">
                     <div className="flex items-start justify-between mb-3">
                       <div>
-                        <p className="text-xl font-bold text-green-300">{results.summary.topCandidate.cairnDroneId}</p>
-                        <p className="text-xs text-gray-400 font-mono">{results.summary.topCandidate.evmAddress.slice(0, 10)}...{results.summary.topCandidate.evmAddress.slice(-8)}</p>
+                        <p className="text-xl font-bold text-green-300">{results.analysis[0]?.drone.cairnDroneId}</p>
+                        <p className="text-xs text-gray-400 font-mono">{results.analysis[0]?.drone.evmAddress.slice(0, 10)}...{results.analysis[0]?.drone.evmAddress.slice(-8)}</p>
                       </div>
                       <Badge className="bg-green-500/20 text-green-300 border-green-500/30 text-lg px-3 py-1">
-                        #{results.summary.topScore}
+                        #{Math.round(results.analysis[0]?.score || 0)}
                       </Badge>
                     </div>
 
                     <div className="space-y-2 text-sm">
                       <div className="flex items-center gap-2">
                         <Battery className="h-4 w-4 text-yellow-400" />
-                        <span className="text-gray-300">Battery: <strong>{results.summary.topCandidate.batteryLevel}%</strong></span>
+                        <span className="text-gray-300">Battery: <strong>{results.analysis[0]?.drone.batteryLevel}%</strong></span>
                       </div>
                       <div className="flex items-center gap-2">
                         <MapPin className="h-4 w-4 text-blue-400" />
-                        <span className="text-gray-300">Location: <strong>{results.summary.topCandidate.location.lat.toFixed(4)}°, {results.summary.topCandidate.location.lng.toFixed(4)}°</strong></span>
+                        <span className="text-gray-300">Location: <strong>{results.analysis[0]?.drone.location.lat.toFixed(4)}°, {results.analysis[0]?.drone.location.lng.toFixed(4)}°</strong></span>
                       </div>
                       <div className="flex items-center gap-2">
                         <Zap className="h-4 w-4 text-purple-400" />
-                        <span className="text-gray-300">Health: <strong className="capitalize">{results.summary.topCandidate.health}</strong></span>
+                        <span className="text-gray-300">Health: <strong className="capitalize">{results.analysis[0]?.drone.health}</strong></span>
                       </div>
-                      {results.summary.topCandidate.agentTopicId && (
+                      {results.analysis[0]?.drone.agentTopicId && (
                         <div className="flex items-center gap-2">
                           <CheckCircle2 className="h-4 w-4 text-purple-400" />
                           <span className="text-gray-300">Agent: <strong>Verified</strong></span>
