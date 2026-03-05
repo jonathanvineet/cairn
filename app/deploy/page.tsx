@@ -149,8 +149,8 @@ export default function DeployPage() {
         .setFunction(
           "createBoundaryZone",
           new ContractFunctionParameters()
-            .addBytes32(Array.from(ethers.getBytes(zoneIdBytes32)))
-            .addBytes(Array.from(coordsBytes))
+            .addBytes32(ethers.getBytes(zoneIdBytes32))
+            .addBytes(coordsBytes)
         );
 
       // Sign and execute with HashPack (user pays transaction fee)
