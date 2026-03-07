@@ -9,18 +9,24 @@ import {
 } from "@/lib/hederaHelpers";
 
 export function useHederaWallet() {
-  const { connected, selectedAccount, error } = useWalletStore();
+  const { connected, selectedAccount, error, hasHydrated } = useWalletStore();
 
   const getSigner = useCallback(() => {
     const connector = getConnector();
+    if (!hasHydrated) {
+      throw new Error("Wallet is initializing, please wait...");
+    }
     if (!connector || !selectedAccount) {
       throw new Error("Wallet not connected");
     }
     return connector.getSigner(AccountId.fromString(selectedAccount.id));
-  }, [selectedAccount]);
+  }, [selectedAccount, hasHydrated]);
 
   const signTransaction = useCallback(
     async (transaction: Transaction) => {
+      if (!hasHydrated) {
+        throw new Error("Wallet is initializing, please wait...");
+      }
       if (!connected || !selectedAccount) {
         throw new Error("Wallet not connected");
       }
@@ -34,11 +40,14 @@ export function useHederaWallet() {
         throw err;
       }
     },
-    [connected, selectedAccount, getSigner]
+    [connected, selectedAccount, getSigner, hasHydrated]
   );
 
   const signAndExecuteTransaction = useCallback(
     async (transaction: Transaction) => {
+      if (!hasHydrated) {
+        throw new Error("Wallet is initializing, please wait...");
+      }
       if (!connected || !selectedAccount) {
         throw new Error("Wallet not connected");
       }
@@ -56,17 +65,22 @@ export function useHederaWallet() {
         // Freeze the transaction with the client
         await transaction.freezeWith(client);
         
-        // Now sign and execute with the wallet
-        const signer = getSigner();
-        const signedTx = await signer.signTransaction(transaction);
-        const result = await signer.call(signedTx);
+        // Use signAndExecuteTransaction directly - this only prompts ONCE
+        const connector = getConnector();
+        if (!connector) {
+          throw new Error("Wallet connector not available");
+        }
+        
+        const signer = connector.getSigner(AccountId.fromString(selectedAccount.id));
+        const result = await signer.call(transaction);
+        
         return result;
       } catch (err) {
         console.error("Transaction execution error:", err);
         throw err;
       }
     },
-    [connected, selectedAccount, getSigner]
+    [connected, selectedAccount, getSigner, hasHydrated]
   );
 
   return {

@@ -26,6 +26,7 @@ interface Coordinate {
 
 interface DeployZone {
   zoneId: string;
+  zoneName?: string;
   drones: string[];
   coordinates?: Coordinate[];
 }
@@ -42,7 +43,7 @@ interface DeployDrone {
 }
 
 export default function DeployPage() {
-  const { connected: walletConnected, selectedAccount } = useWalletStore();
+  const { connected: walletConnected, selectedAccount, hasHydrated, isInitializing: walletInitializing } = useWalletStore();
   const { signAndExecuteTransaction } = useHederaWallet();
   const walletAddress = selectedAccount?.id ?? null;
   const [boundaryCoords, setBoundaryCoords] = useState<Coordinate[] | null>(null);
@@ -102,7 +103,11 @@ export default function DeployPage() {
       alert("Please draw a boundary first (click 'Create Boundary', add points, then click 'Complete')");
       return;
     }
-    if (!walletConnected) {
+    if (walletInitializing) {
+      alert("Wallet is initializing, please wait a moment...");
+      return;
+    }
+    if (!walletConnected || !selectedAccount) {
       alert("Please connect your wallet first — coordinates are saved directly to the blockchain.");
       return;
     }
@@ -241,8 +246,21 @@ export default function DeployPage() {
           {/* Right sidebar for boundary management */}
           <div className="w-80 bg-[#0f1729] border-l border-white/10 p-4 overflow-y-auto">
             <div className="space-y-4">
+              {/* Wallet Initializing */}
+              {walletInitializing && (
+                <Card className="bg-white/5 border-cyan-500/30">
+                  <CardContent className="pt-6">
+                    <div className="text-center">
+                      <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2 text-cyan-400" />
+                      <p className="text-sm font-semibold text-cyan-400 mb-1">Restoring Wallet Session...</p>
+                      <p className="text-xs text-gray-400">Please wait</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+              
               {/* Wallet Connection */}
-              {!walletConnected && (
+              {hasHydrated && !walletConnected && !walletInitializing && (
                 <Card className="bg-white/5 border-cyan-500/30">
                   <CardContent className="pt-6">
                     <div className="text-center mb-3">
@@ -294,7 +312,7 @@ export default function DeployPage() {
                           >
                             <div className="flex items-center justify-between">
                               <div className="flex-1 min-w-0">
-                                <p className="text-sm font-semibold text-white truncate">{zone.zoneId}</p>
+                                <p className="text-sm font-semibold text-white truncate">{zone.zoneName || zone.zoneId}</p>
                                 <p className="text-xs text-gray-400 mt-0.5">{zone.coordinates?.length ?? 0} boundary points</p>
                               </div>
                               <div className="flex items-center gap-1.5 ml-2 shrink-0">
@@ -368,7 +386,7 @@ export default function DeployPage() {
 
                   <Button
                     onClick={handleSaveBoundary}
-                    disabled={!boundaryCoords || !zoneId || isPaymentProcessing || !!savedZoneId}
+                    disabled={!boundaryCoords || !zoneId || isPaymentProcessing || !!savedZoneId || walletInitializing || !walletConnected}
                     className="w-full gap-2"
                     size="sm"
                   >
@@ -376,6 +394,11 @@ export default function DeployPage() {
                       <>
                         <Loader2 className="h-4 w-4 animate-spin" />
                         Saving...
+                      </>
+                    ) : walletInitializing ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Initializing Wallet...
                       </>
                     ) : savedZoneId ? (
                       <>

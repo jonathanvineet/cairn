@@ -1,7 +1,19 @@
 "use client";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useState, type ReactNode } from "react";
+import { useState, useEffect, type ReactNode } from "react";
+import { useWalletStore } from "@/stores/walletStore";
+
+function WalletRestorer() {
+  const restoreSession = useWalletStore((state) => state.restoreSession);
+  
+  useEffect(() => {
+    // Restore wallet session on app mount
+    restoreSession();
+  }, [restoreSession]);
+  
+  return null;
+}
 
 export function Providers({ children }: { children: ReactNode }) {
   const [queryClient] = useState(
@@ -17,6 +29,9 @@ export function Providers({ children }: { children: ReactNode }) {
   );
 
   return (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    <QueryClientProvider client={queryClient}>
+      <WalletRestorer />
+      {children}
+    </QueryClientProvider>
   );
 }

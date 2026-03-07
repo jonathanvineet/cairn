@@ -25,7 +25,7 @@ export async function POST(req: Request) {
         }
 
         // ─────────────────────────────────────────
-        // ACTION 1: Create Drone Account (Steps 1-3: Keypair + Account + Initial 20 HBAR funding)
+        // ACTION 1: Create Drone Account (Steps 1-3: Keypair + Account + Initial 10 HBAR funding)
         // ─────────────────────────────────────────
         if (body.action === "createDroneAccount") {
             const {
@@ -95,11 +95,11 @@ export async function POST(req: Request) {
                 const hbarBalance = operatorBalance.hbars.toBigNumber().toNumber();
                 console.log(`💰 Operator balance: ${hbarBalance} HBAR`);
                 
-                if (hbarBalance < 21) {
+                if (hbarBalance < 11) {
                     client.close();
                     return Response.json({
                         success: false,
-                        error: `Insufficient operator balance. Current: ${hbarBalance} HBAR, Required: 21 HBAR. Please fund operator account ${operatorId}`
+                        error: `Insufficient operator balance. Current: ${hbarBalance} HBAR, Required: 11 HBAR. Please fund operator account ${operatorId}`
                     }, { status: 400 });
                 }
             } catch (balanceErr: any) {
@@ -110,10 +110,10 @@ export async function POST(req: Request) {
             const dronePrivateKey = PrivateKey.generateECDSA();
             const dronePublicKey = dronePrivateKey.publicKey;
 
-            // STEP 2: Create Hedera account with 20 HBAR
+            // STEP 2: Create Hedera account with 10 HBAR
             const accountCreateTx = new AccountCreateTransaction()
                 .setECDSAKeyWithAlias(dronePublicKey)
-                .setInitialBalance(new Hbar(20))
+                .setInitialBalance(new Hbar(10))
                 .setAccountMemo(`CAIRN-DRONE-${serialNumber}`);
 
             const txResponse = await accountCreateTx.execute(client);
@@ -135,12 +135,12 @@ export async function POST(req: Request) {
                 cairnDroneId,
                 encryptedPrivateKey,
                 encryptedPublicKey,
-                message: "Drone account created with 20 HBAR. Ready for contract registration."
+                message: "Drone account created with 10 HBAR. Ready for contract registration."
             });
         }
 
         // ─────────────────────────────────────────
-        // ACTION 2: Complete Registration (Steps 4-8: CREATE in DB, NFT, HCS, Return 2 HBAR)
+        // ACTION 2: Complete Registration (Steps 4-8: CREATE in DB, NFT, HCS with 10 HBAR)
         // ─────────────────────────────────────────
         if (body.action === "completeRegistration") {
             const {
@@ -227,7 +227,7 @@ export async function POST(req: Request) {
                 missionCount: 0,
                 completionRate: null,
                 registeredAt: new Date(),
-                initialHBARBalance: 20,
+                initialHBARBalance: 10,
                 registrationLat: Number(registrationLat),
                 registrationLng: Number(registrationLng),
             });
@@ -354,15 +354,15 @@ export async function POST(req: Request) {
                     model,
                     assignedZoneId,
                     status: "ACTIVE",
-                    initialBalance: "20 HBAR",
-                    currentBalance: testReturnTxId ? "18 HBAR (2 HBAR returned)" : "20 HBAR",
+                    initialBalance: "10 HBAR",
+                    currentBalance: "10 HBAR",
                     nftSerialNumber: nftResult.serialNumber,
                     agentTopicId,
                     agentManifestSequence,
                     isAgent: agentTopicId !== null,
                     testReturnTransactionId: testReturnTxId,
                     contractTransactionId,
-                    message: `Drone ${cairnDroneId} registered successfully!${testReturnTxId ? ` 2 HBAR returned (TX: ${testReturnTxId})` : ""}`
+                    message: `Drone ${cairnDroneId} registered successfully with 10 HBAR!`
                 }
             });
         }
@@ -471,7 +471,7 @@ export async function POST(req: Request) {
         // ─────────────────────────────────────────
         // STEP 1.5: Check operator account has sufficient balance
         // ─────────────────────────────────────────
-        const REQUIRED_HBAR = 20.5; // 20 for drone + 0.5 buffer for tx fees
+        const REQUIRED_HBAR = 10.5; // 10 for drone + 0.5 buffer for tx fees
         
         try {
             const operatorBalance = await withTimeout(
@@ -487,7 +487,7 @@ export async function POST(req: Request) {
             if (currentHbar < REQUIRED_HBAR) {
                 return Response.json({
                     success: false,
-                    error: `Insufficient HBAR balance. Your operator account (${operatorId}) has ${currentHbar.toFixed(2)} HBAR but needs at least ${REQUIRED_HBAR} HBAR to register a drone (20 HBAR + fees). Get free testnet HBAR at https://portal.hedera.com`
+                    error: `Insufficient HBAR balance. Your operator account (${operatorId}) has ${currentHbar.toFixed(2)} HBAR but needs at least ${REQUIRED_HBAR} HBAR to register a drone (10 HBAR + fees). Get free testnet HBAR at https://portal.hedera.com`
                 }, { status: 402 }); // 402 Payment Required
             }
             
@@ -508,7 +508,7 @@ export async function POST(req: Request) {
         // ─────────────────────────────────────────
         const accountCreateTx = new AccountCreateTransaction()
             .setECDSAKeyWithAlias(dronePublicKey)
-            .setInitialBalance(new Hbar(20))          // 20 HBAR initial funding
+            .setInitialBalance(new Hbar(10))          // 10 HBAR initial funding
             .setAccountMemo(`CAIRN-DRONE-${serialNumber}`);
 
         const txResponse = await withTimeout(
@@ -526,9 +526,10 @@ export async function POST(req: Request) {
         const accountCreationTxId = txResponse.transactionId.toString();
 
         // ─────────────────────────────────────────
-        // STEP 3.5: TESTING - Transfer 2 HBAR back to operator using Hedera Agent Kit
+        // STEP 3.5: REMOVED - No longer returning HBAR, drone keeps full 10 HBAR
         // ─────────────────────────────────────────
         let testReturnTxId: string | null = null;
+        /* DISABLED: Drone now keeps full 10 HBAR allocation
         try {
             console.log("💸 TEST MODE: Transferring 2 HBAR back to operator using Hedera Agent Kit...");
             
@@ -619,6 +620,8 @@ export async function POST(req: Request) {
             console.error("Stack:", returnError.stack);
             // Non-fatal: continue with registration even if test return fails
         }
+        */ // END DISABLED CODE - Drone keeps full 10 HBAR
+        console.log("✅ Drone account funded with 10 HBAR (no return transfer)");
 
         // ─────────────────────────────────────────
         // STEP 4: Use custom CAIRN drone ID from user
@@ -659,7 +662,7 @@ export async function POST(req: Request) {
             missionCount: 0,
             completionRate: null,
             registeredAt: new Date(),
-            initialHBARBalance: 20,
+            initialHBARBalance: 10,
             registrationLat: Number(registrationLat),
             registrationLng: Number(registrationLng),
         });
@@ -746,18 +749,18 @@ export async function POST(req: Request) {
                 model,
                 assignedZoneId,
                 status: "ACTIVE",
-                initialBalance: "20 HBAR",
-                currentBalance: testReturnTxId ? "18 HBAR (2 HBAR returned for testing)" : "20 HBAR",
+                initialBalance: "10 HBAR",
+                currentBalance: "10 HBAR",
                 nftSerialNumber: nftResult.serialNumber,
-                // PROOF: Transaction ID for the 20 HBAR transfer
+                // PROOF: Transaction ID for the 10 HBAR transfer
                 fundingTransactionId: accountCreationTxId,
-                // TEST: Transaction ID for the 2 HBAR return
-                testReturnTransactionId: testReturnTxId,
+                // TEST: No longer returning HBAR, drone keeps full 10 HBAR
+                testReturnTransactionId: null,
                 // AI Agent fields
                 agentTopicId,
                 agentManifestSequence,
                 isAgent: agentTopicId !== null,
-                message: `Drone ${cairnDroneId} registered as Hedera AI Agent${agentTopicId ? ` (topic: ${agentTopicId})` : ""}. 20 HBAR transferred (TX: ${accountCreationTxId})${testReturnTxId ? `. 2 HBAR returned for testing (TX: ${testReturnTxId})` : ""}`
+                message: `Drone ${cairnDroneId} registered as Hedera AI Agent${agentTopicId ? ` (topic: ${agentTopicId})` : ""}. 10 HBAR funded (TX: ${accountCreationTxId})`
             }
         });
 

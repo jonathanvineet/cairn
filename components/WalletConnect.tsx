@@ -31,9 +31,18 @@ export function WalletConnect() {
   const handleConnect = async () => {
     setShowError(false);
     try {
+      // Show helpful message about HashPack extension
+      const hasExtension = typeof window !== 'undefined' && 
+        ((window as any).hashconnect || (window as any).hashpack);
+      
+      if (hasExtension) {
+        console.log('✅ HashPack extension detected - waiting for approval in extension popup');
+      }
+      
       await connect();
-    } catch {
+    } catch (error) {
       setShowError(true);
+      console.error('Connection failed:', error);
     }
   };
 
@@ -76,6 +85,16 @@ export function WalletConnect() {
             {isInitializing ? "Connecting..." : "Connect HashPack"}
           </span>
         </Button>
+
+        {isInitializing && (
+          <div className="flex items-start gap-2 text-[10px] text-cyan-400 bg-cyan-500/10 p-2.5 rounded border border-cyan-500/20">
+            <Shield className="h-3.5 w-3.5 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold mb-1">Look for HashPack Extension Popup!</p>
+              <p className="text-gray-400">Check your browser's extension area (top-right corner) for the HashPack approval popup. Don't use the new tab that opens.</p>
+            </div>
+          </div>
+        )}
 
         {showError && error && (
           <div className="absolute top-[calc(100%+8px)] right-0 w-64 flex items-center gap-3 text-[11px] text-red-400 bg-red-500/10 p-3 rounded-lg border border-red-500/20 backdrop-blur-xl z-[1000] shadow-xl">

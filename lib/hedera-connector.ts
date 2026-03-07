@@ -53,26 +53,52 @@ export async function initializeDAppConnector(): Promise<DAppConnector> {
     [HederaChainId.Testnet]
   );
 
+  // Initialize connector
   await dAppConnector.init({ logger: "error" });
+  
+  console.log('✅ DAppConnector initialized');
   
   return dAppConnector;
 }
 
 /**
  * Connect to HashPack via WalletConnect
- * Opens modal with QR code and awaits user approval
+ * Attempts to use browser extension if available
  */
 export async function connectHashPack(): Promise<any> {
   const dapp = await initializeDAppConnector();
 
-  // Use dapp.openModal() - the built-in Hedera SDK method that:
-  // - Generates WalletConnect URI for hedera:testnet
-  // - Opens the internal QR modal
-  // - Waits for user approval in HashPack
-  // - Returns the approved session
-  const session = await dapp.openModal();
+  try {
+    console.log('🔍 Initiating HashPack connection...');
+    
+    // Check if HashPack extension is installed
+    const hasExtension = typeof window !== 'undefined' && 
+      !!(window as any).hashconnect;
+    
+    if (hasExtension) {
+      console.log('✅ HashPack extension detected - connecting via extension');
+      console.log('📱 Please approve the connection in your HashPack extension popup');
+    } else {
+      console.log('ℹ️ HashPack extension not detected - showing WalletConnect modal');
+    }
+    
+    // openModal() should detect and use the extension automatically
+    // When extension is present, it triggers the extension popup
+    // The "new tab" can be ignored - focus on the extension popup instead
+    const session = await dapp.openModal();
 
-  return session;
+    console.log('✅ HashPack connected successfully');
+    return session;
+  } catch (error: any) {
+    console.error('❌ HashPack connection failed:', error);
+    
+    // Provide better error message
+    if (error.message?.includes('User rejected') || error.message?.includes('User closed')) {
+      throw new Error('Connection cancelled. Please approve in HashPack extension.');
+    }
+    
+    throw error;
+  }
 }
 
 /**
@@ -97,6 +123,29 @@ export function getConnector(): DAppConnector | null {
  */
 export function resetConnector(): void {
   dAppConnector = null;
+}
+
+/**
+ * Check for persisted WalletConnect session and restore if available
+ */
+export async function checkPersistedState(): Promise<any | null> {
+  try {
+    const dapp = await initializeDAppConnector();
+    
+    // Check if there's an existing session
+    const sessions = dapp.walletConnectClient?.session.getAll();
+    
+    if (sessions && sessions.length > 0) {
+      console.log('✅ Found persisted WalletConnect session');
+      return sessions[0];
+    }
+    
+    console.log('ℹ️ No persisted session found');
+    return null;
+  } catch (error) {
+    console.error('❌ Error checking persisted state:', error);
+    return null;
+  }
 }
 
 /**

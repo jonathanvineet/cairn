@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import {
   Plane,
@@ -14,7 +14,11 @@ import {
   Plus,
   CheckCircle,
   AlertCircle,
-  Battery
+  Battery,
+  X,
+  Wallet,
+  Copy,
+  ExternalLink
 } from "lucide-react";
 import { WalletConnect } from "@/components/WalletConnect";
 import { useWalletStore } from "@/stores/walletStore";
@@ -29,6 +33,7 @@ interface Drone {
   registrationLng?: number;
   agentTopicId?: string;
   isAgent?: boolean;
+  hederaAccountId?: string;
 }
 
 export default function DashboardPage() {
@@ -37,6 +42,11 @@ export default function DashboardPage() {
   const [drones, setDrones] = useState<Drone[]>([]);
   const [zones, setZones] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedDrone, setSelectedDrone] = useState<Drone | null>(null);
+  const [droneBalance, setDroneBalance] = useState<string | null>(null);
+  const [fetchedAccountId, setFetchedAccountId] = useState<string | null>(null);
+  const [loadingBalance, setLoadingBalance] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -67,6 +77,62 @@ export default function DashboardPage() {
   const activeDrones = drones.filter(d => d.status === "ACTIVE");
   const assignedDrones = drones.filter(d => d.assignedZoneId !== "UNASSIGNED");
   const unassignedDrones = drones.filter(d => d.assignedZoneId === "UNASSIGNED");
+
+  const handleViewDetails = async (drone: Drone) => {
+    setSelectedDrone(drone);
+    setDroneBalance(null);
+    setFetchedAccountId(null);
+    setLoadingBalance(true);
+    setCopied(false); // Reset copy state
+    
+    try {
+      // Fetch balance from Hedera - try accountId first, then EVM address
+      let response;
+      
+      if (drone.hederaAccountId) {
+        console.log(`Fetching balance for accountId: ${drone.hederaAccountId}`);
+        response = await fetch(`/api/drones/balance?accountId=${drone.hederaAccountId}`);
+      } else if (drone.evmAddress) {
+        console.log(`Fetching balance for evmAddress: ${drone.evmAddress}`);
+        response = await fetch(`/api/drones/balance?evmAddress=${drone.evmAddress}`);
+      } else {
+        setDroneBalance("N/A");
+        setLoadingBalance(false);
+        return;
+      }
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log(`Balance data:`, data);
+        if (data.success && data.balance !== undefined) {
+          // Format balance to 2 decimal places
+          const balanceNum = parseFloat(data.balance);
+          setDroneBalance(balanceNum.toFixed(2));
+          // Store the account ID from the response
+          if (data.accountId) {
+            setFetchedAccountId(data.accountId);
+          }
+        } else {
+          setDroneBalance("0.00");
+        }
+      } else {
+        const errorData = await response.json();
+        console.error(`Balance fetch failed:`, errorData);
+        setDroneBalance("N/A");
+      }
+    } catch (error) {
+      console.error("Failed to fetch balance:", error);
+      setDroneBalance("Error");
+    } finally {
+      setLoadingBalance(false);
+    }
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   if (loading) {
     return (
@@ -309,9 +375,17 @@ export default function DashboardPage() {
 
                       <div className="flex justify-between items-center pt-4 border-t border-white/5">
                         <div className="text-[9px] font-mono text-white/30 tracking-[0.2em] uppercase">STATUS_OPE</div>
-                        <div className={`text-[10px] font-bold tracking-widest px-2 py-0.5 rounded ${drone.status === "ACTIVE" ? "text-[#10b981] bg-[#10b981]/10" : "text-white/30 bg-white/5"
-                          }`}>
-                          {drone.status}
+                        <div className="flex items-center gap-2">
+                          <div className={`text-[10px] font-bold tracking-widest px-2 py-0.5 rounded ${drone.status === "ACTIVE" ? "text-[#10b981] bg-[#10b981]/10" : "text-white/30 bg-white/5"
+                            }`}>
+                            {drone.status}
+                          </div>
+                          <button
+                            onClick={() => handleViewDetails(drone)}
+                            className="px-3 py-1 bg-[#00f5ff]/10 hover:bg-[#00f5ff]/20 border border-[#00f5ff]/30 hover:border-[#00f5ff]/60 rounded text-[10px] font-bold tracking-wider text-[#00f5ff] uppercase transition-all"
+                          >
+                            View Details
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -352,6 +426,211 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* Drone Details Modal */}
+      <AnimatePresence>
+        {selectedDrone && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => setSelectedDrone(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-[#0a1628] border border-[#00f5ff]/30 rounded-xl max-w-2xl w-full max-h-[90vh] overflow-auto"
+            >
+              {/* Modal Header */}
+              <div className="sticky top-0 bg-[#0a1628] border-b border-white/10 p-6 flex justify-between items-start">
+                <div>
+                  <h2 className="text-2xl font-bold text-white uppercase tracking-widest mb-1">{selectedDrone.cairnDroneId}</h2>
+                  <div className="text-[10px] font-mono text-[#00f5ff]/60 uppercase tracking-wider">ASSET_DETAILS // FULL_SPEC</div>
+                </div>
+                <button
+                  onClick={() => setSelectedDrone(null)}
+                  className="w-10 h-10 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-[#00f5ff]/40 rounded flex items-center justify-center transition-all"
+                >
+                  <X size={20} className="text-white/60" />
+                </button>
+              </div>
+
+              {/* Modal Content */}
+              <div className="p-6 space-y-6">
+                {/* Hedera Account ID */}
+                {(selectedDrone.hederaAccountId || fetchedAccountId) && (
+                  <div className="space-y-2">
+                    <div className="text-[10px] font-mono text-white/40 uppercase tracking-wider flex items-center gap-2">
+                      <Shield size={12} className="text-[#10b981]" />
+                      Hedera Account ID
+                    </div>
+                    <div className="bg-black/40 border border-white/10 rounded-lg p-4 flex items-center justify-between group">
+                      <code className="text-sm text-white/80 font-mono">{selectedDrone.hederaAccountId || fetchedAccountId}</code>
+                      <button
+                        onClick={() => copyToClipboard(selectedDrone.hederaAccountId || fetchedAccountId || '')}
+                        className="ml-3 p-2 hover:bg-white/10 rounded transition-all"
+                        title="Copy account ID"
+                      >
+                        {copied ? (
+                          <CheckCircle size={16} className="text-[#10b981]" />
+                        ) : (
+                          <Copy size={16} className="text-white/40 group-hover:text-white/80" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Wallet Address */}
+                <div className="space-y-2">
+                  <div className="text-[10px] font-mono text-white/40 uppercase tracking-wider flex items-center gap-2">
+                    <Wallet size={12} className="text-[#00f5ff]" />
+                    EVM Wallet Address
+                  </div>
+                  <div className="bg-black/40 border border-white/10 rounded-lg p-4 flex items-center justify-between group">
+                    <code className="text-sm text-white/80 font-mono break-all">{selectedDrone.evmAddress}</code>
+                    <button
+                      onClick={() => copyToClipboard(selectedDrone.evmAddress)}
+                      className="ml-3 p-2 hover:bg-white/10 rounded transition-all"
+                      title="Copy address"
+                    >
+                      {copied ? (
+                        <CheckCircle size={16} className="text-[#10b981]" />
+                      ) : (
+                        <Copy size={16} className="text-white/40 group-hover:text-white/80" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Balance */}
+                <div className="space-y-2">
+                  <div className="text-[10px] font-mono text-white/40 uppercase tracking-wider flex items-center gap-2">
+                    <Zap size={12} className="text-[#f59e0b]" />
+                    Account Balance
+                  </div>
+                  <div className="bg-black/40 border border-white/10 rounded-lg p-4">
+                    {loadingBalance ? (
+                      <div className="flex items-center gap-2 text-white/60">
+                        <div className="w-4 h-4 border-2 border-[#00f5ff]/20 border-t-[#00f5ff] rounded-full animate-spin" />
+                        <span className="text-sm font-mono">Loading balance...</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-2xl font-bold text-white">{droneBalance || "0"}</span>
+                        <span className="text-sm text-white/40 font-mono">ℏ HBAR</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Model Information */}
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <div className="text-[10px] font-mono text-white/40 uppercase tracking-wider">Model</div>
+                    <div className="bg-black/40 border border-white/10 rounded-lg p-3">
+                      <div className="text-sm font-bold text-white uppercase tracking-wide">{selectedDrone.model}</div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="text-[10px] font-mono text-white/40 uppercase tracking-wider">Status</div>
+                    <div className="bg-black/40 border border-white/10 rounded-lg p-3">
+                      <div className={`text-sm font-bold uppercase tracking-wide ${selectedDrone.status === "ACTIVE" ? "text-[#10b981]" : "text-white/40"}`}>
+                        {selectedDrone.status}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Assignment Status */}
+                <div className="space-y-2">
+                  <div className="text-[10px] font-mono text-white/40 uppercase tracking-wider flex items-center gap-2">
+                    <MapPin size={12} className="text-[#8b5cf6]" />
+                    Deployment Zone
+                  </div>
+                  <div className="bg-black/40 border border-white/10 rounded-lg p-4">
+                    {selectedDrone.assignedZoneId !== "UNASSIGNED" ? (
+                      <div className="flex items-center gap-2">
+                        <CheckCircle size={16} className="text-[#10b981]" />
+                        <span className="text-sm font-bold text-white uppercase tracking-wide">{selectedDrone.assignedZoneId}</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 text-[#f59e0b]">
+                        <AlertCircle size={16} />
+                        <span className="text-sm font-mono uppercase">Awaiting Deployment</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Registration Coordinates */}
+                {selectedDrone.registrationLat && selectedDrone.registrationLng && (
+                  <div className="space-y-2">
+                    <div className="text-[10px] font-mono text-white/40 uppercase tracking-wider">Registration Coordinates</div>
+                    <div className="bg-black/40 border border-white/10 rounded-lg p-4">
+                      <div className="grid grid-cols-2 gap-4 text-sm font-mono">
+                        <div>
+                          <span className="text-white/40">LAT:</span>
+                          <span className="text-white ml-2">{selectedDrone.registrationLat.toFixed(6)}</span>
+                        </div>
+                        <div>
+                          <span className="text-white/40">LNG:</span>
+                          <span className="text-white ml-2">{selectedDrone.registrationLng.toFixed(6)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Agent Information */}
+                {selectedDrone.isAgent && selectedDrone.agentTopicId && (
+                  <div className="space-y-2">
+                    <div className="text-[10px] font-mono text-white/40 uppercase tracking-wider flex items-center gap-2">
+                      <Activity size={12} className="text-[#8b5cf6]" />
+                      AI Agent Topic ID
+                    </div>
+                    <div className="bg-[#8b5cf6]/10 border border-[#8b5cf6]/30 rounded-lg p-4 flex items-center justify-between group">
+                      <code className="text-sm text-[#8b5cf6] font-mono">{selectedDrone.agentTopicId}</code>
+                      <a
+                        href={`https://hashscan.io/testnet/topic/${selectedDrone.agentTopicId}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="ml-3 p-2 hover:bg-white/10 rounded transition-all"
+                        title="View on HashScan"
+                      >
+                        <ExternalLink size={16} className="text-[#8b5cf6]" />
+                      </a>
+                    </div>
+                  </div>
+                )}
+
+                {/* Action Buttons */}
+                <div className="flex gap-3 pt-4">
+                  <a
+                    href={`https://hashscan.io/testnet/account/${fetchedAccountId || selectedDrone.hederaAccountId || selectedDrone.evmAddress}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 px-4 py-3 bg-[#00f5ff]/10 hover:bg-[#00f5ff]/20 border border-[#00f5ff]/30 hover:border-[#00f5ff]/60 rounded-lg text-sm font-bold text-[#00f5ff] uppercase tracking-wider transition-all flex items-center justify-center gap-2"
+                  >
+                    <ExternalLink size={14} />
+                    View on HashScan
+                  </a>
+                  <button
+                    onClick={() => setSelectedDrone(null)}
+                    className="px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/30 rounded-lg text-sm font-bold text-white uppercase tracking-wider transition-all"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
