@@ -277,8 +277,9 @@ export async function POST(req: Request) {
                 console.error("⚠️  Agent registration failed (non-fatal):", agentErr.message);
             }
 
-            // STEP 7: Return 2 HBAR to user using Hedera Agent Kit
+            // STEP 7: REMOVED - Drone now keeps full 10 HBAR
             let testReturnTxId: string | null = null;
+            /* DISABLED: No longer returning 2 HBAR, drone keeps full 10 HBAR allocation
             try {
                 console.log("💸 STEP 7: Returning 2 HBAR to user using Hedera Agent Kit...");
                 
@@ -341,6 +342,8 @@ export async function POST(req: Request) {
             } catch (returnError: any) {
                 console.error("⚠️  Return transfer failed (non-fatal):", returnError.message);
             }
+            */ // END DISABLED CODE
+            console.log("✅ Drone keeps full 10 HBAR (no return transfer)");
 
             client.close();
 
