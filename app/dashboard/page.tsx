@@ -8,19 +8,17 @@ import {
   MapPin,
   Shield,
   Activity,
-  Zap,
-  ArrowRight,
   Plus,
   CheckCircle,
   AlertCircle,
-  Battery,
   X,
-  Wallet,
   Copy,
-  ExternalLink
+  ExternalLink,
+  ArrowLeft
 } from "lucide-react";
-import { WalletConnect } from "@/components/WalletConnect";
 import { useWalletStore } from "@/stores/walletStore";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 
 interface Drone {
   cairnDroneId: string;
@@ -46,6 +44,14 @@ export default function DashboardPage() {
   const [fetchedAccountId, setFetchedAccountId] = useState<string | null>(null);
   const [loadingBalance, setLoadingBalance] = useState(false);
   const [copied, setCopied] = useState(false);
+  
+  // Wallet protection
+  useEffect(() => {
+    if (!connected) {
+      alert("Please connect your HashPack wallet first");
+      router.push("/");
+    }
+  }, [connected, router]);
 
   useEffect(() => {
     fetchData();
@@ -75,24 +81,20 @@ export default function DashboardPage() {
 
   const activeDrones = drones.filter(d => d.status === "ACTIVE");
   const assignedDrones = drones.filter(d => d.assignedZoneId !== "UNASSIGNED");
-  const unassignedDrones = drones.filter(d => d.assignedZoneId === "UNASSIGNED");
 
   const handleViewDetails = async (drone: Drone) => {
     setSelectedDrone(drone);
     setDroneBalance(null);
     setFetchedAccountId(null);
     setLoadingBalance(true);
-    setCopied(false); // Reset copy state
+    setCopied(false);
     
     try {
-      // Fetch balance from Hedera - try accountId first, then EVM address
       let response;
       
       if (drone.hederaAccountId) {
-        console.log(`Fetching balance for accountId: ${drone.hederaAccountId}`);
         response = await fetch(`/api/drones/balance?accountId=${drone.hederaAccountId}`);
       } else if (drone.evmAddress) {
-        console.log(`Fetching balance for evmAddress: ${drone.evmAddress}`);
         response = await fetch(`/api/drones/balance?evmAddress=${drone.evmAddress}`);
       } else {
         setDroneBalance("N/A");
@@ -102,12 +104,9 @@ export default function DashboardPage() {
 
       if (response.ok) {
         const data = await response.json();
-        console.log(`Balance data:`, data);
         if (data.success && data.balance !== undefined) {
-          // Format balance to 2 decimal places
           const balanceNum = parseFloat(data.balance);
           setDroneBalance(balanceNum.toFixed(2));
-          // Store the account ID from the response
           if (data.accountId) {
             setFetchedAccountId(data.accountId);
           }
@@ -115,8 +114,6 @@ export default function DashboardPage() {
           setDroneBalance("0.00");
         }
       } else {
-        const errorData = await response.json();
-        console.error(`Balance fetch failed:`, errorData);
         setDroneBalance("N/A");
       }
     } catch (error) {
@@ -135,7 +132,7 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0a0e27] flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-[#0a1628] via-[#0f1e3a] to-[#0a1628] flex items-center justify-center">
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-cyan-500/20 border-t-cyan-500 rounded-full animate-spin mb-4 mx-auto" />
           <p className="text-gray-400">Loading Dashboard...</p>
@@ -144,231 +141,153 @@ export default function DashboardPage() {
     );
   }
 
-  if (!connected) {
-    return (
-      <div className="min-h-screen bg-[#0a0e27]">
-        <nav className="border-b border-white/5 bg-black/20 backdrop-blur-xl">
-          <div className="max-w-7xl mx-auto px-6 py-4">
-            <div className="flex justify-between items-center">
-              <Link href="/" className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-cyan-400 to-violet-500 rounded-lg flex items-center justify-center">
-                  <Shield className="h-6 w-6 text-white" />
-                </div>
-                <div>
-                  <h1 className="text-xl font-bold text-white tracking-tight">CAIRN</h1>
-                  <p className="text-[10px] text-gray-400 uppercase tracking-wider">Dashboard</p>
-                </div>
-              </Link>
-            </div>
-          </div>
-        </nav>
-
-        <div className="flex items-center justify-center min-h-[calc(100vh-80px)] p-4">
-          <div className="max-w-md w-full opacity-0 animate-slide-up">
-            <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/20 to-violet-500/20 rounded-2xl blur-2xl" />
-              <div className="relative bg-[#0f1729] border border-white/10 rounded-2xl p-8 text-center">
-                <div className="w-16 h-16 bg-gradient-to-br from-cyan-500 to-violet-500 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                  <Shield className="h-8 w-8 text-white" />
-                </div>
-                <h2 className="text-2xl font-bold text-white mb-3">
-                  Connect Your Wallet
-                </h2>
-                <p className="text-gray-400 mb-8">
-                  Connect your wallet to access the dashboard
-                </p>
-                <WalletConnect />
-                <Link href="/" className="block mt-4 text-sm text-gray-400 hover:text-white transition">
-                  Back to Home
-                </Link>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-[#050810] text-white" style={{ fontFamily: "Rajdhani, sans-serif" }}>
-      {/* HUD-style background */}
-      <div className="fixed inset-0 pointer-events-none z-0">
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#1a1f3a_1px,transparent_1px),linear-gradient(to_bottom,#1a1f3a_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_0%,#000_70%,transparent_110%)] opacity-30" />
-        <div className="absolute inset-0 bg-gradient-to-b from-[#0a1628]/0 via-[#0a1628]/10 to-[#0a1628]/60" />
-        <div className="absolute inset-0 scanline-effect opacity-5 pointer-events-none" />
-      </div>
-
-      {/* Navigation */}
-      <nav className="relative z-20 border-b border-[#00f5ff]/20 bg-black/40 backdrop-blur-md">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
-          <Link href="/" className="flex items-center gap-3 group">
-            <div className="w-10 h-10 bg-[#00f5ff]/10 border border-[#00f5ff]/40 rounded-lg flex items-center justify-center group-hover:bg-[#00f5ff]/20 transition-all">
-              <Shield className="h-6 w-6 text-[#00f5ff]" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-white tracking-[0.2em] uppercase">CAIRN</h1>
-              <p className="text-[9px] text-[#00f5ff]/60 uppercase tracking-[0.3em] font-mono">Operator Dashboard</p>
-            </div>
-          </Link>
-
+    <div className="min-h-screen bg-gradient-to-br from-[#0a1628] via-[#0f1e3a] to-[#0a1628]">
+      {/* Header */}
+      <div className="bg-black/40 backdrop-blur-md border-b border-white/10 sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="px-3 py-1.5 bg-[#00f5ff]/5 border border-[#00f5ff]/20 rounded font-mono text-[11px] text-[#00f5ff]/80">
-              <span className="opacity-50 mr-2">//</span>
-              {selectedAccount?.id.slice(0, 6)}...{selectedAccount?.id.slice(-4)}
-            </div>
-            <Link
-              href="/"
-              className="px-4 py-1.5 border border-white/10 hover:border-white/30 rounded text-xs font-bold tracking-widest uppercase transition-all"
-            >
-              Return to HUD
+            <Link href="/">
+              <Button variant="ghost" size="sm" className="gap-2 text-gray-300 hover:text-white">
+                <ArrowLeft className="h-4 w-4" />
+                Home
+              </Button>
             </Link>
+            <div className="flex items-center gap-3">
+              <Shield className="h-5 w-5 text-cyan-400" />
+              <h1 className="text-xl font-bold text-white">Dashboard</h1>
+            </div>
           </div>
+          <p className="text-sm text-gray-400 font-mono">
+            Connected: <span className="text-cyan-400">{selectedAccount?.id.substring(0, 12)}...</span>
+          </p>
         </div>
-      </nav>
+      </div>
 
       {/* Main Content */}
-      <div className="relative z-10 max-w-7xl mx-auto px-6 py-12">
-        {/* Header Section */}
-        <div className="mb-12 border-l-2 border-[#00f5ff] pl-6 opacity-0 animate-slide-up">
-          <div className="text-[#00f5ff] text-xs font-bold tracking-[0.4em] uppercase mb-2">FLEET_OVERVIEW_V1.0</div>
-          <h1 className="text-4xl font-bold text-white tracking-widest uppercase mb-2">Operational Status</h1>
-          <p className="text-white/40 font-mono text-sm tracking-tighter">TIMESTAMP: {new Date().toISOString().replace('T', ' ').slice(0, 19)} // ZONE: DELTA-7</p>
-        </div>
-
-        {/* HUD Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-12">
+      <div className="max-w-7xl mx-auto px-6 py-8">
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
           {[
-            { label: "Total Asset Count", value: drones.length, icon: Plane, color: "#00f5ff", id: "DRN" },
-            { label: "Active Drones", value: activeDrones.length, icon: Activity, color: "#10b981", id: "ACT" },
-            { label: "Assigned Assets", value: assignedDrones.length, icon: CheckCircle, color: "#8b5cf6", id: "ASG" },
-            { label: "Patrol Sectors", value: zones.length, icon: MapPin, color: "#f59e0b", id: "SCT" }
+            { label: "Total Drones", value: drones.length, icon: Plane, gradient: "from-cyan-500 to-blue-500" },
+            { label: "Active", value: activeDrones.length, icon: Activity, gradient: "from-green-500 to-emerald-500" },
+            { label: "Assigned", value: assignedDrones.length, icon: CheckCircle, gradient: "from-purple-500 to-pink-500" },
+            { label: "Zones", value: zones.length, icon: MapPin, gradient: "from-orange-500 to-red-500" }
           ].map((stat, i) => (
-            <div
-              key={stat.label}
-              className="relative group overflow-hidden opacity-0 animate-slide-up"
-              style={{ animationDelay: `${i * 50}ms` }}
-            >
-              <div className="absolute inset-0 bg-[#0a1628]/40 border border-white/10 group-hover:border-[#00f5ff]/40 transition-all rounded" />
-              <div className="relative p-6">
-                <div className="flex justify-between items-start mb-4">
-                  <div className="text-[10px] font-mono opacity-40">[{stat.id}-00X]</div>
-                  <stat.icon size={18} style={{ color: stat.color }} className="opacity-80" />
+            <div key={stat.label} className="bg-black/50 backdrop-blur-xl border border-white/10 rounded-2xl p-6 hover:border-cyan-400/30 transition-all">
+              <div className="flex justify-between items-start mb-4">
+                <div className={`w-12 h-12 bg-gradient-to-br ${stat.gradient} rounded-xl flex items-center justify-center shadow-lg`}>
+                  <stat.icon className="h-6 w-6 text-white" />
                 </div>
-                <div className="text-3xl font-bold tracking-wider mb-1">{stat.value}</div>
-                <div className="text-[10px] uppercase tracking-[0.2em] font-mono text-white/40">{stat.label}</div>
               </div>
-              <div className="absolute bottom-0 left-0 h-0.5 bg-[#00f5ff]/20 group-hover:w-full transition-all w-0" />
+              <div className="text-3xl font-bold text-white mb-1">{stat.value}</div>
+              <div className="text-sm text-gray-400">{stat.label}</div>
             </div>
           ))}
         </div>
 
         {/* Quick Actions */}
-        <div className="grid md:grid-cols-2 gap-6 mb-12">
+        <div className="grid md:grid-cols-2 gap-4 mb-8">
           <Link href="/register">
-            <div className="relative group overflow-hidden cursor-pointer transition-all duration-300 hover:scale-[1.01]">
-              <div className="absolute inset-0 bg-[#00f5ff]/5 border border-[#00f5ff]/30 group-hover:bg-[#00f5ff]/10 group-hover:border-[#00f5ff]/60 transition-all rounded-lg" />
-              <div className="relative p-8 flex justify-between items-center">
-                <div className="space-y-2">
-                  <div className="text-[#00f5ff] text-[10px] font-bold tracking-[0.3em] uppercase">SYSTEM_ACTION</div>
-                  <h3 className="text-2xl font-bold uppercase tracking-widest">Register New Asset</h3>
-                  <p className="text-white/40 text-sm font-mono tracking-tighter">Add encrypted drone identifiers to the Hedera ledger</p>
+            <div className="bg-gradient-to-br from-cyan-500/10 to-blue-500/10 backdrop-blur-xl border border-cyan-500/30 rounded-2xl p-6 hover:border-cyan-400/60 transition-all cursor-pointer group">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-xl font-bold text-white mb-2">Register New Drone</h3>
+                  <p className="text-sm text-gray-400">Add a new drone to the registry</p>
                 </div>
-                <div className="w-14 h-14 bg-[#00f5ff]/10 border border-[#00f5ff]/30 rounded flex items-center justify-center group-hover:rotate-90 transition-all">
-                  <Plus className="text-[#00f5ff]" />
+                <div className="w-12 h-12 bg-cyan-500/20 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <Plus className="h-6 w-6 text-cyan-400" />
                 </div>
               </div>
             </div>
           </Link>
 
           <Link href="/deploy">
-            <div className="relative group overflow-hidden cursor-pointer transition-all duration-300 hover:scale-[1.01]">
-              <div className="absolute inset-0 bg-[#8b5cf6]/5 border border-[#8b5cf6]/30 group-hover:bg-[#8b5cf6]/10 group-hover:border-[#8b5cf6]/60 transition-all rounded-lg" />
-              <div className="relative p-8 flex justify-between items-center">
-                <div className="space-y-2">
-                  <div className="text-[#8b5cf6] text-[10px] font-bold tracking-[0.3em] uppercase">NETWORK_ACTION</div>
-                  <h3 className="text-2xl font-bold uppercase tracking-widest">Create Patrol Zone</h3>
-                  <p className="text-white/40 text-sm font-mono tracking-tighter">Define geo-fenced boundaries for autonomous monitoring</p>
+            <div className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 backdrop-blur-xl border border-purple-500/30 rounded-2xl p-6 hover:border-purple-400/60 transition-all cursor-pointer group">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-xl font-bold text-white mb-2">Deploy Zone</h3>
+                  <p className="text-sm text-gray-400">Create patrol boundaries</p>
                 </div>
-                <div className="w-14 h-14 bg-[#8b5cf6]/10 border border-[#8b5cf6]/30 rounded flex items-center justify-center group-hover:scale-110 transition-all">
-                  <MapPin className="text-[#8b5cf6]" />
+                <div className="w-12 h-12 bg-purple-500/20 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <MapPin className="h-6 w-6 text-purple-400" />
                 </div>
               </div>
             </div>
           </Link>
         </div>
 
-        {/* Data Grid Section */}
-        <div className="grid lg:grid-cols-3 gap-8">
-          {/* Drones Column */}
-          <div className="lg:col-span-2 space-y-6">
-            <div className="flex justify-between items-end pb-4 border-b border-white/10">
-              <div>
-                <h2 className="text-xl font-bold uppercase tracking-[0.2em] flex items-center gap-2">
-                  <span className="w-2 h-2 bg-[#00f5ff] rounded-full animate-pulse" />
-                  Asset Inventory
-                </h2>
-                <div className="text-[10px] font-mono text-white/30 uppercase mt-1">LATEST_SYNC // {activeDrones.length} ONLINE</div>
-              </div>
-            </div>
-
+        {/* Drones & Zones Grid */}
+        <div className="grid lg:grid-cols-3 gap-6">
+          {/* Drones List */}
+          <div className="lg:col-span-2 space-y-4">
+            <h2 className="text-2xl font-bold text-white mb-4">Your Drones</h2>
+            
             {drones.length === 0 ? (
-              <div className="text-center py-20 border border-white/5 bg-white/[0.02] rounded-xl">
-                <div className="text-white/20 mb-4 flex justify-center"><Plane size={48} /></div>
-                <p className="text-white/40 font-mono text-sm">NO ASSETS DETECTED IN LOCAL RANGE</p>
+              <div className="bg-black/50 backdrop-blur-xl border border-white/10 rounded-2xl p-12 text-center">
+                <Plane className="h-16 w-16 text-gray-600 mx-auto mb-4" />
+                <p className="text-gray-400">No drones registered yet</p>
+                <Link href="/register">
+                  <Button className="mt-4 bg-gradient-to-r from-cyan-500 to-blue-500">
+                    Register First Drone
+                  </Button>
+                </Link>
               </div>
             ) : (
               <div className="grid md:grid-cols-2 gap-4">
-                {drones.map((drone, i) => (
+                {drones.map((drone) => (
                   <div
                     key={drone.evmAddress}
-                    className="relative group opacity-0 animate-slide-up"
-                    style={{ animationDelay: `${100 + i * 50}ms` }}
+                    className="bg-black/50 backdrop-blur-xl border border-white/10 rounded-2xl p-5 hover:border-cyan-400/30 transition-all group"
                   >
-                    <div className="absolute inset-0 bg-[#0a1628]/60 border border-white/5 group-hover:border-[#00f5ff]/30 transition-all rounded" />
-                    <div className="relative p-5">
-                      <div className="flex justify-between items-start mb-4">
-                        <div className="min-w-0">
-                          <h4 className="font-bold text-white truncate text-base tracking-wider uppercase">{drone.cairnDroneId}</h4>
-                          <div className="text-[10px] font-mono text-white/40 uppercase mb-2">MODEL: {drone.model}</div>
-                        </div>
-                        {drone.isAgent && (
-                          <div className="px-2 py-0.5 bg-[#8b5cf6]/20 border border-[#8b5cf6]/40 rounded text-[9px] text-[#8b5cf6] font-bold tracking-tighter">AI_UNIT</div>
-                        )}
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        <h4 className="font-bold text-white text-lg mb-1">{drone.cairnDroneId}</h4>
+                        <p className="text-xs text-gray-400">{drone.model}</p>
                       </div>
+                      {drone.isAgent && (
+                        <Badge className="bg-purple-500/20 border-purple-500/40 text-purple-400">
+                          AI Agent
+                        </Badge>
+                      )}
+                    </div>
 
-                      <div className="space-y-2.5 mb-6">
-                        <div className="flex items-center gap-3 text-[10px] font-mono text-white/50">
-                          <Shield size={12} className="text-[#00f5ff]" />
-                          <span className="truncate">{drone.evmAddress}</span>
-                        </div>
-                        {drone.assignedZoneId !== "UNASSIGNED" ? (
-                          <div className="flex items-center gap-3 text-[10px] font-mono text-[#10b981]">
-                            <CheckCircle size={12} />
-                            <span className="uppercase">DEPLOYED: {drone.assignedZoneId}</span>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-3 text-[10px] font-mono text-[#f59e0b]">
-                            <AlertCircle size={12} />
-                            <span className="uppercase">AWAITING DEPLOYMENT</span>
-                          </div>
-                        )}
+                    <div className="space-y-2 mb-4">
+                      <div className="flex items-center gap-2 text-xs text-gray-400">
+                        <Shield className="h-3 w-3 text-cyan-400" />
+                        <span className="font-mono truncate">{drone.evmAddress.substring(0, 16)}...</span>
                       </div>
+                      
+                      {drone.assignedZoneId !== "UNASSIGNED" ? (
+                        <div className="flex items-center gap-2 text-xs text-green-400">
+                          <CheckCircle className="h-3 w-3" />
+                          <span>Deployed: {drone.assignedZoneId}</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2 text-xs text-orange-400">
+                          <AlertCircle className="h-3 w-3" />
+                          <span>Awaiting Deployment</span>
+                        </div>
+                      )}
+                    </div>
 
-                      <div className="flex justify-between items-center pt-4 border-t border-white/5">
-                        <div className="text-[9px] font-mono text-white/30 tracking-[0.2em] uppercase">STATUS_OPE</div>
-                        <div className="flex items-center gap-2">
-                          <div className={`text-[10px] font-bold tracking-widest px-2 py-0.5 rounded ${drone.status === "ACTIVE" ? "text-[#10b981] bg-[#10b981]/10" : "text-white/30 bg-white/5"
-                            }`}>
-                            {drone.status}
-                          </div>
-                          <button
-                            onClick={() => handleViewDetails(drone)}
-                            className="px-3 py-1 bg-[#00f5ff]/10 hover:bg-[#00f5ff]/20 border border-[#00f5ff]/30 hover:border-[#00f5ff]/60 rounded text-[10px] font-bold tracking-wider text-[#00f5ff] uppercase transition-all"
-                          >
-                            View Details
-                          </button>
-                        </div>
-                      </div>
+                    <div className="flex items-center justify-between pt-4 border-t border-white/10">
+                      <Badge 
+                        className={drone.status === "ACTIVE" 
+                          ? "bg-green-500/20 border-green-500/40 text-green-400" 
+                          : "bg-gray-500/20 border-gray-500/40 text-gray-400"
+                        }
+                      >
+                        {drone.status}
+                      </Badge>
+                      <Button
+                        onClick={() => handleViewDetails(drone)}
+                        variant="ghost"
+                        size="sm"
+                        className="text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10"
+                      >
+                        View Details
+                      </Button>
                     </div>
                   </div>
                 ))}
@@ -376,32 +295,39 @@ export default function DashboardPage() {
             )}
           </div>
 
-          {/* Zones Column */}
-          <div className="space-y-6">
-            <div className="pb-4 border-b border-white/10">
-              <h2 className="text-xl font-bold uppercase tracking-[0.2em]">Sector Data</h2>
-              <div className="text-[10px] font-mono text-white/30 uppercase mt-1">AVAILABLE_ZONES // {zones.length} TOTAL</div>
-            </div>
-
-            <div className="space-y-3">
-              {zones.map((zone, i) => (
-                <div
-                  key={zone.zoneId}
-                  className="p-4 bg-white/[0.03] border border-white/5 hover:border-[#8b5cf6]/30 transition-all rounded flex justify-between items-center group opacity-0 animate-slide-up"
-                  style={{ animationDelay: `${100 + i * 50}ms` }}
-                >
-                  <div>
-                    <h4 className="text-sm font-bold text-white uppercase tracking-wider">{zone.zoneName || zone.zoneId}</h4>
-                    <div className="text-[10px] font-mono text-white/40 mt-1 uppercase">
-                      PTS: {zone.coordinates?.length || 0} // ASSETS: {zone.assignedDrones?.length || 0}
+          {/* Zones List */}
+          <div className="space-y-4">
+            <h2 className="text-2xl font-bold text-white mb-4">Zones</h2>
+            
+            {zones.length === 0 ? (
+              <div className="bg-black/50 backdrop-blur-xl border border-white/10 rounded-2xl p-8 text-center">
+                <MapPin className="h-12 w-12 text-gray-600 mx-auto mb-3" />
+                <p className="text-sm text-gray-400">No zones created</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {zones.map((zone) => {
+                  // Extract zone name from zoneId or coordinates data
+                  const zoneName = zone.zoneName || zone.zoneId.split('|')[0] || zone.zoneId.substring(0, 20);
+                  return (
+                    <div
+                      key={zone.zoneId}
+                      className="bg-black/50 backdrop-blur-xl border border-white/10 rounded-xl p-4 hover:border-purple-400/30 transition-all"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="font-semibold text-white text-sm">{zoneName}</h4>
+                          <p className="text-xs text-gray-400 mt-1">
+                            {zone.coordinates?.length || 0} points • {zone.assignedDrones?.length || 0} drones
+                          </p>
+                        </div>
+                        <MapPin className="h-5 w-5 text-purple-400" />
+                      </div>
                     </div>
-                  </div>
-                  <div className="w-8 h-8 rounded border border-white/10 flex items-center justify-center group-hover:bg-[#8b5cf6]/10 group-hover:border-[#8b5cf6]/40 transition-all">
-                    <MapPin size={14} className="text-[#8b5cf6]" />
-                  </div>
-                </div>
-              ))}
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -409,199 +335,190 @@ export default function DashboardPage() {
       {/* Drone Details Modal */}
       {selectedDrone && (
         <div
-          className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 opacity-0 animate-slide-up"
+          className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
           onClick={() => setSelectedDrone(null)}
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="bg-[#0a1628] border border-[#00f5ff]/30 rounded-xl max-w-2xl w-full max-h-[90vh] overflow-auto transition-all duration-300"
+            className="bg-gradient-to-br from-[#0f1e3a] to-[#0a1628] border border-cyan-500/30 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-auto shadow-2xl"
           >
-              {/* Modal Header */}
-              <div className="sticky top-0 bg-[#0a1628] border-b border-white/10 p-6 flex justify-between items-start">
-                <div>
-                  <h2 className="text-2xl font-bold text-white uppercase tracking-widest mb-1">{selectedDrone.cairnDroneId}</h2>
-                  <div className="text-[10px] font-mono text-[#00f5ff]/60 uppercase tracking-wider">ASSET_DETAILS // FULL_SPEC</div>
-                </div>
-                <button
-                  onClick={() => setSelectedDrone(null)}
-                  className="w-10 h-10 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-[#00f5ff]/40 rounded flex items-center justify-center transition-all"
-                >
-                  <X size={20} className="text-white/60" />
-                </button>
+            {/* Modal Header */}
+            <div className="sticky top-0 bg-black/50 backdrop-blur-xl border-b border-white/10 p-6 flex justify-between items-start">
+              <div>
+                <h2 className="text-2xl font-bold text-white mb-1">{selectedDrone.cairnDroneId}</h2>
+                <p className="text-sm text-gray-400">Drone Details</p>
               </div>
+              <button
+                onClick={() => setSelectedDrone(null)}
+                className="w-10 h-10 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-cyan-400/30 rounded-lg flex items-center justify-center transition-all"
+              >
+                <X className="h-5 w-5 text-gray-400" />
+              </button>
+            </div>
 
-              {/* Modal Content */}
-              <div className="p-6 space-y-6">
-                {/* Hedera Account ID */}
-                {(selectedDrone.hederaAccountId || fetchedAccountId) && (
-                  <div className="space-y-2">
-                    <div className="text-[10px] font-mono text-white/40 uppercase tracking-wider flex items-center gap-2">
-                      <Shield size={12} className="text-[#10b981]" />
-                      Hedera Account ID
-                    </div>
-                    <div className="bg-black/40 border border-white/10 rounded-lg p-4 flex items-center justify-between group">
-                      <code className="text-sm text-white/80 font-mono">{selectedDrone.hederaAccountId || fetchedAccountId}</code>
-                      <button
-                        onClick={() => copyToClipboard(selectedDrone.hederaAccountId || fetchedAccountId || '')}
-                        className="ml-3 p-2 hover:bg-white/10 rounded transition-all"
-                        title="Copy account ID"
-                      >
-                        {copied ? (
-                          <CheckCircle size={16} className="text-[#10b981]" />
-                        ) : (
-                          <Copy size={16} className="text-white/40 group-hover:text-white/80" />
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {/* Wallet Address */}
+            {/* Modal Content */}
+            <div className="p-6 space-y-6">
+              {/* Hedera Account ID */}
+              {(selectedDrone.hederaAccountId || fetchedAccountId) && (
                 <div className="space-y-2">
-                  <div className="text-[10px] font-mono text-white/40 uppercase tracking-wider flex items-center gap-2">
-                    <Wallet size={12} className="text-[#00f5ff]" />
-                    EVM Wallet Address
-                  </div>
-                  <div className="bg-black/40 border border-white/10 rounded-lg p-4 flex items-center justify-between group">
-                    <code className="text-sm text-white/80 font-mono break-all">{selectedDrone.evmAddress}</code>
+                  <label className="text-xs text-gray-400 flex items-center gap-2">
+                    <Shield className="h-3 w-3 text-green-400" />
+                    Hedera Account ID
+                  </label>
+                  <div className="bg-black/40 border border-white/10 rounded-lg p-4 flex items-center justify-between">
+                    <code className="text-sm text-white font-mono">{selectedDrone.hederaAccountId || fetchedAccountId}</code>
                     <button
-                      onClick={() => copyToClipboard(selectedDrone.evmAddress)}
+                      onClick={() => copyToClipboard(selectedDrone.hederaAccountId || fetchedAccountId || '')}
                       className="ml-3 p-2 hover:bg-white/10 rounded transition-all"
-                      title="Copy address"
                     >
                       {copied ? (
-                        <CheckCircle size={16} className="text-[#10b981]" />
+                        <CheckCircle className="h-4 w-4 text-green-400" />
                       ) : (
-                        <Copy size={16} className="text-white/40 group-hover:text-white/80" />
+                        <Copy className="h-4 w-4 text-gray-400" />
                       )}
                     </button>
                   </div>
                 </div>
+              )}
 
-                {/* Balance */}
-                <div className="space-y-2">
-                  <div className="text-[10px] font-mono text-white/40 uppercase tracking-wider flex items-center gap-2">
-                    <Zap size={12} className="text-[#f59e0b]" />
-                    Account Balance
-                  </div>
-                  <div className="bg-black/40 border border-white/10 rounded-lg p-4">
-                    {loadingBalance ? (
-                      <div className="flex items-center gap-2 text-white/60">
-                        <div className="w-4 h-4 border-2 border-[#00f5ff]/20 border-t-[#00f5ff] rounded-full animate-spin" />
-                        <span className="text-sm font-mono">Loading balance...</span>
-                      </div>
-                    ) : (
-                      <div className="flex items-baseline gap-2">
-                        <span className="text-2xl font-bold text-white">{droneBalance || "0"}</span>
-                        <span className="text-sm text-white/40 font-mono">ℏ HBAR</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Model Information */}
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <div className="text-[10px] font-mono text-white/40 uppercase tracking-wider">Model</div>
-                    <div className="bg-black/40 border border-white/10 rounded-lg p-3">
-                      <div className="text-sm font-bold text-white uppercase tracking-wide">{selectedDrone.model}</div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <div className="text-[10px] font-mono text-white/40 uppercase tracking-wider">Status</div>
-                    <div className="bg-black/40 border border-white/10 rounded-lg p-3">
-                      <div className={`text-sm font-bold uppercase tracking-wide ${selectedDrone.status === "ACTIVE" ? "text-[#10b981]" : "text-white/40"}`}>
-                        {selectedDrone.status}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Assignment Status */}
-                <div className="space-y-2">
-                  <div className="text-[10px] font-mono text-white/40 uppercase tracking-wider flex items-center gap-2">
-                    <MapPin size={12} className="text-[#8b5cf6]" />
-                    Deployment Zone
-                  </div>
-                  <div className="bg-black/40 border border-white/10 rounded-lg p-4">
-                    {selectedDrone.assignedZoneId !== "UNASSIGNED" ? (
-                      <div className="flex items-center gap-2">
-                        <CheckCircle size={16} className="text-[#10b981]" />
-                        <span className="text-sm font-bold text-white uppercase tracking-wide">{selectedDrone.assignedZoneId}</span>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-2 text-[#f59e0b]">
-                        <AlertCircle size={16} />
-                        <span className="text-sm font-mono uppercase">Awaiting Deployment</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Registration Coordinates */}
-                {selectedDrone.registrationLat && selectedDrone.registrationLng && (
-                  <div className="space-y-2">
-                    <div className="text-[10px] font-mono text-white/40 uppercase tracking-wider">Registration Coordinates</div>
-                    <div className="bg-black/40 border border-white/10 rounded-lg p-4">
-                      <div className="grid grid-cols-2 gap-4 text-sm font-mono">
-                        <div>
-                          <span className="text-white/40">LAT:</span>
-                          <span className="text-white ml-2">{selectedDrone.registrationLat.toFixed(6)}</span>
-                        </div>
-                        <div>
-                          <span className="text-white/40">LNG:</span>
-                          <span className="text-white ml-2">{selectedDrone.registrationLng.toFixed(6)}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Agent Information */}
-                {selectedDrone.isAgent && selectedDrone.agentTopicId && (
-                  <div className="space-y-2">
-                    <div className="text-[10px] font-mono text-white/40 uppercase tracking-wider flex items-center gap-2">
-                      <Activity size={12} className="text-[#8b5cf6]" />
-                      AI Agent Topic ID
-                    </div>
-                    <div className="bg-[#8b5cf6]/10 border border-[#8b5cf6]/30 rounded-lg p-4 flex items-center justify-between group">
-                      <code className="text-sm text-[#8b5cf6] font-mono">{selectedDrone.agentTopicId}</code>
-                      <a
-                        href={`https://hashscan.io/testnet/topic/${selectedDrone.agentTopicId}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="ml-3 p-2 hover:bg-white/10 rounded transition-all"
-                        title="View on HashScan"
-                      >
-                        <ExternalLink size={16} className="text-[#8b5cf6]" />
-                      </a>
-                    </div>
-                  </div>
-                )}
-
-                {/* Action Buttons */}
-                <div className="flex gap-3 pt-4">
-                  <a
-                    href={`https://hashscan.io/testnet/account/${fetchedAccountId || selectedDrone.hederaAccountId || selectedDrone.evmAddress}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex-1 px-4 py-3 bg-[#00f5ff]/10 hover:bg-[#00f5ff]/20 border border-[#00f5ff]/30 hover:border-[#00f5ff]/60 rounded-lg text-sm font-bold text-[#00f5ff] uppercase tracking-wider transition-all flex items-center justify-center gap-2"
-                  >
-                    <ExternalLink size={14} />
-                    View on HashScan
-                  </a>
+              {/* EVM Address */}
+              <div className="space-y-2">
+                <label className="text-xs text-gray-400 flex items-center gap-2">
+                  <Shield className="h-3 w-3 text-cyan-400" />
+                  EVM Wallet Address
+                </label>
+                <div className="bg-black/40 border border-white/10 rounded-lg p-4 flex items-center justify-between">
+                  <code className="text-sm text-white font-mono break-all">{selectedDrone.evmAddress}</code>
                   <button
-                    onClick={() => setSelectedDrone(null)}
-                    className="px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/30 rounded-lg text-sm font-bold text-white uppercase tracking-wider transition-all"
+                    onClick={() => copyToClipboard(selectedDrone.evmAddress)}
+                    className="ml-3 p-2 hover:bg-white/10 rounded transition-all"
                   >
-                    Close
+                    {copied ? (
+                      <CheckCircle className="h-4 w-4 text-green-400" />
+                    ) : (
+                      <Copy className="h-4 w-4 text-gray-400" />
+                    )}
                   </button>
                 </div>
               </div>
+
+              {/* Balance */}
+              <div className="space-y-2">
+                <label className="text-xs text-gray-400">Account Balance</label>
+                <div className="bg-black/40 border border-white/10 rounded-lg p-4">
+                  {loadingBalance ? (
+                    <div className="flex items-center gap-2 text-gray-400">
+                      <div className="w-4 h-4 border-2 border-cyan-500/20 border-t-cyan-500 rounded-full animate-spin" />
+                      <span className="text-sm">Loading...</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-2xl font-bold text-white">{droneBalance || "0"}</span>
+                      <span className="text-sm text-gray-400">HBAR</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Model & Status */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-xs text-gray-400">Model</label>
+                  <div className="bg-black/40 border border-white/10 rounded-lg p-3">
+                    <p className="text-sm font-semibold text-white">{selectedDrone.model}</p>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs text-gray-400">Status</label>
+                  <div className="bg-black/40 border border-white/10 rounded-lg p-3">
+                    <p className={`text-sm font-semibold ${selectedDrone.status === "ACTIVE" ? "text-green-400" : "text-gray-400"}`}>
+                      {selectedDrone.status}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Assignment */}
+              <div className="space-y-2">
+                <label className="text-xs text-gray-400 flex items-center gap-2">
+                  <MapPin className="h-3 w-3 text-purple-400" />
+                  Deployment Zone
+                </label>
+                <div className="bg-black/40 border border-white/10 rounded-lg p-4">
+                  {selectedDrone.assignedZoneId !== "UNASSIGNED" ? (
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="h-4 w-4 text-green-400" />
+                      <span className="text-sm font-semibold text-white">{selectedDrone.assignedZoneId}</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 text-orange-400">
+                      <AlertCircle className="h-4 w-4" />
+                      <span className="text-sm">Awaiting Deployment</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Coordinates */}
+              {selectedDrone.registrationLat && selectedDrone.registrationLng && (
+                <div className="space-y-2">
+                  <label className="text-xs text-gray-400">Registration Coordinates</label>
+                  <div className="bg-black/40 border border-white/10 rounded-lg p-4 grid grid-cols-2 gap-4 font-mono text-sm">
+                    <div>
+                      <span className="text-gray-400">LAT: </span>
+                      <span className="text-white">{selectedDrone.registrationLat.toFixed(6)}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-400">LNG: </span>
+                      <span className="text-white">{selectedDrone.registrationLng.toFixed(6)}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Agent Topic */}
+              {selectedDrone.isAgent && selectedDrone.agentTopicId && (
+                <div className="space-y-2">
+                  <label className="text-xs text-gray-400 flex items-center gap-2">
+                    <Activity className="h-3 w-3 text-purple-400" />
+                    AI Agent Topic ID
+                  </label>
+                  <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-4 flex items-center justify-between">
+                    <code className="text-sm text-purple-400 font-mono">{selectedDrone.agentTopicId}</code>
+                    <a
+                      href={`https://hashscan.io/testnet/topic/${selectedDrone.agentTopicId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="ml-3 p-2 hover:bg-white/10 rounded transition-all"
+                    >
+                      <ExternalLink className="h-4 w-4 text-purple-400" />
+                    </a>
+                  </div>
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="flex gap-3 pt-4">
+                <a
+                  href={`https://hashscan.io/testnet/account/${fetchedAccountId || selectedDrone.hederaAccountId || selectedDrone.evmAddress}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 py-3 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 hover:border-cyan-500/60 rounded-lg text-sm font-semibold text-cyan-400 transition-all flex items-center justify-center gap-2"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  View on HashScan
+                </a>
+                <button
+                  onClick={() => setSelectedDrone(null)}
+                  className="px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/30 rounded-lg text-sm font-semibold text-white transition-all"
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
-        )}
+        </div>
+      )}
     </div>
   );
 }

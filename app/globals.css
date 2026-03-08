@@ -190,6 +190,35 @@ body {
   animation: pulse-glow 3s ease-in-out infinite;
 }
 
+/* Clean page layout utilities */
+.page-container {
+  min-height: 100vh;
+  width: 100%;
+  padding: 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.page-section {
+  margin-bottom: 3rem;
+  position: relative;
+  z-index: 1;
+}
+
+.card-clean {
+  background: rgba(10, 26, 15, 0.6);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.no-overlap {
+  position: relative;
+  z-index: auto;
+}
+
 @keyframes pulse-glow {
   0%, 100% {
     box-shadow: 

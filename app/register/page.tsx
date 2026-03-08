@@ -6,20 +6,19 @@ import {
   Plane,
   MapPin,
   Shield,
-  Zap,
-  Loader2,
   CheckCircle,
-  ExternalLink,
-  Wallet,
+  Loader2,
+  ArrowLeft,
+  Calendar,
+  Hash,
+  Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LocationPicker } from "@/components/LocationPicker";
-import SkyvaultShell from "../../components/world/SkyvaultShell";
-import { WalletConnect } from "@/components/WalletConnect";
 import { useWalletStore } from "@/stores/walletStore";
 import { useHederaWallet } from "@/lib/useHederaWallet";
 import { DRONE_REGISTRY_ADDRESS } from "@/lib/contracts";
+import Link from "next/link";
 
 const DRONE_MODELS = [
   {
@@ -82,9 +81,16 @@ export default function RegisterDronePage() {
     sensorType: "RGB + Thermal",
     maxFlightMinutes: "41",
   });
+  
+  // Wallet protection
+  useEffect(() => {
+    if (!connected) {
+      alert("Please connect your HashPack wallet first");
+      router.push("/");
+    }
+  }, [connected, router]);
 
   useEffect(() => {
-    // Update sensor type and flight time when model changes
     const model = DRONE_MODELS.find(m => m.id === formData.model);
     if (model) {
       setFormData(prev => ({
@@ -113,7 +119,7 @@ export default function RegisterDronePage() {
     }
 
     if (!formData.droneName.trim()) {
-      alert("Please provide a name for your drone (e.g., drone-mumbai-andheri)");
+      alert("Please provide a name for your drone");
       return;
     }
 
@@ -122,8 +128,8 @@ export default function RegisterDronePage() {
     try {
       const selectedModel = DRONE_MODELS.find(m => m.id === formData.model);
 
-      // STEP 1-2: Create Drone Account & Fund with 20 HBAR
-      console.log("🚁 STEP 1: Creating drone account on Hedera...");
+      // Create drone account
+      console.log("🚁 Creating drone account...");
       
       const createAccRes = await fetch("/api/drones/register", {
         method: "POST",
@@ -142,10 +148,10 @@ export default function RegisterDronePage() {
       if (!createAccRes.ok) throw new Error(createAccData.error || "Failed to create drone account");
 
       const { droneAccountId, evmAddress, encryptedPrivateKey, encryptedPublicKey } = createAccData;
-      console.log(`✅ Drone account created: ${droneAccountId} (${evmAddress})`);
+      console.log(`✅ Drone account: ${droneAccountId}`);
 
-      // STEP 3: User Contract Registration via HashPack
-      console.log("⛓️ STEP 3: Please approve contract transaction in HashPack...");
+      // Contract registration
+      console.log("⛓️ Please approve in HashPack...");
       
       let contractTransactionIdString = "";
       try {
@@ -168,17 +174,17 @@ export default function RegisterDronePage() {
         
         if (contractResult && contractResult.transactionId) {
           contractTransactionIdString = contractResult.transactionId.toString();
-          console.log("✅ Contract registration successful! TX:", contractTransactionIdString);
+          console.log("✅ Contract TX:", contractTransactionIdString);
         } else {
-          throw new Error("Contract registration failed - no transaction ID returned");
+          throw new Error("Contract registration failed");
         }
       } catch (contractErr: any) {
-        console.error("⚠️ Contract registration error:", contractErr);
-        throw new Error(`Contract registration failed: ${contractErr.message}`);
+        console.error("Contract error:", contractErr);
+        throw new Error(`Contract failed: ${contractErr.message}`);
       }
 
-      // STEP 4-7: Backend completes registration
-      console.log("📝 STEP 4-7: Finalizing registration (DB, NFT, HCS Agent, 2 HBAR Return)...");
+      // Finalize registration
+      console.log("📝 Finalizing...");
 
       const finalizeRes = await fetch("/api/drones/register", {
         method: "POST",
@@ -206,15 +212,15 @@ export default function RegisterDronePage() {
       });
 
       const finalizeData = await finalizeRes.json();
-      if (!finalizeRes.ok) throw new Error(finalizeData.error || "Failed to finalize registration");
+      if (!finalizeRes.ok) throw new Error(finalizeData.error || "Failed to finalize");
 
-      console.log("✅ Registration complete!", finalizeData.drone);
+      console.log("✅ Complete!", finalizeData.drone);
       setRegisteredDroneData(finalizeData.drone);
       setRegistrationComplete(true);
 
     } catch (error: any) {
-      console.error("❌ Registration error:", error);
-      alert(error.message || "Failed to register drone. Please try again.");
+      console.error("❌ Error:", error);
+      alert(error.message || "Failed to register drone");
     } finally {
       setIsSubmitting(false);
     }
@@ -222,316 +228,212 @@ export default function RegisterDronePage() {
 
   const selectedModel = DRONE_MODELS.find(m => m.id === formData.model);
 
-  // Success view after registration
+  // Success screen
   if (registrationComplete && registeredDroneData) {
     return (
-      <SkyvaultShell title="DRONE REGISTRATION">
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <div className="max-w-2xl w-full opacity-0 animate-slide-up">
-          <Card className="bg-white/5 backdrop-blur-md border-white/10">
-            <CardContent className="p-12 text-center">
-              <div className="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
-                <CheckCircle className="h-10 w-10 text-green-400" />
+      <div className="min-h-screen bg-gradient-to-br from-[#0a1628] via-[#0f1e3a] to-[#0a1628] flex items-center justify-center p-6">
+        <div className="w-full max-w-2xl">
+          <div className="bg-gradient-to-br from-green-500/10 to-cyan-500/10 backdrop-blur-xl border border-green-500/30 rounded-3xl p-12 text-center shadow-2xl">
+            <div className="w-24 h-24 bg-gradient-to-br from-green-500 to-cyan-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg shadow-green-500/50">
+              <CheckCircle className="h-14 w-14 text-white" />
+            </div>
+            
+            <h2 className="text-4xl font-bold text-white mb-4">
+              Registration Complete!
+            </h2>
+            
+            <p className="text-gray-300 text-lg mb-8">
+              <span className="text-green-400 font-bold">{registeredDroneData.cairnDroneId}</span> is now on the blockchain
+            </p>
+            
+            <div className="bg-black/30 rounded-xl p-6 mb-8 text-left">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p className="text-gray-400 mb-1">Hedera Account</p>
+                  <p className="text-white font-mono">{registeredDroneData.hederaAccountId}</p>
+                </div>
+                <div>
+                  <p className="text-gray-400 mb-1">Model</p>
+                  <p className="text-white">{registeredDroneData.model}</p>
+                </div>
               </div>
-              
-              <h2 className="text-3xl font-bold text-white mb-4">
-                Drone Registered Successfully!
-              </h2>
-              
-              <p className="text-gray-400 mb-2">
-                Your drone <span className="text-blue-400 font-semibold">{registeredDroneData.cairnDroneId}</span> has been registered on the blockchain.
-              </p>
-              <p className="text-sm text-gray-500 mb-8">
-                Hedera Account: <span className="font-mono text-xs">{registeredDroneData.hederaAccountId}</span>
-              </p>
-              
-              <div className="space-y-3">
-                <Button
-                  onClick={() => router.push("/dashboard")}
-                  className="w-full bg-linear-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white"
-                >
-                  View Drone Dashboard
+            </div>
+
+            <div className="flex gap-4 justify-center">
+              <Link href="/deploy">
+                <Button className="bg-gradient-to-r from-green-600 to-cyan-600 hover:from-green-500 hover:to-cyan-500">
+                  Deploy to Zone
                 </Button>
-                <Button
-                  onClick={() => router.push("/deploy")}
-                  variant="outline"
-                  className="w-full border-white/10 text-white hover:bg-white/5"
-                >
-                  Create Boundary Zone
+              </Link>
+              <Link href="/dashboard">
+                <Button variant="outline" className="border-white/30">
+                  View Dashboard
                 </Button>
-                {registeredDroneData.hederaAccountId && (
-                  <a 
-                    href={`https://hashscan.io/testnet/account/${registeredDroneData.hederaAccountId}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block"
-                  >
-                    <Button
-                      variant="outline"
-                      className="w-full border-white/10 text-white hover:bg-white/5"
-                    >
-                      <ExternalLink className="h-4 w-4 mr-2" />
-                      View on HashScan
-                    </Button>
-                  </a>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+              </Link>
+            </div>
+          </div>
         </div>
       </div>
-      </SkyvaultShell>
     );
   }
 
-  // Wallet connection required view
-  if (!connected) {
-    return (
-      <SkyvaultShell title="DRONE REGISTRATION">
-      <div className="flex items-center justify-center min-h-screen p-4">
-          <div className="max-w-md w-full opacity-0 animate-slide-up">
-            <Card className="bg-white/5 backdrop-blur-md border-white/10">
-              <CardContent className="p-8 text-center">
-                <div className="w-16 h-16 bg-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <Shield className="h-8 w-8 text-blue-400" />
-                </div>
-                
-                <h2 className="text-2xl font-bold text-white mb-3">
-                  Connect Wallet Required
-                </h2>
-                <p className="text-gray-400 mb-8">
-                  Please connect your wallet to register a drone on the blockchain.
-                </p>
-                
-                <WalletConnect />
-              </CardContent>
-            </Card>
-          </div>
-          </div>
-      </SkyvaultShell>
-    );
-  }
-
-  // Main registration form
+  // Registration form
   return (
-    <SkyvaultShell title="DRONE REGISTRATION">
-    <div className="min-h-screen">
-      {/* Wallet status bar */}
-      <div className="border-b border-white/10 backdrop-blur-md bg-black/40 px-4 py-2 flex items-center justify-end">
-        <div className="flex items-center gap-3 bg-white/10 backdrop-blur-md px-4 py-1.5 rounded-lg border border-white/20">
-          <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-          <Wallet className="h-4 w-4 text-white" />
-          <span className="text-sm text-white font-medium">
-            {selectedAccount?.id.slice(0, 6)}...{selectedAccount?.id.slice(-4)}
-          </span>
+    <div className="min-h-screen bg-gradient-to-br from-[#0a1628] via-[#0f1e3a] to-[#0a1628]">
+      {/* Header */}
+      <div className="bg-black/40 backdrop-blur-md border-b border-white/10 sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Link href="/">
+              <Button variant="ghost" size="icon">
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+            </Link>
+            <div className="flex items-center gap-3">
+              <Plane className="h-6 w-6 text-green-400" />
+              <h1 className="text-xl font-bold text-white">Register New Drone</h1>
+            </div>
+          </div>
+          <p className="text-sm text-gray-400">Connected: {selectedAccount?.id.substring(0, 12)}...</p>
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="mb-8 opacity-0 animate-slide-up">
-          <div className="flex items-center gap-2 text-blue-400 mb-4">
-            <Plane className="h-6 w-6" />
-            <h1 className="text-3xl font-bold text-white">Register New Drone</h1>
+      {/* Main Content */}
+      <div className="max-w-6xl mx-auto p-6 grid md:grid-cols-2 gap-6 mt-6">
+        {/* Left Column - Form */}
+        <div className="space-y-6">
+          {/* Drone Info */}
+          <div className="bg-black/50 backdrop-blur-xl border border-white/10 rounded-2xl p-6">
+            <div className="flex items-center gap-3 mb-6">
+              <Shield className="h-6 w-6 text-cyan-400" />
+              <h2 className="text-xl font-bold text-white">Drone Information</h2>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm text-gray-400 block mb-2">Drone Name *</label>
+                <input
+                  type="text"
+                  value={formData.droneName}
+                  onChange={(e) => setFormData({...formData, droneName: e.target.value})}
+                  placeholder="e.g., drone-mumbai-01"
+                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:border-green-500 focus:outline-none transition-colors"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm text-gray-400 block mb-2">Serial Number *</label>
+                <input
+                  type="text"
+                  value={formData.serialNumber}
+                  onChange={(e) => setFormData({...formData, serialNumber: e.target.value})}
+                  placeholder="SN-2024-12345"
+                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:border-green-500 focus:outline-none transition-colors"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm text-gray-400 block mb-2">DGCA Certificate</label>
+                <input
+                  type="text"
+                  value={formData.dgcaCertNumber}
+                  onChange={(e) => setFormData({...formData, dgcaCertNumber: e.target.value})}
+                  placeholder="DGCA-12345"
+                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:border-green-500 focus:outline-none transition-colors"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm text-gray-400 block mb-2">Expiry Date</label>
+                <input
+                  type="date"
+                  value={formData.certExpiryDate}
+                  onChange={(e) => setFormData({...formData, certExpiryDate: e.target.value})}
+                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white focus:border-green-500 focus:outline-none transition-colors"
+                />
+              </div>
+            </div>
           </div>
-          <p className="text-gray-400">
-            Add a new drone to the blockchain registry with its operational parameters and location.
-          </p>
+
+          {/* Model Selection */}
+          <div className="bg-black/50 backdrop-blur-xl border border-white/10 rounded-2xl p-6">
+            <div className="flex items-center gap-3 mb-6">
+              <Zap className="h-6 w-6 text-purple-400" />
+              <h2 className="text-xl font-bold text-white">Model & Specs</h2>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm text-gray-400 block mb-2">Drone Model</label>
+                <select
+                  value={formData.model}
+                  onChange={(e) => setFormData({...formData, model: e.target.value})}
+                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white focus:border-purple-500 focus:outline-none transition-colors"
+                >
+                  {DRONE_MODELS.map(model => (
+                    <option key={model.id} value={model.id} className="bg-[#0f1e3a]">
+                      {model.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {selectedModel && (
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="bg-purple-500/10 rounded-lg p-3 text-center">
+                    <p className="text-xs text-gray-400 mb-1">Flight Time</p>
+                    <p className="text-lg font-bold text-purple-400">{selectedModel.specs.flightTime}m</p>
+                  </div>
+                  <div className="bg-cyan-500/10 rounded-lg p-3 text-center">
+                    <p className="text-xs text-gray-400 mb-1">Range</p>
+                    <p className="text-lg font-bold text-cyan-400">{selectedModel.specs.range}</p>
+                  </div>
+                  <div className="bg-green-500/10 rounded-lg p-3 text-center">
+                    <p className="text-xs text-gray-400 mb-1">Sensor</p>
+                    <p className="text-xs font-bold text-green-400">{selectedModel.specs.sensor}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="grid md:grid-cols-2 gap-8">
-          {/* Left Column - Form */}
-          <div className="space-y-6">
-            {/* Drone Name */}
-            <Card className="bg-white/5 backdrop-blur-md border-white/10">
-              <CardHeader>
-                <CardTitle className="text-white flex items-center gap-2">
-                  <Plane className="h-5 w-5 text-blue-400" />
-                  Drone Identification
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Drone Name *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.droneName}
-                    onChange={(e) => setFormData({...formData, droneName: e.target.value})}
-                    placeholder="e.g., drone-mumbai-andheri"
-                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Use format: drone-city-area for easy identification
-                  </p>
-                </div>
+        {/* Right Column - Map & Submit */}
+        <div className="space-y-6">
+          {/* Map */}
+          <div className="bg-black/50 backdrop-blur-xl border border-white/10 rounded-2xl p-6">
+            <div className="flex items-center gap-3 mb-6">
+              <MapPin className="h-6 w-6 text-green-400" />
+              <h2 className="text-xl font-bold text-white">Deployment Location</h2>
+            </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Serial Number *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.serialNumber}
-                    onChange={(e) => setFormData({...formData, serialNumber: e.target.value})}
-                    placeholder="e.g., SN-2024-12345"
-                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
-                  />
-                </div>
-              </CardContent>
-            </Card>
+            <div className="h-80 rounded-lg overflow-hidden border border-white/10">
+              <LocationPicker onLocationSelect={handleLocationSelect} />
+            </div>
 
-            {/* Model Selection */}
-            <Card className="bg-white/5 backdrop-blur-md border-white/10">
-              <CardHeader>
-                <CardTitle className="text-white flex items-center gap-2">
-                  <Zap className="h-5 w-5 text-blue-400" />
-                  Model & Specifications
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Drone Model *
-                  </label>
-                  <select
-                    value={formData.model}
-                    onChange={(e) => setFormData({...formData, model: e.target.value})}
-                    className="w-full px-4 py-3 bg-slate-800 border border-white/10 rounded-lg text-white focus:outline-none focus:border-blue-500"
-                  >
-                    {DRONE_MODELS.map(model => (
-                      <option key={model.id} value={model.id} className="bg-slate-800 text-white">{model.name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Sensor Type *
-                  </label>
-                  <select
-                    value={formData.sensorType}
-                    onChange={(e) => setFormData({...formData, sensorType: e.target.value})}
-                    className="w-full px-4 py-3 bg-slate-800 border border-white/10 rounded-lg text-white focus:outline-none focus:border-blue-500"
-                  >
-                    {selectedModel?.sensorTypes.map(sensor => (
-                      <option key={sensor} value={sensor} className="bg-slate-800 text-white">{sensor}</option>
-                    ))}
-                  </select>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Certification */}
-            <Card className="bg-white/5 backdrop-blur-md border-white/10">
-              <CardHeader>
-                <CardTitle className="text-white flex items-center gap-2">
-                  <Shield className="h-5 w-5 text-blue-400" />
-                  Certification
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    DGCA Certificate Number *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.dgcaCertNumber}
-                    onChange={(e) => setFormData({...formData, dgcaCertNumber: e.target.value})}
-                    placeholder="e.g., DGCA-2024-XXXXX"
-                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Certificate Expiry Date *
-                  </label>
-                  <input
-                    type="date"
-                    required
-                    value={formData.certExpiryDate}
-                    onChange={(e) => setFormData({...formData, certExpiryDate: e.target.value})}
-                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-blue-500"
-                  />
-                </div>
-              </CardContent>
-            </Card>
+            {currentLocation && (
+              <div className="mt-4 p-3 bg-green-500/10 border border-green-500/30 rounded-lg">
+                <p className="text-xs text-green-400">
+                  📍 {currentLocation.lat.toFixed(6)}, {currentLocation.lng.toFixed(6)}
+                </p>
+              </div>
+            )}
           </div>
 
-          {/* Right Column - Location & Model Info */}
-          <div className="space-y-6">
-            {/* Model Specs Display */}
-            <Card className="bg-linear-to-br from-blue-500/10 to-cyan-500/10 border-blue-500/30">
-              <CardHeader>
-                <CardTitle className="text-white">{selectedModel?.name}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-xs text-gray-400">Flight Time</p>
-                    <p className="text-lg font-semibold text-blue-400">{selectedModel?.specs.flightTime} mins</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-400">Range</p>
-                    <p className="text-lg font-semibold text-blue-400">{selectedModel?.specs.range}</p>
-                  </div>
-                  <div className="col-span-2">
-                    <p className="text-xs text-gray-400">Primary Sensor</p>
-                    <p className="text-lg font-semibold text-blue-400">{selectedModel?.specs.sensor}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Location Picker */}
-            <Card className="bg-white/5 backdrop-blur-md border-white/10">
-              <CardHeader>
-                <CardTitle className="text-white flex items-center gap-2">
-                  <MapPin className="h-5 w-5 text-blue-400" />
-                  Deployment Location *
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[400px] rounded-lg overflow-hidden border border-white/10">
-                  <LocationPicker onLocationSelect={handleLocationSelect} />
-                </div>
-                {currentLocation && (
-                  <div className="mt-4 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
-                    <p className="text-sm text-blue-400">
-                      📍 {currentLocation.lat.toFixed(4)}, {currentLocation.lng.toFixed(4)}
-                    </p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Submit Button */}
-            <Button
-              type="submit"
-              disabled={isSubmitting || !currentLocation}
-              className="w-full h-14 bg-linear-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white text-lg disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                  Registering on Blockchain...
-                </>
-              ) : (
-                <>
-                  <Shield className="h-5 w-5 mr-2" />
-                  Register Drone
-                </>
-              )}
-            </Button>
-          </div>
-        </form>
+          {/* Submit */}
+          <Button
+            onClick={handleSubmit}
+            disabled={isSubmitting || !currentLocation || !formData.droneName || !formData.serialNumber}
+            className="w-full h-14 text-lg bg-gradient-to-r from-green-600 to-cyan-600 hover:from-green-500 hover:to-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isSubmitting ? (
+              <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Registering...</>
+            ) : (
+              <><Shield className="mr-2 h-5 w-5" /> Register Drone</>
+            )}
+          </Button>
+        </div>
       </div>
     </div>
-    </SkyvaultShell>
   );
 }

@@ -4,8 +4,6 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import SkyvaultShell from "../../components/world/SkyvaultShell";
-import { useDroneVault } from "@/lib/useDroneVault";
-import { useWalletStore } from "@/stores/walletStore";
 
 interface Coordinate {
   lat: number;
@@ -97,9 +95,6 @@ export default function AnalyseDroneStreamPage() {
   const [patrolSubmitSuccess, setPatrolSubmitSuccess] = useState<string | null>(null);
   const [transactionId, setTransactionId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
-  const { submitPatrol, registerDrone } = useDroneVault();
-  const { selectedAccount, connected } = useWalletStore();
 
   useEffect(() => {
     // Load zone data from sessionStorage
@@ -268,53 +263,57 @@ export default function AnalyseDroneStreamPage() {
       setIsSubmitting(true);
       
       try {
-        // Check wallet connection
-        if (!connected || !selectedAccount) {
-          setPatrolSubmitSuccess("⚠️ Please connect HashPack wallet first");
-          setIsSubmitting(false);
-          return;
-        }
-        
-        console.log("💼 Using HashPack wallet:", selectedAccount.id);
-        
-        // Register drone first (if needed)
-        try {
-          console.log("📝 Registering drone...");
-          await registerDrone(selectedDrone.cairnDroneId);
-          console.log("✅ Drone registered");
-        } catch (regError: any) {
-          if (!regError.message?.includes("already registered")) {
-            console.log("ℹ️ Registration:", regError.message?.substring(0, 50));
-          }
-        }
+        console.log("\n📍 Step 6: Submit to blockchain");
+        console.log("-".repeat(50));
         
         // Generate patrol data
         const patrolCid = `bafybei${Math.random().toString(36).substring(2, 27)}`;
         const randomStr = `${selectedDrone.cairnDroneId}-${Date.now()}-${Math.random()}`;
         const dataHash = `0x${randomStr.split('').map(c => c.charCodeAt(0).toString(16)).join('').padEnd(64, '0').substring(0, 64)}`;
         
-        console.log("📤 Submitting patrol via HashPack (approve in wallet)...");
+        console.log("🔗 Preparing blockchain submission...");
         console.log("   Drone:", selectedDrone.cairnDroneId);
         console.log("   Zone:", zoneId || "unknown-zone");
-        console.log("   IPFS CID:", patrolCid);
+        console.log("   Patrol IPFS CID:", patrolCid);
         console.log("   Data Hash:", dataHash);
         
-        // Submit patrol via HashPack - THIS WILL SHOW WALLET POPUP
-        const result = await submitPatrol(
-          selectedDrone.cairnDroneId,
-          zoneId || "unknown-zone",
-          patrolCid,
-          dataHash
-        );
+        // Submit patrol automatically via backend API (no wallet approval needed)
+        console.log("⏳ Executing contract transaction...");
+        const response = await fetch('/api/patrol/blockchain', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            droneId: selectedDrone.cairnDroneId,
+            zoneId: zoneId || "unknown-zone",
+            ipfsCid: patrolCid,
+            dataHash: dataHash
+          })
+        });
         
-        const txId = result.transactionId.toString();
-        setTransactionId(txId);
-        console.log("✅ Patrol submitted! Transaction:", txId);
-        setPatrolSubmitSuccess(`✅ Patrol logged on-chain!`);
+        const result = await response.json();
+        
+        if (result.success) {
+          setTransactionId(result.transactionId);
+          console.log("\n" + "=".repeat(50));
+          console.log("✅ PATROL SUBMISSION COMPLETE!");
+          console.log("=".repeat(50));
+          console.log("\n📊 Summary:");
+          console.log("   Drone:", selectedDrone.cairnDroneId);
+          console.log("   Zone:", zoneId || "unknown-zone");
+          console.log("   Patrol IPFS CID:", patrolCid);
+          console.log("   Transaction ID:", result.transactionId);
+          console.log("   Status:", result.status);
+          console.log("\n🎉 All done!");
+          
+          setPatrolSubmitSuccess(`✅ Transaction successful! Transaction ID: ${result.transactionId}`);
+        } else {
+          throw new Error(result.error || 'Blockchain submission failed');
+        }
+        
         setIsSubmitting(false);
         
       } catch (vaultError: any) {
-        console.error("⚠️ Patrol submission failed:", vaultError.message);
+        console.error("❌ Patrol submission failed:", vaultError.message);
         setPatrolSubmitSuccess(`❌ ${vaultError.message || 'Patrol submission failed'}`);
         setIsSubmitting(false);
       }
@@ -523,7 +522,7 @@ export default function AnalyseDroneStreamPage() {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm text-gray-400 mb-1">GAZEBO SIMULATION IN PROGRESS</p>
-                        <p className="text-lg text-gray-300">Patrol will be submitted via HashPack...</p>
+                        <p className="text-lg text-gray-300">Patrol will be automatically submitted to blockchain...</p>
                       </div>
                       <div className="flex flex-col items-center">
                         <div className="relative w-20 h-20">
@@ -564,7 +563,7 @@ export default function AnalyseDroneStreamPage() {
                     <div className="flex items-center gap-4">
                       <div className="text-4xl">✅</div>
                       <div className="flex-1">
-                        <p className="text-lg font-bold text-green-400 mb-1">Patrol Submitted to Vault</p>
+                        <p className="text-lg font-bold text-green-400 mb-1">Patrol Logged On-Chain</p>
                         <p className="text-sm text-gray-300 mb-2">{patrolSubmitSuccess}</p>
                         {transactionId && (
                           <div className="mt-3 space-y-2">
@@ -585,24 +584,14 @@ export default function AnalyseDroneStreamPage() {
                   </div>
                 )}
 
-                {/* Wallet Connection Warning */}
-                {!connected && countdown !== null && (
-                  <div className="bg-gradient-to-br from-red-500/10 to-orange-500/10 border border-red-500/30 rounded-lg p-4 mb-6 animate-fade-in">
-                    <div className="flex items-center gap-3">
-                      <div className="text-2xl">⚠️</div>
-                      <p className="text-red-400 font-mono text-sm">Connect HashPack wallet to submit patrols</p>
-                    </div>
-                  </div>
-                )}
-
                 {/* Submission in Progress */}
                 {isSubmitting && (
                   <div className="bg-gradient-to-br from-yellow-500/10 to-orange-500/10 border border-yellow-500/30 rounded-lg p-4 mb-6 animate-pulse">
                     <div className="flex items-center gap-3">
                       <div className="text-2xl">⏳</div>
                       <div>
-                        <p className="text-yellow-400 font-mono text-sm">Waiting for wallet approval...</p>
-                        <p className="text-xs text-gray-400 mt-1">Check your HashPack wallet popup</p>
+                        <p className="text-yellow-400 font-mono text-sm">Submitting patrol to blockchain...</p>
+                        <p className="text-xs text-gray-400 mt-1">Automatic submission in progress</p>
                       </div>
                     </div>
                   </div>
