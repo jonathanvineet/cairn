@@ -37,6 +37,13 @@
     "**/*.mts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "**/*.bak",
+    "**/*.tsx.bak",
+    "**/*.ts.bak",
+    "**/3d.bak/**",
+    "**/*.bak/**",
+    "app/page_old_backup.tsx.bak",
+    "app/dashboard/page_old.tsx.bak"
   ]
 }

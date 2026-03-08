@@ -40,6 +40,12 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# backup files (unused components with missing dependencies)
+**/*.bak
+*.tsx.bak
+*.ts.bak
+**/3d.bak/
+
 # breach evidence images (user-generated)
 /public/breach-evidence/*.jpg
 /public/breach-evidence/*.jpeg

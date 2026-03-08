@@ -126,7 +126,7 @@ async function submitToBlockchain(
     .addString(droneId)
     .addString(zoneId)
     .addString(ipfsCid)
-    .addBytes32(Array.from(hashBytes) as number[]);
+    .addBytes32(hashBytes);
 
   // Check if drone is registered and register if needed
   console.log("🔍 Checking and registering drone...");

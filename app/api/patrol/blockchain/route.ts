@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
       .addString(droneId)
       .addString(zoneId)
       .addString(ipfsCid)
-      .addBytes32(Array.from(hashBytes) as number[]);
+      .addBytes32(hashBytes);
 
     // Check if drone is registered first
     console.log("🔍 Checking if drone is registered...");
