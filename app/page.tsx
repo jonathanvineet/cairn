@@ -1,276 +1,224 @@
 "use client";
 
-import { Suspense, useEffect, useState, useRef } from "react";
-import dynamic from "next/dynamic";
-import { DroneHUDOverlay } from "@/components/hud/DroneHUDOverlay";
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { Plane, MapPin, Shield, Zap, ArrowRight, Globe, CheckCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { WalletConnect } from "@/components/WalletConnect";
 
-const Scene3D = dynamic(() => import("../components/world/Scene3D"), { ssr: false });
-
-// Scroll-driven story cards that appear over the 3D world as user flies through
 const STORY_SLIDES = [
   {
-    pct: [0, 0.22],
-    side: "left",
     tag: "WELCOME TO CAIRN",
     headline: "India's On-Chain\nDrone Registry",
     body: "An autonomous airspace trust layer built on Hedera. Every drone, every flight, every boundary — permanently verifiable on the blockchain.",
     accent: "#00f5ff",
-    hint: "Scroll to fly through",
   },
   {
-    pct: [0.22, 0.44],
-    side: "right",
     tag: "THE PROBLEM",
     headline: "Untracked Drones\nPose Real Risks",
     body: "India has 300,000+ drone operators with no unified registry. CAIRN solves this with decentralized identity — every drone staked on-chain with the operator's wallet.",
     accent: "#e94560",
-    hint: "Keep scrolling",
   },
   {
-    pct: [0.44, 0.66],
-    side: "left",
     tag: "HOW IT WORKS",
     headline: "Register →\nDeploy → Monitor",
     body: "1. Connect your wallet (MetaMask / HashPack)\n2. Register your drone with DGCA ID on Hedera HCS\n3. Define no-fly boundary zones as smart contracts\n4. AI agents watch live for breach events",
     accent: "#8b5cf6",
-    hint: "Almost there",
   },
   {
-    pct: [0.66, 0.88],
-    side: "right",
     tag: "THE TECHNOLOGY",
     headline: "Hedera HCS +\nEliza AI Agents",
     body: "Hedera Consensus Service finalizes every log entry in under 1 second. Eliza AI agents patrol zones autonomously — flagging breaches without any human in the loop.",
     accent: "#10b981",
-    hint: "One more section",
   },
   {
-    pct: [0.88, 1.0],
-    side: "left",
     tag: "READY TO FLY?",
     headline: "Secure Your\nAirspace Today",
     body: "Certified operators, trusted zones, breach-proof enforcement. CAIRN is open-source and live on Hedera Testnet.",
     accent: "#f59e0b",
-    hint: null,
   },
 ];
 
-function easeInOut(t: number) {
-  return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
-}
-
-function StoryCard({ slide, scrollPct }: { slide: typeof STORY_SLIDES[0]; scrollPct: number }) {
-  const [lo, hi] = slide.pct;
-  const span = hi - lo;
-  const fadeWidth = Math.min(0.06, span * 0.25);
-
-  // Fade in / fade out
-  let alpha = 0;
-  if (scrollPct >= lo && scrollPct <= hi) {
-    const progress = (scrollPct - lo) / span;
-    const fadeIn = Math.min(progress / (fadeWidth / span), 1);
-    const fadeOut = Math.min((1 - progress) / (fadeWidth / span), 1);
-    alpha = easeInOut(Math.min(fadeIn, fadeOut));
-  }
-  if (alpha < 0.01) return null;
-
-  const isLeft = slide.side === "left";
-
-  return (
-    <div style={{
-      position: "fixed",
-      top: isLeft ? "78%" : "60%",
-      [isLeft ? "left" : "right"]: 0,
-      transform: `translateY(-50%) translateX(${isLeft ? (alpha - 1) * -30 : (alpha - 1) * 30}px)`,
-      opacity: alpha,
-      zIndex: 35,
-      padding: "32px 36px",
-      maxWidth: 400,
-      margin: isLeft ? "0 0 0 24px" : "0 24px 0 0",
-      background: "rgba(5,8,16,0.82)",
-      backdropFilter: "blur(20px)",
-      border: `1px solid ${slide.accent}25`,
-      borderLeft: isLeft ? `3px solid ${slide.accent}` : `1px solid ${slide.accent}25`,
-      borderRight: !isLeft ? `3px solid ${slide.accent}` : `1px solid ${slide.accent}25`,
-      borderRadius: 8,
-      fontFamily: "Rajdhani, sans-serif",
-      transition: "opacity 0.1s linear",
-    }}>
-      {/* Tag */}
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-        <div style={{ width: 5, height: 5, borderRadius: "50%", background: slide.accent, flexShrink: 0 }} />
-        <span style={{ color: slide.accent, fontSize: 9, fontWeight: 700, letterSpacing: "0.3em" }}>
-          {slide.tag}
-        </span>
-      </div>
-
-      {/* Headline */}
-      <h2 style={{
-        color: "#fff",
-        fontSize: "clamp(22px, 3vw, 36px)",
-        fontWeight: 800,
-        lineHeight: 1.1,
-        whiteSpace: "pre-line",
-        margin: "0 0 14px",
-        letterSpacing: "-0.01em",
-      }}>
-        {slide.headline}
-      </h2>
-
-      {/* Body */}
-      <p style={{
-        color: "rgba(255,255,255,0.55)",
-        fontSize: 14,
-        lineHeight: 1.75,
-        margin: "0 0 20px",
-        whiteSpace: "pre-line",
-      }}>
-        {slide.body}
-      </p>
-
-      {/* Scroll hint */}
-      {slide.hint && (
-        <div style={{ marginTop: 20, display: "flex", alignItems: "center", gap: 6 }}>
-          <div style={{ width: 20, height: 1, background: `${slide.accent}60` }} />
-          <span style={{ color: "rgba(255,255,255,0.25)", fontSize: 9, letterSpacing: "0.2em" }}>
-            {slide.hint.toUpperCase()}
-          </span>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function ScrollProgress({ pct }: { pct: number }) {
-  // Mini sections indicator on the right edge
-  return (
-    <div style={{
-      position: "fixed",
-      right: 12,
-      top: "50%",
-      transform: "translateY(-50%)",
-      zIndex: 40,
-      display: "flex",
-      flexDirection: "column",
-      gap: 8,
-      alignItems: "center",
-    }}>
-      {STORY_SLIDES.map((s, i) => {
-        const [lo, hi] = s.pct;
-        const active = pct >= lo && pct <= hi;
-        const past = pct > hi;
-        return (
-          <div key={i} style={{
-            width: active ? 2 : 1.5,
-            height: active ? 22 : 14,
-            borderRadius: 2,
-            background: active ? s.accent : past ? "rgba(255,255,255,0.3)" : "rgba(255,255,255,0.12)",
-            transition: "all 0.3s ease",
-            boxShadow: active ? `0 0 8px ${s.accent}` : "none",
-          }} />
-        );
-      })}
-    </div>
-  );
-}
-
-export default function HomePage() {
-  const [canvasReady, setCanvasReady] = useState(false);
-  const [scrollPct, setScrollPct] = useState(0);
+export default function LandingPage() {
+  const [scrollProgress, setScrollProgress] = useState(0);
+  const [currentSlide, setCurrentSlide] = useState(0);
 
   useEffect(() => {
-    const t = setTimeout(() => setCanvasReady(true), 80);
-    return () => clearTimeout(t);
-  }, []);
-
-  useEffect(() => {
-    const onScroll = () => {
-      const total = document.documentElement.scrollHeight - window.innerHeight;
-      setScrollPct(total > 0 ? Math.min(window.scrollY / total, 1) : 0);
+    const handleScroll = () => {
+      const scrollHeight = document.documentElement.scrollHeight - window.innerHeight;
+      const progress = window.scrollY / scrollHeight;
+      setScrollProgress(Math.min(Math.max(progress, 0), 1));
+      
+      // Calculate which slide to show based on scroll
+      const slideIndex = Math.floor(progress * STORY_SLIDES.length);
+      setCurrentSlide(Math.min(slideIndex, STORY_SLIDES.length - 1));
     };
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+
+    window.addEventListener("scroll", handleScroll);
+    handleScroll();
+    return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  const currentStory = STORY_SLIDES[currentSlide];
+
   return (
-    <>
-      {/* Tall scroll container — 500vh for more story room */}
-      <div className="h-[500vh]" />
+    <div className="min-h-[400vh] relative bg-[#020d06]">
+      {/* Fixed Background with Topo Grid + Animated Drone */}
+      <div className="fixed inset-0 overflow-hidden">
+        {/* Topo Grid Pattern */}
+        <div className="absolute inset-0 topo-bg opacity-60" />
+        
+        {/* Gradient Overlay */}
+        <div className="absolute inset-0 bg-gradient-to-b from-[#020d06] via-transparent to-[#020d06] opacity-50" />
+        
+        {/* Floating Drone Silhouette */}
+        <div 
+          className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 transition-all duration-1000 ease-out"
+          style={{
+            opacity: 0.15 + scrollProgress * 0.85,
+            transform: `translate(-50%, calc(-50% + ${scrollProgress * -30}vh)) scale(${0.5 + scrollProgress * 0.5})`,
+          }}
+        >
+          <div className="relative w-64 h-64 animate-float">
+            <Plane className="w-full h-full text-green-500/30" strokeWidth={0.5} />
+            <div className="absolute inset-0 blur-2xl bg-green-500/20 animate-pulse" />
+          </div>
+        </div>
 
-      {/* 3D Canvas — fixed background */}
-      <div className="fixed inset-0 bg-[#050810]" style={{ zIndex: 0 }}>
-        {canvasReady && (
-          <Suspense fallback={null}>
-            <Scene3D />
-          </Suspense>
-        )}
+        {/* Scan Lines */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+          <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-green-400/50 to-transparent animate-scan" />
+        </div>
       </div>
 
-      {/* Scanlines */}
-      <div className="fixed inset-0 pointer-events-none" style={{ zIndex: 5, backgroundImage: "repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,245,255,0.005) 2px, rgba(0,245,255,0.005) 4px)" }} />
+      {/* Fixed Header */}
+      <header className="fixed top-0 left-0 right-0 z-50 border-b border-white/10 backdrop-blur-md bg-black/20">
+        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-cyan-500 rounded-lg flex items-center justify-center">
+              <Plane className="h-6 w-6 text-white" />
+            </div>
+            <span className="text-xl font-bold text-white font-rajdhani">CAIRN</span>
+          </div>
+          <WalletConnect />
+        </div>
+      </header>
 
-      {/* CAIRN Drone HUD — top bar, radar, telemetry */}
-      <DroneHUDOverlay />
-
-      {/* Scroll-driven story cards — appear over the 3D world */}
-      <div className="fixed inset-0 pointer-events-none" style={{ zIndex: 36 }}>
-        {STORY_SLIDES.map((slide, i) => (
-          <StoryCard key={i} slide={slide} scrollPct={scrollPct} />
-        ))}
-      </div>
-
-      {/* Section progress indicator */}
-      <ScrollProgress pct={scrollPct} />
-
-      {/* ——— MAIN ACTION OVERLAY ——— */}
-      <div className="fixed bottom-32 left-1/2 -translate-x-1/2 z-[45] flex items-center gap-6 pointer-events-auto">
-        {[
-          { href: "/register", label: "REGISTER DRONE", color: "#00f5ff", sub: "ON-CHAIN REGISTRY" },
-          { href: "/dashboard", label: "LIVE DASHBOARD", color: "#8b5cf6", sub: "NETWORK ANALYTICS" },
-          { href: "/deploy", label: "DEPLOY ZONE", color: "#10b981", sub: "AIRSPACE SECURITY" },
-        ].map((btn, i) => (
-          <a
-            key={i}
-            href={btn.href}
+      {/* Sticky Story Card */}
+      <div className="sticky top-24 z-40 px-6 pointer-events-none">
+        <div className="max-w-2xl mx-auto">
+          <div 
+            className="bg-[#050810]/90 backdrop-blur-xl border rounded-xl p-8 shadow-2xl pointer-events-auto transition-all duration-500"
             style={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              width: 180,
-              height: 70,
-              background: "rgba(5,8,16,0.9)",
-              border: `1px solid ${btn.color}40`,
-              borderRadius: 6,
-              textDecoration: "none",
-              transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-              backdropFilter: "blur(12px)",
-              position: "relative",
-              overflow: "hidden",
-            }}
-            className="group hover:scale-105 active:scale-95"
-            onMouseEnter={(e) => {
-              e.currentTarget.style.border = `1px solid ${btn.color}`;
-              e.currentTarget.style.boxShadow = `0 0 20px ${btn.color}20`;
-              e.currentTarget.style.background = `${btn.color}10`;
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.border = `1px solid ${btn.color}40`;
-              e.currentTarget.style.boxShadow = "none";
-              e.currentTarget.style.background = "rgba(5,8,16,0.9)";
+              borderColor: `${currentStory.accent}40`,
+              borderLeftWidth: '4px',
+              borderLeftColor: currentStory.accent,
+              opacity: scrollProgress < 0.95 ? 1 : 0,
             }}
           >
-            {/* Top accent line */}
-            <div style={{ position: "absolute", top: 0, left: 0, width: "100%", height: 2, background: btn.color }} />
+            {/* Tag */}
+            <div className="flex items-center gap-2 mb-4">
+              <div className="h-1.5 w-1.5 rounded-full animate-pulse" style={{ backgroundColor: currentStory.accent }} />
+              <span className="text-xs font-bold tracking-widest uppercase" style={{ color: currentStory.accent }}>
+                {currentStory.tag}
+              </span>
+            </div>
 
-            <span style={{ color: btn.color, fontSize: 13, fontWeight: 800, letterSpacing: "0.2em" }}>{btn.label}</span>
-            <span style={{ color: "rgba(255,255,255,0.3)", fontSize: 8, fontWeight: 700, letterSpacing: "0.15em", marginTop: 4 }}>{btn.sub}</span>
-          </a>
-        ))}
+            {/* Headline */}
+            <h2 className="text-4xl font-bold text-white mb-4 font-rajdhani whitespace-pre-line leading-tight">
+              {currentStory.headline}
+            </h2>
+
+            {/* Body */}
+            <p className="text-gray-300 text-base leading-relaxed whitespace-pre-line font-exo">
+              {currentStory.body}
+            </p>
+
+            {/* Progress */}
+            <div className="mt-6 flex items-center gap-2">
+              {STORY_SLIDES.map((_, i) => (
+                <div
+                  key={i}
+                  className="h-1 flex-1 rounded-full bg-white/10 overflow-hidden"
+                >
+                  <div
+                    className="h-full rounded-full transition-all duration-300"
+                    style={{
+                      width: i === currentSlide ? '100%' : i < currentSlide ? '100%' : '0%',
+                      backgroundColor: currentStory.accent,
+                    }}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Scroll progress bar on top */}
-      <div className="fixed top-0 left-0 h-[2px] z-50 transition-all duration-100" style={{ width: `${scrollPct * 100}%`, background: "linear-gradient(90deg, #00f5ff, #8b5cf6, #10b981)" }} />
-    </>
+      {/* CTA Section (appears at end of scroll) */}
+      <div 
+        className="fixed bottom-0 left-0 right-0 z-40 transition-all duration-500"
+        style={{
+          opacity: scrollProgress > 0.8 ? 1 : 0,
+          transform: `translateY(${scrollProgress > 0.8 ? '0' : '100%'})`,
+        }}
+      >
+        <div className="bg-gradient-to-t from-[#020d06] via-[#020d06]/95 to-transparent pt-16 pb-8 px-6">
+          <div className="max-w-4xl mx-auto text-center">
+            <h3 className="text-3xl font-bold text-white mb-6 font-rajdhani">
+              Ready to Secure Your Airspace?
+            </h3>
+            <div className="flex flex-wrap justify-center gap-4">
+              <Link href="/register">
+                <Button size="lg" className="bg-green-600 hover:bg-green-700 text-white gap-2">
+                  <Plane className="h-5 w-5" />
+                  Register Drone
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              </Link>
+              <Link href="/deploy">
+                <Button size="lg" variant="outline" className="border-green-500/30 hover:border-green-500 gap-2">
+                  <MapPin className="h-5 w-5" />
+                  Deploy Zone
+                </Button>
+              </Link>
+              <Link href="/dashboard">
+                <Button size="lg" variant="outline" className="border-green-500/30 hover:border-green-500 gap-2">
+                  <Shield className="h-5 w-5" />
+                  Dashboard
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Features Grid (visible only at certain scroll points) */}
+      <div 
+        className="fixed inset-0 flex items-center justify-center pointer-events-none z-30 transition-opacity duration-500"
+        style={{ opacity: scrollProgress > 0.2 && scrollProgress < 0.4 ? 1 : 0 }}
+      >
+        <div className="grid grid-cols-3 gap-6 max-w-4xl px-6">
+          {[
+            { icon: Shield, label: "Blockchain Registry", color: "#22c55e" },
+            { icon: Globe, label: "AI-Powered Patrol", color: "#8b5cf6" },
+            { icon: CheckCircle, label: "Hedera HCS", color: "#00f5ff" },
+          ].map((feature, i) => (
+            <div
+              key={i}
+              className="bg-[#0a1a0f]/80 backdrop-blur-sm border border-white/10 rounded-xl p-6 text-center transition-all duration-300 hover:border-green-500/50"
+              style={{
+                transitionDelay: `${i * 100}ms`,
+              }}
+            >
+              <div className="w-12 h-12 mx-auto mb-3 rounded-lg bg-gradient-to-br from-green-500/20 to-cyan-500/20 flex items-center justify-center">
+                <feature.icon className="w-6 h-6" style={{ color: feature.color }} />
+              </div>
+              <p className="text-sm font-semibold text-white font-rajdhani">{feature.label}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }

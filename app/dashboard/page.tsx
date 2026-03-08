@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import {
   Plane,
@@ -165,11 +164,7 @@ export default function DashboardPage() {
         </nav>
 
         <div className="flex items-center justify-center min-h-[calc(100vh-80px)] p-4">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="max-w-md w-full"
-          >
+          <div className="max-w-md w-full opacity-0 animate-slide-up">
             <div className="relative">
               <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/20 to-violet-500/20 rounded-2xl blur-2xl" />
               <div className="relative bg-[#0f1729] border border-white/10 rounded-2xl p-8 text-center">
@@ -188,7 +183,7 @@ export default function DashboardPage() {
                 </Link>
               </div>
             </div>
-          </motion.div>
+          </div>
         </div>
       </div>
     );
@@ -234,15 +229,11 @@ export default function DashboardPage() {
       {/* Main Content */}
       <div className="relative z-10 max-w-7xl mx-auto px-6 py-12">
         {/* Header Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-12 border-l-2 border-[#00f5ff] pl-6"
-        >
+        <div className="mb-12 border-l-2 border-[#00f5ff] pl-6 opacity-0 animate-slide-up">
           <div className="text-[#00f5ff] text-xs font-bold tracking-[0.4em] uppercase mb-2">FLEET_OVERVIEW_V1.0</div>
           <h1 className="text-4xl font-bold text-white tracking-widest uppercase mb-2">Operational Status</h1>
           <p className="text-white/40 font-mono text-sm tracking-tighter">TIMESTAMP: {new Date().toISOString().replace('T', ' ').slice(0, 19)} // ZONE: DELTA-7</p>
-        </motion.div>
+        </div>
 
         {/* HUD Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-12">
@@ -252,12 +243,10 @@ export default function DashboardPage() {
             { label: "Assigned Assets", value: assignedDrones.length, icon: CheckCircle, color: "#8b5cf6", id: "ASG" },
             { label: "Patrol Sectors", value: zones.length, icon: MapPin, color: "#f59e0b", id: "SCT" }
           ].map((stat, i) => (
-            <motion.div
+            <div
               key={stat.label}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.05 }}
-              className="relative group overflow-hidden"
+              className="relative group overflow-hidden opacity-0 animate-slide-up"
+              style={{ animationDelay: `${i * 50}ms` }}
             >
               <div className="absolute inset-0 bg-[#0a1628]/40 border border-white/10 group-hover:border-[#00f5ff]/40 transition-all rounded" />
               <div className="relative p-6">
@@ -269,17 +258,14 @@ export default function DashboardPage() {
                 <div className="text-[10px] uppercase tracking-[0.2em] font-mono text-white/40">{stat.label}</div>
               </div>
               <div className="absolute bottom-0 left-0 h-0.5 bg-[#00f5ff]/20 group-hover:w-full transition-all w-0" />
-            </motion.div>
+            </div>
           ))}
         </div>
 
         {/* Quick Actions */}
         <div className="grid md:grid-cols-2 gap-6 mb-12">
           <Link href="/register">
-            <motion.div
-              whileHover={{ scale: 1.01 }}
-              className="relative group overflow-hidden cursor-pointer"
-            >
+            <div className="relative group overflow-hidden cursor-pointer transition-all duration-300 hover:scale-[1.01]">
               <div className="absolute inset-0 bg-[#00f5ff]/5 border border-[#00f5ff]/30 group-hover:bg-[#00f5ff]/10 group-hover:border-[#00f5ff]/60 transition-all rounded-lg" />
               <div className="relative p-8 flex justify-between items-center">
                 <div className="space-y-2">
@@ -291,14 +277,11 @@ export default function DashboardPage() {
                   <Plus className="text-[#00f5ff]" />
                 </div>
               </div>
-            </motion.div>
+            </div>
           </Link>
 
           <Link href="/deploy">
-            <motion.div
-              whileHover={{ scale: 1.01 }}
-              className="relative group overflow-hidden cursor-pointer"
-            >
+            <div className="relative group overflow-hidden cursor-pointer transition-all duration-300 hover:scale-[1.01]">
               <div className="absolute inset-0 bg-[#8b5cf6]/5 border border-[#8b5cf6]/30 group-hover:bg-[#8b5cf6]/10 group-hover:border-[#8b5cf6]/60 transition-all rounded-lg" />
               <div className="relative p-8 flex justify-between items-center">
                 <div className="space-y-2">
@@ -310,7 +293,7 @@ export default function DashboardPage() {
                   <MapPin className="text-[#8b5cf6]" />
                 </div>
               </div>
-            </motion.div>
+            </div>
           </Link>
         </div>
 
@@ -336,12 +319,10 @@ export default function DashboardPage() {
             ) : (
               <div className="grid md:grid-cols-2 gap-4">
                 {drones.map((drone, i) => (
-                  <motion.div
+                  <div
                     key={drone.evmAddress}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.1 + i * 0.05 }}
-                    className="relative group"
+                    className="relative group opacity-0 animate-slide-up"
+                    style={{ animationDelay: `${100 + i * 50}ms` }}
                   >
                     <div className="absolute inset-0 bg-[#0a1628]/60 border border-white/5 group-hover:border-[#00f5ff]/30 transition-all rounded" />
                     <div className="relative p-5">
@@ -389,7 +370,7 @@ export default function DashboardPage() {
                         </div>
                       </div>
                     </div>
-                  </motion.div>
+                  </div>
                 ))}
               </div>
             )}
@@ -404,12 +385,10 @@ export default function DashboardPage() {
 
             <div className="space-y-3">
               {zones.map((zone, i) => (
-                <motion.div
+                <div
                   key={zone.zoneId}
-                  initial={{ opacity: 0, x: 10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.1 + i * 0.05 }}
-                  className="p-4 bg-white/[0.03] border border-white/5 hover:border-[#8b5cf6]/30 transition-all rounded flex justify-between items-center group"
+                  className="p-4 bg-white/[0.03] border border-white/5 hover:border-[#8b5cf6]/30 transition-all rounded flex justify-between items-center group opacity-0 animate-slide-up"
+                  style={{ animationDelay: `${100 + i * 50}ms` }}
                 >
                   <div>
                     <h4 className="text-sm font-bold text-white uppercase tracking-wider">{zone.zoneName || zone.zoneId}</h4>
@@ -420,7 +399,7 @@ export default function DashboardPage() {
                   <div className="w-8 h-8 rounded border border-white/10 flex items-center justify-center group-hover:bg-[#8b5cf6]/10 group-hover:border-[#8b5cf6]/40 transition-all">
                     <MapPin size={14} className="text-[#8b5cf6]" />
                   </div>
-                </motion.div>
+                </div>
               ))}
             </div>
           </div>
@@ -428,22 +407,15 @@ export default function DashboardPage() {
       </div>
 
       {/* Drone Details Modal */}
-      <AnimatePresence>
-        {selectedDrone && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-            onClick={() => setSelectedDrone(null)}
+      {selectedDrone && (
+        <div
+          className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 opacity-0 animate-slide-up"
+          onClick={() => setSelectedDrone(null)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-[#0a1628] border border-[#00f5ff]/30 rounded-xl max-w-2xl w-full max-h-[90vh] overflow-auto transition-all duration-300"
           >
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
-              className="bg-[#0a1628] border border-[#00f5ff]/30 rounded-xl max-w-2xl w-full max-h-[90vh] overflow-auto"
-            >
               {/* Modal Header */}
               <div className="sticky top-0 bg-[#0a1628] border-b border-white/10 p-6 flex justify-between items-start">
                 <div>
@@ -627,10 +599,9 @@ export default function DashboardPage() {
                   </button>
                 </div>
               </div>
-            </motion.div>
-          </motion.div>
+            </div>
+          </div>
         )}
-      </AnimatePresence>
     </div>
   );
 }

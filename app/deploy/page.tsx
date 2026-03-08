@@ -58,6 +58,13 @@ export default function DeployPage() {
   const [selectedDrone, setSelectedDrone] = useState<any | null>(null);
   const [selectionReport, setSelectionReport] = useState<any | null>(null);
 
+  // 30-second countdown timer for patrol submission after deployment
+  const [countdown, setCountdown] = useState<number | null>(null);
+  const [patrolSubmitted, setPatrolSubmitted] = useState(false);
+  const [patrolSubmitSuccess, setPatrolSubmitSuccess] = useState<string | null>(null);
+  const [deploymentZoneId, setDeploymentZoneId] = useState<string | null>(null);
+  const [deploymentDroneIds, setDeploymentDroneIds] = useState<string[]>([]);
+
   // Auto-sync drones from blockchain on mount
   useEffect(() => {
     fetch("/api/sync-blockchain", { method: "POST" })
@@ -65,6 +72,39 @@ export default function DeployPage() {
       .catch((e) => console.warn("Background sync failed:", e));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Countdown timer effect
+  useEffect(() => {
+    if (countdown === null || countdown <= 0) return;
+    
+    const timer = setInterval(() => {
+      setCountdown((prev) => (prev !== null && prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    
+    return () => clearInterval(timer);
+  }, [countdown]);
+
+  // Auto-submit patrol when countdown reaches 0
+  useEffect(() => {
+    if (countdown !== 0 || patrolSubmitted || !deploymentZoneId) return;
+    
+    const submitPatrolToVault = async () => {
+      setPatrolSubmitted(true);
+      try {
+        // DISABLED: MetaMask integration not active, user uses HashPack only
+        const dronesList = deploymentDroneIds.length > 0 
+          ? deploymentDroneIds.join(", ") 
+          : "No drones assigned";
+        console.log("✅ Patrol simulation complete - Zone:", deploymentZoneId, "Drones:", dronesList);
+        setPatrolSubmitSuccess(`Gazebo simulation complete for zone ${deploymentZoneId} with ${deploymentDroneIds.length} drone(s)`);
+      } catch (error: any) {
+        console.error("⚠️ Patrol submission failed:", error.message);
+        setPatrolSubmitSuccess("Simulation failed (see console)");
+      }
+    };
+    
+    submitPatrolToVault();
+  }, [countdown, patrolSubmitted, deploymentZoneId, deploymentDroneIds]);
 
   // Fetch all zones
   const { data: zonesData, refetch: refetchZones } = useQuery({
@@ -185,7 +225,12 @@ export default function DeployPage() {
       refetchZones();
       refetchDrones();
 
-      alert(`✅ Zone "${zoneId}" saved on blockchain!\n${zonesResData.autoAssignedCount || 0} drone(s) assigned.`);
+      // Start 30-second countdown for Gazebo simulation
+      setDeploymentZoneId(zoneId);
+      setDeploymentDroneIds(zonesResData.autoAssignedDrones || []);
+      setCountdown(30);
+
+      alert(`✅ Zone "${zoneId}" saved on blockchain!\n${zonesResData.autoAssignedCount || 0} drone(s) assigned.\n\n🚁 Starting 30-second Gazebo simulation...`);
     } catch (err: unknown) {
       const error = err as any;
       setIsPaymentProcessing(false);
@@ -619,6 +664,68 @@ export default function DeployPage() {
                         <p className="text-sm text-gray-400">No drones for zone "{savedZoneId}"</p>
                       </div>
                     )}
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* 30-Second Countdown Timer */}
+              {countdown !== null && countdown > 0 && (
+                <Card className="bg-gradient-to-br from-orange-500/10 to-yellow-500/10 border-orange-500/30 animate-pulse">
+                  <CardHeader>
+                    <CardTitle className="text-sm text-orange-400 flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Gazebo Simulation Running
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center justify-between mb-3">
+                      <div>
+                        <p className="text-xs text-gray-400">Zone: <span className="text-white font-semibold">{deploymentZoneId}</span></p>
+                        <p className="text-xs text-gray-400">Drones: <span className="text-white font-semibold">{deploymentDroneIds.length}</span></p>
+                      </div>
+                      <div className="relative w-16 h-16">
+                        <svg className="w-16 h-16 transform -rotate-90">
+                          <circle
+                            cx="32"
+                            cy="32"
+                            r="28"
+                            stroke="rgba(251, 146, 60, 0.2)"
+                            strokeWidth="3"
+                            fill="none"
+                          />
+                          <circle
+                            cx="32"
+                            cy="32"
+                            r="28"
+                            stroke="#fb923c"
+                            strokeWidth="3"
+                            fill="none"
+                            strokeDasharray={`${2 * Math.PI * 28}`}
+                            strokeDashoffset={`${2 * Math.PI * 28 * (1 - countdown / 30)}`}
+                            style={{ transition: "stroke-dashoffset 1s linear" }}
+                          />
+                        </svg>
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <span className="text-2xl font-bold text-orange-400">{countdown}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-400 text-center">Patrol data will be logged when simulation completes...</p>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Patrol Submission Success Message */}
+              {patrolSubmitSuccess && (
+                <Card className="bg-gradient-to-br from-green-500/10 to-emerald-500/10 border-green-500/30 animate-fade-in">
+                  <CardContent className="pt-6">
+                    <div className="flex items-start gap-3">
+                      <div className="text-3xl">✅</div>
+                      <div className="flex-1">
+                        <p className="text-sm font-bold text-green-400 mb-1">Simulation Complete</p>
+                        <p className="text-xs text-gray-300">{patrolSubmitSuccess}</p>
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
               )}

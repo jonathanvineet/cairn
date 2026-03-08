@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
 import {
   Plane,
   MapPin,
@@ -228,11 +227,7 @@ export default function RegisterDronePage() {
     return (
       <SkyvaultShell title="DRONE REGISTRATION">
       <div className="min-h-screen flex items-center justify-center p-4">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="max-w-2xl w-full"
-        >
+        <div className="max-w-2xl w-full opacity-0 animate-slide-up">
           <Card className="bg-white/5 backdrop-blur-md border-white/10">
             <CardContent className="p-12 text-center">
               <div className="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -283,7 +278,7 @@ export default function RegisterDronePage() {
               </div>
             </CardContent>
           </Card>
-        </motion.div>
+        </div>
       </div>
       </SkyvaultShell>
     );
@@ -294,11 +289,7 @@ export default function RegisterDronePage() {
     return (
       <SkyvaultShell title="DRONE REGISTRATION">
       <div className="flex items-center justify-center min-h-screen p-4">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="max-w-md w-full"
-          >
+          <div className="max-w-md w-full opacity-0 animate-slide-up">
             <Card className="bg-white/5 backdrop-blur-md border-white/10">
               <CardContent className="p-8 text-center">
                 <div className="w-16 h-16 bg-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -315,7 +306,7 @@ export default function RegisterDronePage() {
                 <WalletConnect />
               </CardContent>
             </Card>
-          </motion.div>
+          </div>
           </div>
       </SkyvaultShell>
     );
@@ -337,11 +328,7 @@ export default function RegisterDronePage() {
       </div>
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-8"
-        >
+        <div className="mb-8 opacity-0 animate-slide-up">
           <div className="flex items-center gap-2 text-blue-400 mb-4">
             <Plane className="h-6 w-6" />
             <h1 className="text-3xl font-bold text-white">Register New Drone</h1>
@@ -349,7 +336,7 @@ export default function RegisterDronePage() {
           <p className="text-gray-400">
             Add a new drone to the blockchain registry with its operational parameters and location.
           </p>
-        </motion.div>
+        </div>
 
         <form onSubmit={handleSubmit} className="grid md:grid-cols-2 gap-8">
           {/* Left Column - Form */}

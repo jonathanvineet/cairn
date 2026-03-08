@@ -1,5 +1,6 @@
 export const BOUNDARY_ZONE_REGISTRY_ADDRESS = "0xeEFfE09953FDCB844Ff69B67e46E8474B70f0E69";
 export const DRONE_REGISTRY_ADDRESS = "0x5CE1B45F7af14D864146C16D6E1b168Ae599cFCf";
+export const DRONE_EVIDENCE_VAULT_ADDRESS = "0x4873df8de78955b758F0b81808c4c01aA52A382A";
 
 export const BOUNDARY_ZONE_REGISTRY_ABI = [
 	{
@@ -271,3 +272,548 @@ export const DRONE_REGISTRY_ABI = [
         "type": "function"
     }
 ];
+
+export const DRONE_EVIDENCE_VAULT_ABI = [
+  
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "patrolId",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "string",
+				"name": "droneId",
+				"type": "string"
+			},
+			{
+				"indexed": false,
+				"internalType": "string",
+				"name": "zoneId",
+				"type": "string"
+			},
+			{
+				"indexed": false,
+				"internalType": "int256",
+				"name": "latitude",
+				"type": "int256"
+			},
+			{
+				"indexed": false,
+				"internalType": "int256",
+				"name": "longitude",
+				"type": "int256"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "timestamp",
+				"type": "uint256"
+			}
+		],
+		"name": "BoundaryBreachDetected",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": false,
+				"internalType": "string",
+				"name": "droneId",
+				"type": "string"
+			}
+		],
+		"name": "DroneRegistered",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "uint256",
+				"name": "patrolId",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "string",
+				"name": "droneId",
+				"type": "string"
+			},
+			{
+				"indexed": false,
+				"internalType": "string",
+				"name": "zoneId",
+				"type": "string"
+			},
+			{
+				"indexed": false,
+				"internalType": "string",
+				"name": "ipfsCid",
+				"type": "string"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "timestamp",
+				"type": "uint256"
+			}
+		],
+		"name": "PatrolSubmitted",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "patrolId",
+				"type": "uint256"
+			}
+		],
+		"name": "PatrolVerified",
+		"type": "event"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"name": "alerts",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "patrolId",
+				"type": "uint256"
+			},
+			{
+				"internalType": "string",
+				"name": "droneId",
+				"type": "string"
+			},
+			{
+				"internalType": "string",
+				"name": "zoneId",
+				"type": "string"
+			},
+			{
+				"internalType": "int256",
+				"name": "latitude",
+				"type": "int256"
+			},
+			{
+				"internalType": "int256",
+				"name": "longitude",
+				"type": "int256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "timestamp",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "string",
+				"name": "",
+				"type": "string"
+			},
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"name": "dronePatrolIds",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "index",
+				"type": "uint256"
+			}
+		],
+		"name": "getAlert",
+		"outputs": [
+			{
+				"components": [
+					{
+						"internalType": "uint256",
+						"name": "patrolId",
+						"type": "uint256"
+					},
+					{
+						"internalType": "string",
+						"name": "droneId",
+						"type": "string"
+					},
+					{
+						"internalType": "string",
+						"name": "zoneId",
+						"type": "string"
+					},
+					{
+						"internalType": "int256",
+						"name": "latitude",
+						"type": "int256"
+					},
+					{
+						"internalType": "int256",
+						"name": "longitude",
+						"type": "int256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "timestamp",
+						"type": "uint256"
+					}
+				],
+				"internalType": "struct DroneEvidenceVault.BoundaryAlert",
+				"name": "",
+				"type": "tuple"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "string",
+				"name": "droneId",
+				"type": "string"
+			}
+		],
+		"name": "getDronePatrols",
+		"outputs": [
+			{
+				"internalType": "uint256[]",
+				"name": "",
+				"type": "uint256[]"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "patrolId",
+				"type": "uint256"
+			}
+		],
+		"name": "getPatrol",
+		"outputs": [
+			{
+				"components": [
+					{
+						"internalType": "uint256",
+						"name": "patrolId",
+						"type": "uint256"
+					},
+					{
+						"internalType": "string",
+						"name": "droneId",
+						"type": "string"
+					},
+					{
+						"internalType": "string",
+						"name": "zoneId",
+						"type": "string"
+					},
+					{
+						"internalType": "string",
+						"name": "ipfsCid",
+						"type": "string"
+					},
+					{
+						"internalType": "bytes32",
+						"name": "dataHash",
+						"type": "bytes32"
+					},
+					{
+						"internalType": "uint256",
+						"name": "timestamp",
+						"type": "uint256"
+					},
+					{
+						"internalType": "address",
+						"name": "submittedBy",
+						"type": "address"
+					},
+					{
+						"internalType": "bool",
+						"name": "verified",
+						"type": "bool"
+					}
+				],
+				"internalType": "struct DroneEvidenceVault.PatrolRecord",
+				"name": "",
+				"type": "tuple"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "getTotalAlerts",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "getTotalPatrols",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "string",
+				"name": "zoneId",
+				"type": "string"
+			}
+		],
+		"name": "getZonePatrols",
+		"outputs": [
+			{
+				"internalType": "uint256[]",
+				"name": "",
+				"type": "uint256[]"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"name": "patrols",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "patrolId",
+				"type": "uint256"
+			},
+			{
+				"internalType": "string",
+				"name": "droneId",
+				"type": "string"
+			},
+			{
+				"internalType": "string",
+				"name": "zoneId",
+				"type": "string"
+			},
+			{
+				"internalType": "string",
+				"name": "ipfsCid",
+				"type": "string"
+			},
+			{
+				"internalType": "bytes32",
+				"name": "dataHash",
+				"type": "bytes32"
+			},
+			{
+				"internalType": "uint256",
+				"name": "timestamp",
+				"type": "uint256"
+			},
+			{
+				"internalType": "address",
+				"name": "submittedBy",
+				"type": "address"
+			},
+			{
+				"internalType": "bool",
+				"name": "verified",
+				"type": "bool"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "patrolId",
+				"type": "uint256"
+			},
+			{
+				"internalType": "string",
+				"name": "droneId",
+				"type": "string"
+			},
+			{
+				"internalType": "string",
+				"name": "zoneId",
+				"type": "string"
+			},
+			{
+				"internalType": "int256",
+				"name": "latitude",
+				"type": "int256"
+			},
+			{
+				"internalType": "int256",
+				"name": "longitude",
+				"type": "int256"
+			}
+		],
+		"name": "recordBoundaryBreach",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "string",
+				"name": "droneId",
+				"type": "string"
+			}
+		],
+		"name": "registerDrone",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "string",
+				"name": "",
+				"type": "string"
+			}
+		],
+		"name": "registeredDrones",
+		"outputs": [
+			{
+				"internalType": "bool",
+				"name": "",
+				"type": "bool"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "string",
+				"name": "droneId",
+				"type": "string"
+			},
+			{
+				"internalType": "string",
+				"name": "zoneId",
+				"type": "string"
+			},
+			{
+				"internalType": "string",
+				"name": "ipfsCid",
+				"type": "string"
+			},
+			{
+				"internalType": "bytes32",
+				"name": "dataHash",
+				"type": "bytes32"
+			}
+		],
+		"name": "submitPatrol",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "patrolId",
+				"type": "uint256"
+			}
+		],
+		"name": "verifyPatrol",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "string",
+				"name": "",
+				"type": "string"
+			},
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"name": "zonePatrolIds",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	}
+
+]as const;

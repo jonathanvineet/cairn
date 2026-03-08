@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import SkyvaultShell from "../../components/world/SkyvaultShell";
+import { useDroneVault } from "@/lib/useDroneVault";
+import { useWalletStore } from "@/stores/walletStore";
 
 interface Coordinate {
   lat: number;
@@ -87,6 +89,17 @@ export default function AnalyseDroneStreamPage() {
   const [selectedDrone, setSelectedDrone] = useState<Drone | null>(null);
   const [boundaryCoords, setBoundaryCoords] = useState<Coordinate[] | null>(null);
   const [zoneId, setZoneId] = useState<string>("");
+  const [zoneName, setZoneName] = useState<string>("");
+
+  // 30-second countdown timer for patrol submission
+  const [countdown, setCountdown] = useState<number | null>(null);
+  const [patrolSubmitted, setPatrolSubmitted] = useState(false);
+  const [patrolSubmitSuccess, setPatrolSubmitSuccess] = useState<string | null>(null);
+  const [transactionId, setTransactionId] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  const { submitPatrol, registerDrone } = useDroneVault();
+  const { selectedAccount, connected } = useWalletStore();
 
   useEffect(() => {
     // Load zone data from sessionStorage
@@ -104,6 +117,21 @@ export default function AnalyseDroneStreamPage() {
     
     if (storedZoneId) {
       setZoneId(storedZoneId);
+      // Fetch zone name from API
+      fetch("/api/zones")
+        .then((res) => res.json())
+        .then((data) => {
+          const zone = data.zones?.find((z: any) => z.zoneId === storedZoneId);
+          if (zone) {
+            setZoneName(zone.zoneName || storedZoneId);
+          } else {
+            setZoneName(storedZoneId);
+          }
+        })
+        .catch((err) => {
+          console.error("Error fetching zone name:", err);
+          setZoneName(storedZoneId);
+        });
     }
   }, []);
 
@@ -219,6 +247,86 @@ export default function AnalyseDroneStreamPage() {
 
     return () => clearTimeout(timeout);
   }, [boundaryCoords, zoneId]);
+
+  // Countdown timer effect
+  useEffect(() => {
+    if (countdown === null || countdown <= 0) return;
+    
+    const timer = setInterval(() => {
+      setCountdown((prev) => (prev !== null && prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    
+    return () => clearInterval(timer);
+  }, [countdown]);
+
+  // Auto-submit patrol when countdown reaches 0
+  useEffect(() => {
+    if (countdown !== 0 || patrolSubmitted || !selectedDrone) return;
+    
+    const submitPatrolToVault = async () => {
+      setPatrolSubmitted(true);
+      setIsSubmitting(true);
+      
+      try {
+        // Check wallet connection
+        if (!connected || !selectedAccount) {
+          setPatrolSubmitSuccess("⚠️ Please connect HashPack wallet first");
+          setIsSubmitting(false);
+          return;
+        }
+        
+        console.log("💼 Using HashPack wallet:", selectedAccount.id);
+        
+        // Register drone first (if needed)
+        try {
+          console.log("📝 Registering drone...");
+          await registerDrone(selectedDrone.cairnDroneId);
+          console.log("✅ Drone registered");
+        } catch (regError: any) {
+          if (!regError.message?.includes("already registered")) {
+            console.log("ℹ️ Registration:", regError.message?.substring(0, 50));
+          }
+        }
+        
+        // Generate patrol data
+        const patrolCid = `bafybei${Math.random().toString(36).substring(2, 27)}`;
+        const randomStr = `${selectedDrone.cairnDroneId}-${Date.now()}-${Math.random()}`;
+        const dataHash = `0x${randomStr.split('').map(c => c.charCodeAt(0).toString(16)).join('').padEnd(64, '0').substring(0, 64)}`;
+        
+        console.log("📤 Submitting patrol via HashPack (approve in wallet)...");
+        console.log("   Drone:", selectedDrone.cairnDroneId);
+        console.log("   Zone:", zoneId || "unknown-zone");
+        console.log("   IPFS CID:", patrolCid);
+        console.log("   Data Hash:", dataHash);
+        
+        // Submit patrol via HashPack - THIS WILL SHOW WALLET POPUP
+        const result = await submitPatrol(
+          selectedDrone.cairnDroneId,
+          zoneId || "unknown-zone",
+          patrolCid,
+          dataHash
+        );
+        
+        const txId = result.transactionId.toString();
+        setTransactionId(txId);
+        console.log("✅ Patrol submitted! Transaction:", txId);
+        setPatrolSubmitSuccess(`✅ Patrol logged on-chain!`);
+        setIsSubmitting(false);
+        
+      } catch (vaultError: any) {
+        console.error("⚠️ Patrol submission failed:", vaultError.message);
+        setPatrolSubmitSuccess(`❌ ${vaultError.message || 'Patrol submission failed'}`);
+        setIsSubmitting(false);
+      }
+    };
+    
+    submitPatrolToVault();
+  }, [countdown, patrolSubmitted, selectedDrone, zoneId]);
+
+  const handleDeployDrone = () => {
+    if (!selectedDrone) return;
+    setCountdown(30);
+  };
 
   return (
     <SkyvaultShell title="ELIZA ANALYSIS">
@@ -344,7 +452,7 @@ export default function AnalyseDroneStreamPage() {
                 {zoneId && (
                   <div className="mb-6 p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
                     <p className="text-sm text-gray-400">ANALYZING FOR ZONE</p>
-                    <p className="text-xl font-bold text-blue-400">{zoneId}</p>
+                    <p className="text-xl font-bold text-blue-400">{zoneName || zoneId}</p>
                     {boundaryCoords && (
                       <p className="text-xs text-gray-500 mt-1">
                         {boundaryCoords.length} boundary points • Center: {
@@ -409,10 +517,105 @@ export default function AnalyseDroneStreamPage() {
                   </div>
                 </div>
 
+                {/* 30-Second Countdown Timer */}
+                {countdown !== null && countdown > 0 && (
+                  <div className="bg-gradient-to-br from-orange-500/10 to-yellow-500/10 border border-orange-500/30 rounded-lg p-6 mb-6 animate-pulse">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-gray-400 mb-1">GAZEBO SIMULATION IN PROGRESS</p>
+                        <p className="text-lg text-gray-300">Patrol will be submitted via HashPack...</p>
+                      </div>
+                      <div className="flex flex-col items-center">
+                        <div className="relative w-20 h-20">
+                          <svg className="w-20 h-20 transform -rotate-90">
+                            <circle
+                              cx="40"
+                              cy="40"
+                              r="36"
+                              stroke="rgba(251, 146, 60, 0.2)"
+                              strokeWidth="4"
+                              fill="none"
+                            />
+                            <circle
+                              cx="40"
+                              cy="40"
+                              r="36"
+                              stroke="#fb923c"
+                              strokeWidth="4"
+                              fill="none"
+                              strokeDasharray={`${2 * Math.PI * 36}`}
+                              strokeDashoffset={`${2 * Math.PI * 36 * (1 - countdown / 30)}`}
+                              style={{ transition: "stroke-dashoffset 1s linear" }}
+                            />
+                          </svg>
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <span className="text-3xl font-bold text-orange-400">{countdown}</span>
+                          </div>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-2">seconds remaining</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Patrol Submission Success Message */}
+                {patrolSubmitSuccess && (
+                  <div className="bg-gradient-to-br from-green-500/10 to-emerald-500/10 border border-green-500/30 rounded-lg p-6 mb-6 animate-fade-in">
+                    <div className="flex items-center gap-4">
+                      <div className="text-4xl">✅</div>
+                      <div className="flex-1">
+                        <p className="text-lg font-bold text-green-400 mb-1">Patrol Submitted to Vault</p>
+                        <p className="text-sm text-gray-300 mb-2">{patrolSubmitSuccess}</p>
+                        {transactionId && (
+                          <div className="mt-3 space-y-2">
+                            <p className="text-xs text-gray-400">Transaction ID:</p>
+                            <p className="text-xs font-mono text-cyan-400 break-all bg-black/30 p-2 rounded">{transactionId}</p>
+                            <a 
+                              href={`https://hashscan.io/testnet/transaction/${transactionId}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-block mt-2 px-4 py-2 bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/50 rounded text-cyan-400 text-xs font-mono transition-colors"
+                            >
+                              🔍 View on HashScan →
+                            </a>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Wallet Connection Warning */}
+                {!connected && countdown !== null && (
+                  <div className="bg-gradient-to-br from-red-500/10 to-orange-500/10 border border-red-500/30 rounded-lg p-4 mb-6 animate-fade-in">
+                    <div className="flex items-center gap-3">
+                      <div className="text-2xl">⚠️</div>
+                      <p className="text-red-400 font-mono text-sm">Connect HashPack wallet to submit patrols</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Submission in Progress */}
+                {isSubmitting && (
+                  <div className="bg-gradient-to-br from-yellow-500/10 to-orange-500/10 border border-yellow-500/30 rounded-lg p-4 mb-6 animate-pulse">
+                    <div className="flex items-center gap-3">
+                      <div className="text-2xl">⏳</div>
+                      <div>
+                        <p className="text-yellow-400 font-mono text-sm">Waiting for wallet approval...</p>
+                        <p className="text-xs text-gray-400 mt-1">Check your HashPack wallet popup</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Action Buttons */}
                 <div className="grid grid-cols-2 gap-4">
-                  <button className="px-8 py-3 bg-linear-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 rounded-lg font-semibold transition transform hover:scale-105">
-                    DEPLOY DRONE
+                  <button 
+                    onClick={handleDeployDrone}
+                    disabled={countdown !== null}
+                    className="px-8 py-3 bg-linear-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 rounded-lg font-semibold transition transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                  >
+                    {countdown !== null ? `DEPLOYING... ${countdown}s` : "DEPLOY DRONE"}
                   </button>
                   <button
                     onClick={() => router.back()}

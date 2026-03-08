@@ -63,7 +63,7 @@ export async function initializeDAppConnector(): Promise<DAppConnector> {
 
 /**
  * Connect to HashPack via WalletConnect
- * Attempts to use browser extension if available
+ * Works with both extension and mobile app via QR code
  */
 export async function connectHashPack(): Promise<any> {
   const dapp = await initializeDAppConnector();
@@ -76,25 +76,32 @@ export async function connectHashPack(): Promise<any> {
       !!(window as any).hashconnect;
     
     if (hasExtension) {
-      console.log('✅ HashPack extension detected - connecting via extension');
+      console.log('✅ HashPack extension detected - using browser extension');
       console.log('📱 Please approve the connection in your HashPack extension popup');
     } else {
       console.log('ℹ️ HashPack extension not detected - showing WalletConnect modal');
+      console.log('📱 You can scan QR code with HashPack mobile app or install the extension');
     }
     
-    // openModal() should detect and use the extension automatically
-    // When extension is present, it triggers the extension popup
-    // The "new tab" can be ignored - focus on the extension popup instead
-    const session = await dapp.openModal();
+    // Connect with timeout (45 seconds - enough time to scan QR or approve extension)
+    const connectionPromise = dapp.openModal();
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Connection timeout - please try again')), 45000);
+    });
+    
+    const session = await Promise.race([connectionPromise, timeoutPromise]);
 
     console.log('✅ HashPack connected successfully');
     return session;
   } catch (error: any) {
     console.error('❌ HashPack connection failed:', error);
     
-    // Provide better error message
+    // Provide better error messages
     if (error.message?.includes('User rejected') || error.message?.includes('User closed')) {
-      throw new Error('Connection cancelled. Please approve in HashPack extension.');
+      throw new Error('Connection cancelled. Please approve the connection request.');
+    }
+    if (error.message?.includes('timeout')) {
+      throw new Error('Connection timeout. Click "Retry Connection" to try again.');
     }
     
     throw error;

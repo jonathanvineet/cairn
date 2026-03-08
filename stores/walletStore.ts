@@ -99,7 +99,9 @@ export const useWalletStore = create<WalletState>()(persist(
     if (typeof window === 'undefined') return;
 
     try {
+      // Disconnect from HashPack and clear connector
       await disconnectHashPack();
+      resetConnector();
 
       set({
         connected: false,
@@ -107,14 +109,17 @@ export const useWalletStore = create<WalletState>()(persist(
         accounts: [],
         hasManuallyConnected: false,
         error: null,
+        isInitializing: false,
       });
 
-      // Clear localStorage
+      // Clear localStorage completely
       if (typeof window !== 'undefined') {
         localStorage.removeItem('wallet-storage');
+        localStorage.removeItem('wc@2:client:0.3//session');
+        localStorage.removeItem('wc@2:core:0.3//messages');
       }
 
-      console.log("✓ Disconnected from wallet");
+      console.log("✓ Disconnected from wallet and cleared all sessions");
     } catch (error) {
       const msg = error instanceof Error ? error.message : "Unknown error";
       set({ error: msg });
@@ -124,57 +129,16 @@ export const useWalletStore = create<WalletState>()(persist(
   restoreSession: async () => {
     if (typeof window === 'undefined') return;
     
-    const state = get();
-    
-    // Only restore if user has manually connected before
-    if (!state.hasManuallyConnected) {
-      console.log('ℹ️ No previous manual connection, skipping auto-restore');
-      set({ hasHydrated: true });
-      return;
-    }
-    
-    if (state.connected) {
-      console.log('ℹ️ Already connected, skipping restore');
-      set({ hasHydrated: true });
-      return;
-    }
-
-    try {
-      console.log('🔄 Checking for persisted wallet session...');
-      set({ isInitializing: true });
-
-      const session = await checkPersistedState();
-      
-      if (session) {
-        const accounts = extractAccounts(session);
-        
-        if (accounts.length > 0) {
-          set({
-            connected: true,
-            selectedAccount: accounts[0],
-            accounts,
-            isInitializing: false,
-            hasHydrated: true,
-            error: null,
-          });
-          
-          console.log('✅ Wallet session restored:', accounts[0].id);
-          return;
-        }
-      }
-      
-      set({ isInitializing: false, hasHydrated: true });
-      console.log('ℹ️ No wallet session to restore');
-    } catch (error) {
-      console.error('❌ Failed to restore session:', error);
-      set({ 
-        isInitializing: false,
-        hasHydrated: true,
-        connected: false,
-        selectedAccount: null,
-        accounts: [],
-      });
-    }
+    // COMPLETELY DISABLE AUTO-CONNECTION
+    // User must manually connect wallet every time
+    console.log('ℹ️ Wallet restoreSession called - NO auto-connection');
+    set({ 
+      hasHydrated: true,
+      connected: false,
+      selectedAccount: null,
+      accounts: [],
+      error: null,
+    });
   },
 
   setHasHydrated: (hydrated: boolean) => set({ hasHydrated: hydrated }),
@@ -182,18 +146,18 @@ export const useWalletStore = create<WalletState>()(persist(
   {
     name: 'wallet-storage',
     partialize: (state) => ({
-      // Don't persist 'connected' - only persist the flag and account info
-      // connected: state.connected,  // REMOVED
-      selectedAccount: state.selectedAccount,
-      accounts: state.accounts,
-      hasManuallyConnected: state.hasManuallyConnected,
+      // DON'T persist anything to prevent auto-connection
+      // User must manually connect on every app load
     }),
     onRehydrateStorage: () => (state) => {
       if (state) {
-        // Always start with connected: false on page load
-        // restoreSession() will set it to true if session is valid
+        // Always start disconnected
         state.connected = false;
+        state.selectedAccount = null;
+        state.accounts = [];
+        state.hasManuallyConnected = false;
         state.hasHydrated = true;
+        state.error = null;
       }
     },
   }

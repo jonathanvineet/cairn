@@ -100,6 +100,34 @@ body {
   animation: shimmer 1.5s infinite;
 }
 
+/* Float animation for drone */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-20px); }
+}
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+/* Slide up animation */
+@keyframes slide-up {
+  0% { opacity: 0; transform: translateY(10px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.animate-slide-up {
+  animation: slide-up 0.4s ease-out forwards;
+}
+
+/* Scan line animation */
+@keyframes scan {
+  0% { transform: translateY(0); opacity: 0; }
+  50% { opacity: 1; }
+  100% { transform: translateY(100vh); opacity: 0; }
+}
+.animate-scan {
+  animation: scan 8s linear infinite;
+}
+
 /* Glassmorphism utilities - NUCLEAR ENHANCED */
 .glass {
   background: rgba(0, 20, 10, 0.4);
