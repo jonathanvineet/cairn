@@ -1,0 +1,11 @@
+# Breach Evidence Storage
+
+This directory stores breach evidence images captured during drone patrols.
+
+Images are automatically stored here when patrols are submitted to the blockchain.
+
+**Security Notes:**
+- Each image's SHA256 hash is stored on the Hedera blockchain
+- Anyone can verify image integrity by re-hashing and comparing with the blockchain
+- Images are kept on the server for evidence retrieval
+- Blockchain provides tamper-proof verification

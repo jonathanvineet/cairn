@@ -95,6 +95,8 @@ export default function AnalyseDroneStreamPage() {
   const [patrolSubmitSuccess, setPatrolSubmitSuccess] = useState<string | null>(null);
   const [transactionId, setTransactionId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [breachImageUrl, setBreachImageUrl] = useState<string | null>(null);
+  const [imageHashOnChain, setImageHashOnChain] = useState<string | null>(null);
 
   useEffect(() => {
     // Load zone data from sessionStorage
@@ -263,21 +265,47 @@ export default function AnalyseDroneStreamPage() {
       setIsSubmitting(true);
       
       try {
-        console.log("\n📍 Step 6: Submit to blockchain");
+        console.log("\n📍 Step 6: Store image and submit to blockchain");
         console.log("-".repeat(50));
         
-        // Generate patrol data
+        // Step 1: Store the mock breach image on server and get its hash
+        const mockImagePath = "C:\\Users\\hp\\Documents\\broken-metallic-fence.jpg";
+        console.log("📸 Storing breach evidence image...");
+        
+        const imageResponse = await fetch('/api/patrol/store-image', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sourceImagePath: mockImagePath,
+            droneId: selectedDrone.cairnDroneId,
+            zoneId: zoneId || "unknown-zone"
+          })
+        });
+        
+        const imageResult = await imageResponse.json();
+        
+        if (!imageResult.success) {
+          throw new Error(imageResult.error || 'Failed to store image');
+        }
+        
+        console.log("✅ Image stored successfully!");
+        console.log("   Public URL:", imageResult.publicUrl);
+        console.log("   Hash:", imageResult.imageHash);
+        
+        // Store image URL for display
+        setBreachImageUrl(imageResult.publicUrl);
+        setImageHashOnChain(imageResult.imageHash);
+        
+        // Step 2: Generate patrol metadata
         const patrolCid = `bafybei${Math.random().toString(36).substring(2, 27)}`;
-        const randomStr = `${selectedDrone.cairnDroneId}-${Date.now()}-${Math.random()}`;
-        const dataHash = `0x${randomStr.split('').map(c => c.charCodeAt(0).toString(16)).join('').padEnd(64, '0').substring(0, 64)}`;
         
         console.log("🔗 Preparing blockchain submission...");
         console.log("   Drone:", selectedDrone.cairnDroneId);
         console.log("   Zone:", zoneId || "unknown-zone");
         console.log("   Patrol IPFS CID:", patrolCid);
-        console.log("   Data Hash:", dataHash);
+        console.log("   Breach Image Hash:", imageResult.imageHash);
         
-        // Submit patrol automatically via backend API (no wallet approval needed)
+        // Step 3: Submit patrol to blockchain with real image hash
         console.log("⏳ Executing contract transaction...");
         const response = await fetch('/api/patrol/blockchain', {
           method: 'POST',
@@ -286,7 +314,7 @@ export default function AnalyseDroneStreamPage() {
             droneId: selectedDrone.cairnDroneId,
             zoneId: zoneId || "unknown-zone",
             ipfsCid: patrolCid,
-            dataHash: dataHash
+            dataHash: imageResult.imageHash // Use real image hash
           })
         });
         
@@ -301,6 +329,8 @@ export default function AnalyseDroneStreamPage() {
           console.log("   Drone:", selectedDrone.cairnDroneId);
           console.log("   Zone:", zoneId || "unknown-zone");
           console.log("   Patrol IPFS CID:", patrolCid);
+          console.log("   Breach Image:", imageResult.publicUrl);
+          console.log("   Image Hash:", imageResult.imageHash);
           console.log("   Transaction ID:", result.transactionId);
           console.log("   Status:", result.status);
           console.log("\n🎉 All done!");
@@ -577,6 +607,34 @@ export default function AnalyseDroneStreamPage() {
                             >
                               🔍 View on HashScan →
                             </a>
+                          </div>
+                        )}
+                        
+                        {/* Breach Evidence Image Display */}
+                        {breachImageUrl && (
+                          <div className="mt-4 space-y-2">
+                            <p className="text-xs text-gray-400">Breach Evidence Image:</p>
+                            <div className="bg-black/30 border border-green-500/30 rounded-lg p-3">
+                              <img 
+                                src={breachImageUrl} 
+                                alt="Breach Evidence" 
+                                className="w-full rounded-lg mb-2"
+                                style={{ maxHeight: '300px', objectFit: 'contain' }}
+                              />
+                              <div className="flex items-center justify-between text-xs">
+                                <span className="text-gray-400">Stored on server:</span>
+                                <code className="text-cyan-400 font-mono">{breachImageUrl}</code>
+                              </div>
+                              {imageHashOnChain && (
+                                <div className="mt-2 pt-2 border-t border-white/10">
+                                  <p className="text-xs text-gray-400 mb-1">Image Hash (on blockchain):</p>
+                                  <code className="text-xs font-mono text-green-400 break-all bg-black/30 p-2 rounded block">{imageHashOnChain}</code>
+                                  <p className="text-xs text-gray-500 mt-1">
+                                    ℹ️ This hash proves the image hasn't been tampered with. Anyone can re-hash the image and verify it matches the blockchain.
+                                  </p>
+                                </div>
+                              )}
+                            </div>
                           </div>
                         )}
                       </div>

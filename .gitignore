@@ -39,3 +39,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# breach evidence images (user-generated)
+/public/breach-evidence/*.jpg
+/public/breach-evidence/*.jpeg
+/public/breach-evidence/*.png
