@@ -1,91 +1,39 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
-import { Plane, MapPin, Shield, ArrowRight, Globe, CheckCircle, Activity } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Plane, CheckCircle2 } from "lucide-react";
 import { WalletConnect } from "@/components/WalletConnect";
 import { useWalletStore } from "@/stores/walletStore";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 
-const STORY_SLIDES = [
-  {
-    tag: "WELCOME TO CAIRN",
-    headline: "India's On-Chain\nDrone Registry",
-    body: "An autonomous airspace trust layer built on Hedera. Every drone, every flight, every boundary — permanently verifiable on the blockchain.",
-    accent: "#00f5ff",
-    bgColor: "from-[#020d1a] to-[#051420]",
-  },
-  {
-    tag: "THE PROBLEM",
-    headline: "Untracked Drones\nPose Real Risks",
-    body: "India has 300,000+ drone operators with no unified registry. CAIRN solves this with decentralized identity — every drone staked on-chain with the operator's wallet.",
-    accent: "#e94560",
-    bgColor: "from-[#1a0208] to-[#200510]",
-  },
-  {
-    tag: "HOW IT WORKS",
-    headline: "Register →\nDeploy → Monitor",
-    body: "1. Connect your wallet (HashPack)\n2. Register your drone with DGCA ID on Hedera HCS\n3. Define no-fly boundary zones as smart contracts\n4. AI agents watch live for breach events",
-    accent: "#8b5cf6",
-    bgColor: "from-[#0e051a] to-[#1a0a2e]",
-  },
-  {
-    tag: "THE TECHNOLOGY",
-    headline: "Hedera HCS +\nAI Agents",
-    body: "Hedera Consensus Service finalizes every log entry in under 1 second. AI agents patrol zones autonomously — flagging breaches without any human in the loop.",
-    accent: "#10b981",
-    bgColor: "from-[#020d06] to-[#051a0e]",
-  },
-  {
-    tag: "READY TO FLY?",
-    headline: "Secure Your\nAirspace Today",
-    body: "Certified operators, trusted zones, breach-proof enforcement. CAIRN is open-source and live on Hedera Testnet.",
-    accent: "#f59e0b",
-    bgColor: "from-[#1a0d02] to-[#2e1a05]",
-  },
-];
-
 export default function LandingPage() {
-  const [scrollProgress, setScrollProgress] = useState(0);
-  const [currentSlide, setCurrentSlide] = useState(0);
+  const [mounted, setMounted] = useState(false);
+  const [slideIndex, setSlideIndex] = useState(0);
   const { connected } = useWalletStore();
   const router = useRouter();
 
-  // Fetch drones data
   const { data: dronesData } = useQuery({
     queryKey: ["drones"],
     queryFn: async () => {
       const res = await fetch("/api/drones");
       if (!res.ok) return { drones: [] };
-      const data = await res.json();
-      return data;
+      return res.json();
     },
   });
 
   const drones = dronesData?.drones || [];
   const activeDrones = drones.filter((d: any) => d.status === "ACTIVE");
-  const assignedDrones = drones.filter((d: any) => d.assignedZoneId !== "UNASSIGNED");
+  const totalZones = drones.filter((d: any) => d.assignedZoneId !== "UNASSIGNED").length;
 
   useEffect(() => {
-    const handleScroll = () => {
-      const scrollHeight = document.documentElement.scrollHeight - window.innerHeight;
-      const progress = window.scrollY / scrollHeight;
-      setScrollProgress(Math.min(Math.max(progress, 0), 1));
-      
-      // Calculate which slide to show based on scroll
-      const slideIndex = Math.floor(progress * STORY_SLIDES.length);
-      setCurrentSlide(Math.min(slideIndex, STORY_SLIDES.length - 1));
-    };
-
-    window.addEventListener("scroll", handleScroll);
-    handleScroll();
-    return () => window.removeEventListener("scroll", handleScroll);
+    setMounted(true);
+    const interval = setInterval(() => {
+      setSlideIndex(prev => (prev + 1) % 4);
+    }, 4200);
+    return () => clearInterval(interval);
   }, []);
 
-  const currentStory = STORY_SLIDES[currentSlide];
-  
   const handleNavigate = (path: string) => {
     if (!connected) {
       alert("Please connect your HashPack wallet first");
@@ -95,189 +43,122 @@ export default function LandingPage() {
   };
 
   return (
-    <div className="min-h-[500vh] relative">
-      {/* Dynamic Background with color transitions */}
-      <div 
-        className={`fixed inset-0 transition-all duration-1000 ease-in-out bg-gradient-to-br ${currentStory.bgColor}`}
-      >
-        {/* Topo Grid Pattern */}
-        <div className="absolute inset-0 topo-bg opacity-40" />
-        
-        {/* Scan Lines */}
-        <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-30">
-          <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-green-400/50 to-transparent animate-scan" />
-        </div>
-        
-        {/* Floating Drone Silhouette */}
-        <div 
-          className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 transition-all duration-1000 ease-out"
-          style={{
-            opacity: 0.08 + scrollProgress * 0.12,
-            transform: `translate(-50%, calc(-50% + ${scrollProgress * -20}vh)) scale(${0.6 + scrollProgress * 0.4})`,
-          }}
-        >
-          <div className="relative w-64 h-64 animate-float">
-            <Plane className="w-full h-full text-green-500/30" strokeWidth={0.5} />
-          </div>
-        </div>
-      </div>
-
-      {/* Fixed Header - Higher z-index to prevent overlap */}
-      <header className="fixed top-0 left-0 right-0 z-[100] border-b border-white/10 backdrop-blur-md bg-black/40">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-cyan-500 rounded-lg flex items-center justify-center shadow-lg shadow-green-500/20">
-              <Plane className="h-6 w-6 text-white" />
+    <div className="scanlines">
+      <div className="grid-bg min-h-screen flex flex-col relative">
+        {/* Navbar */}
+        <header className="border-b border-[#D9D9D9] bg-[#FAFAFA] sticky top-0 z-50">
+          <div className="max-w-7xl mx-auto px-8 h-16 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Plane className="w-5 h-5 text-[#2E2E2E]" />
+              <span className="font-bold text-lg text-[#2E2E2E]">CAIRN</span>
+              <span className="text-[#696969]">|</span>
+              <span className="text-sm text-[#696969]">DRONE AIRSPACE REGISTRY</span>
             </div>
-            <span className="text-2xl font-bold text-white font-rajdhani tracking-wider bg-gradient-to-r from-green-400 via-cyan-400 to-green-400 bg-clip-text text-transparent animate-pulse">
-              C A I R N
-            </span>
-          </div>
-          <div className="flex items-center gap-4 relative z-[110]">
-            <WalletConnect />
-          </div>
-        </div>
-      </header>
-
-      {/* Sticky Story Card - Lower z-index */}
-      <div className="sticky top-24 z-30 px-6 pointer-events-none mt-24">
-        <div className="max-w-3xl mx-auto">
-          <div 
-            className="bg-black/70 backdrop-blur-xl rounded-2xl p-10 shadow-2xl pointer-events-auto transition-all duration-700 border-l-4"
-            style={{
-              borderLeftColor: currentStory.accent,
-              opacity: scrollProgress < 0.92 ? 1 : 0,
-              boxShadow: `0 25px 50px -12px ${currentStory.accent}30`,
-            }}
-          >
-            {/* Tag */}
-            <div className="flex items-center gap-3 mb-5">
-              <div className="h-2 w-2 rounded-full animate-pulse" style={{ backgroundColor: currentStory.accent }} />
-              <span className="text-xs font-bold tracking-widest uppercase" style={{ color: currentStory.accent }}>
-                {currentStory.tag}
-              </span>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-[#4ade80] live-dot"></div>
+                <span className="text-xs font-semibold text-[#2E2E2E]">HEDERA TESTNET</span>
+              </div>
+              <WalletConnect />
             </div>
+          </div>
+        </header>
 
-            {/* Headline */}
-            <h2 className="text-5xl font-bold text-white mb-6 font-rajdhani whitespace-pre-line leading-tight">
-              {currentStory.headline}
-            </h2>
-
-            {/* Body */}
-            <p className="text-gray-300 text-lg leading-relaxed whitespace-pre-line font-exo">
-              {currentStory.body}
-            </p>
-
-            {/* Progress */}
-            <div className="mt-8 flex items-center gap-2">
-              {STORY_SLIDES.map((_, i) => (
-                <div
-                  key={i}
-                  className="h-1.5 flex-1 rounded-full bg-white/10 overflow-hidden"
+        {/* Hero Section */}
+        <section className="flex-1 px-8 py-20">
+          <div className="max-w-7xl mx-auto grid grid-cols-2 gap-12 items-center">
+            {/* Left Column */}
+            <div className="anim-up">
+              <div className="inline-block mb-6 px-3 py-1.5 border border-[#D9D9D9] rounded-full text-xs font-semibold text-[#696969]">
+                ▸ Welcome to CAIRN
+              </div>
+              <h1 className="text-6xl font-bold text-[#2E2E2E] leading-tight mb-6">
+                India's On-Chain{"\n"}
+                <span className="text-[#696969]">Drone Registry</span>
+              </h1>
+              <p className="text-base text-[#696969] mb-8 leading-relaxed max-w-md">
+                Autonomous airspace trust layer built on Hedera. Register, deploy zones, and monitor with AI agents that watch 24/7.
+              </p>
+              <div className="flex gap-4">
+                <button
+                  onClick={() => handleNavigate("/register")}
+                  className="btn-primary anim-scale d1"
                 >
-                  <div
-                    className="h-full rounded-full transition-all duration-500"
-                    style={{
-                      width: i === currentSlide ? '100%' : i < currentSlide ? '100%' : '0%',
-                      backgroundColor: currentStory.accent,
-                    }}
-                  />
+                  Register Drone
+                </button>
+                <button
+                  onClick={() => handleNavigate("/deploy")}
+                  className="btn-ghost anim-scale d2"
+                >
+                  Deploy Zone
+                </button>
+              </div>
+            </div>
+
+            {/* Right Column - Card */}
+            <div className="card card-offset anim-scale d2">
+              <div className="mb-6 flex items-center justify-center">
+                <div className="relative w-40 h-40">
+                  <div className="absolute inset-0 rounded-full border border-[#D9D9D9]"></div>
+                  <div className="absolute inset-0 rounded-full border border-[#D9D9D9] drone-ping" style={{transform: 'scale(1.3)', opacity: 0.5}}></div>
+                  <div className="absolute inset-0 flex items-center justify-center drone-float">
+                    <Plane className="w-24 h-24 text-[#2E2E2E]" />
+                  </div>
                 </div>
-              ))}
+              </div>
+              <div className="space-y-3 mb-6">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-[#4ade80] live-dot"></div>
+                  <span className="text-xs font-semibold text-[#4ade80]">LIVE</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="badge badge-active">ACTIVE</span>
+                  <span className="text-xs text-[#696969]">{drones.length} Registered</span>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-[#FAFAFA] border border-[#D9D9D9] rounded-lg p-3 text-center">
+                  <div className="text-xl font-bold text-[#2E2E2E]">{activeDrones.length}</div>
+                  <div className="text-xs text-[#696969]">Active</div>
+                </div>
+                <div className="bg-[#FAFAFA] border border-[#D9D9D9] rounded-lg p-3 text-center">
+                  <div className="text-xl font-bold text-[#2E2E2E]">{totalZones}</div>
+                  <div className="text-xs text-[#696969]">Zones</div>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      </div>
+        </section>
 
-      {/* CTA Section with ZOOM IN effect */}
-      <div 
-        className="fixed bottom-0 left-0 right-0 z-40 transition-all duration-700"
-        style={{
-          opacity: scrollProgress > 0.85 ? 1 : 0,
-          transform: `translateY(${scrollProgress > 0.85 ? '0' : '100%'})`,
-        }}
-      >
-        <div className="bg-gradient-to-t from-black via-black/98 to-transparent pt-20 pb-10 px-6">
-          <div className="max-w-6xl mx-auto text-center">
-            <h3 className="text-5xl font-bold text-white mb-10 font-rajdhani tracking-wide">
-              Ready to Secure Your Airspace?
-            </h3>
-            
-            {!connected && (
-              <div className="mb-8 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-xl inline-block">
-                <p className="text-yellow-400 font-semibold">⚠️ Connect your HashPack wallet to continue</p>
-              </div>
-            )}
-            
-            {/* Drones Stats */}
-            {connected && drones.length > 0 && (
-              <div className="grid grid-cols-3 gap-4 max-w-2xl mx-auto mb-10">
-                <div className="bg-black/60 backdrop-blur-xl border border-white/10 rounded-xl p-4 hover:border-cyan-400/50 transition-all">
-                  <div className="flex items-center justify-center gap-2 mb-2">
-                    <Plane className="h-5 w-5 text-cyan-400" />
-                    <span className="text-3xl font-bold text-white">{drones.length}</span>
-                  </div>
-                  <p className="text-xs text-gray-400 text-center uppercase tracking-wide">Total Drones</p>
-                </div>
-                <div className="bg-black/60 backdrop-blur-xl border border-white/10 rounded-xl p-4 hover:border-green-400/50 transition-all">
-                  <div className="flex items-center justify-center gap-2 mb-2">
-                    <Activity className="h-5 w-5 text-green-400" />
-                    <span className="text-3xl font-bold text-white">{activeDrones.length}</span>
-                  </div>
-                  <p className="text-xs text-gray-400 text-center uppercase tracking-wide">Active</p>
-                </div>
-                <div className="bg-black/60 backdrop-blur-xl border border-white/10 rounded-xl p-4 hover:border-purple-400/50 transition-all">
-                  <div className="flex items-center justify-center gap-2 mb-2">
-                    <CheckCircle className="h-5 w-5 text-purple-400" />
-                    <span className="text-3xl font-bold text-white">{assignedDrones.length}</span>
-                  </div>
-                  <p className="text-xs text-gray-400 text-center uppercase tracking-wide">Deployed</p>
-                </div>
-              </div>
-            )}
-            
-            <div 
-              className="flex flex-wrap justify-center gap-6"
-              style={{
-                transform: scrollProgress > 0.9 ? 'scale(1)' : 'scale(0.8)',
-                transition: 'transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)',
-              }}
-            >
-              <button
-                onClick={() => handleNavigate("/register")}
-                className={`group relative overflow-hidden bg-gradient-to-br from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white px-8 py-5 rounded-xl font-bold text-lg transition-all duration-300 transform hover:scale-105 shadow-xl shadow-green-500/30 ${!connected ? 'opacity-50 cursor-not-allowed' : ''}`}
-              >
-                <div className="relative z-10 flex items-center gap-3">
-                  <Plane className="h-6 w-6" />
-                  <span>Register Drone</span>
-                  <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
-                </div>
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-1000" />
-              </button>
-              
-              <button
-                onClick={() => handleNavigate("/deploy")}
-                className={`group relative overflow-hidden bg-gradient-to-br from-cyan-600 to-blue-700 hover:from-cyan-500 hover:to-blue-600 text-white px-8 py-5 rounded-xl font-bold text-lg transition-all duration-300 transform hover:scale-105 shadow-xl shadow-cyan-500/30 ${!connected ? 'opacity-50 cursor-not-allowed' : ''}`}
-              >
-                <div className="relative z-10 flex items-center gap-3">
-                  <MapPin className="h-6 w-6" />
-                  <span>Deploy Zone</span>
-                  <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
-                </div>
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-1000" />
-              </button>
-              
-              <button
-                onClick={() => handleNavigate("/dashboard")}
-                className={`group relative overflow-hidden bg-gradient-to-br from-purple-600 to-pink-700 hover:from-purple-500 hover:to-pink-600 text-white px-8 py-5 rounded-xl font-bold text-lg transition-all duration-300 transform hover:scale-105 shadow-xl shadow-purple-500/30 ${!connected ? 'opacity-50 cursor-not-allowed' : ''}`}
-              >
-                <div className="relative z-10 flex items-center gap-3">
-                  <Shield className="h-6 w-6" />
-                  <span>Dashboard</span>
-                  <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
-                </div>
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-1000" />
-              </button>
+        {/* Slide Indicators */}
+        <div className="flex justify-center gap-2 pb-8">
+          {[0, 1, 2, 3].map(i => (
+            <button
+              key={i}
+              onClick={() => setSlideIndex(i)}
+              className={`h-2 rounded-full transition-all ${i === slideIndex ? 'w-8 bg-[#2E2E2E]' : 'w-2 bg-[#D9D9D9]'}`}
+            />
+          ))}
+        </div>
+
+        {/* Bottom Stats Bar */}
+        <div className="border-t border-[#D9D9D9] bg-[#FAFAFA] px-8 py-6">
+          <div className="max-w-7xl mx-auto flex gap-8">
+            <div className="flex-1 card">
+              <div className="text-xs font-semibold text-[#696969] mb-2">DRONES ACTIVE</div>
+              <div className="text-2xl font-bold text-[#2E2E2E] count-pop">{activeDrones.length}</div>
+            </div>
+            <div className="flex-1 card">
+              <div className="text-xs font-semibold text-[#696969] mb-2">PATROLS</div>
+              <div className="text-2xl font-bold text-[#2E2E2E] count-pop">0</div>
+            </div>
+            <div className="flex-1 card">
+              <div className="text-xs font-semibold text-[#696969] mb-2">EVIDENCE HASHES</div>
+              <div className="text-2xl font-bold text-[#2E2E2E] count-pop">0</div>
+            </div>
+            <div className="flex-1 card">
+              <div className="text-xs font-semibold text-[#696969] mb-2">HBAR STAKED</div>
+              <div className="text-2xl font-bold text-[#2E2E2E] count-pop">0</div>
             </div>
           </div>
         </div>

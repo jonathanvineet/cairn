@@ -13,7 +13,6 @@
     "verify:keys": "tsx scripts/verifyKeys.ts",
     "create:account": "tsx scripts/createAccountFromMnemonic.ts",
     "extract:key": "tsx scripts/extractKey.ts",
-    "import:instructions": "node scripts/importInstructions.js",
     "check:contract": "tsx scripts/checkContract.ts",
     "quick:check": "tsx scripts/quickCheck.ts"
   },

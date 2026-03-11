@@ -54,22 +54,19 @@ export function WalletConnect() {
   if (connected && selectedAccount) {
     return (
       <div className="flex items-center gap-2">
-        <Badge variant="blockchain" className="gap-1.5 glass bg-green-500/10 border-green-500/30 py-1.5 px-3">
-          <Shield className="h-3 w-3 text-green-400" />
-          <span className="font-mono text-[10px] max-w-[120px] truncate">
+        <div className="px-3 py-1.5 border border-[#D9D9D9] rounded-full bg-[#2E2E2E] text-[#FAFAFA] text-[10px] font-semibold">
+          <span className="font-mono max-w-[120px] truncate block">
             {selectedAccount.id}
           </span>
-        </Badge>
-        <Button
-          variant="ghost"
-          size="icon"
+        </div>
+        <button
           onClick={() => disconnect()}
           disabled={isInitializing}
-          className="h-9 w-9 hover:bg-red-500/10 hover:text-red-400 transition-colors"
+          className="h-9 w-9 flex items-center justify-center hover:bg-[#D9D9D9] transition-colors rounded-lg"
           title="Disconnect wallet"
         >
-          <LogOut className="h-4 w-4" />
-        </Button>
+          <LogOut className="h-4 w-4 text-[#696969]" />
+        </button>
       </div>
     );
   }
@@ -77,44 +74,40 @@ export function WalletConnect() {
   return (
     <div className="relative" ref={dropdownRef}>
       <div className="flex flex-col gap-2">
-        <Button
+        <button
           type="button"
-          variant="outline"
-          size="sm"
           onClick={handleConnect}
           disabled={isInitializing || isConnecting}
-          className="gap-2 glass border-green-500/30 hover:border-green-500/60 pr-3 h-10 transition-all"
+          className="btn-primary gap-2 flex items-center px-4 py-2 h-10 disabled:opacity-50"
         >
-          <Wallet className="h-4 w-4 text-green-400" />
+          <Wallet className="h-4 w-4" />
           <span className="font-semibold uppercase tracking-wider text-[11px]">
             {(isInitializing || isConnecting) ? "Connecting..." : "Connect HashPack"}
           </span>
-        </Button>
+        </button>
 
         {(isInitializing || isConnecting) && (
-          <div className="flex items-start gap-2 text-[10px] text-cyan-400 bg-cyan-500/10 p-2.5 rounded border border-cyan-500/20">
+          <div className="flex items-start gap-2 text-[10px] text-[#2E2E2E] bg-[#D9D9D9] p-2.5 rounded border border-[#696969]">
             <Shield className="h-3.5 w-3.5 flex-shrink-0 mt-0.5 animate-pulse" />
             <div>
               <p className="font-semibold mb-1">Approve Connection</p>
-              <p className="text-gray-400">If you have HashPack extension: check browser extensions (top-right). Otherwise: scan QR code with HashPack mobile app.</p>
+              <p className="text-[#696969]">If you have HashPack extension: check browser extensions (top-right). Otherwise: scan QR code with HashPack mobile app.</p>
             </div>
           </div>
         )}
 
         {showError && error && (
-          <div className="flex flex-col gap-2 text-[11px] text-red-400 bg-red-500/10 p-3 rounded-lg border border-red-500/20">
+          <div className="flex flex-col gap-2 text-[11px] text-[#2E2E2E] bg-[#FFE6E6] p-3 rounded-lg border border-[#D9D9D9]">
             <div className="flex items-center gap-2">
               <AlertCircle className="h-4 w-4 flex-shrink-0" />
               <span className="font-semibold">{error}</span>
             </div>
-            <Button
-              size="sm"
-              variant="outline"
+            <button
               onClick={handleConnect}
-              className="border-green-500/30 hover:border-green-500/60 h-8 text-[10px] font-semibold"
+              className="btn-ghost h-8 text-[10px] font-semibold"
             >
               🔄 Retry Connection
-            </Button>
+            </button>
           </div>
         )}
       </div>

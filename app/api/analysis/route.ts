@@ -240,18 +240,17 @@ export async function POST(req: NextRequest) {
         source: 'blockchain',
       },
       analysis: rankedDrones.map(item => ({
-        cairnDroneId: item.drone.cairnDroneId,
-        evmAddress: item.drone.evmAddress,
+        drone: {
+          cairnDroneId: item.drone.cairnDroneId,
+          evmAddress: item.drone.evmAddress,
+          batteryLevel: item.drone.batteryLevel,
+          location: { lat: item.drone.currentLat, lng: item.drone.currentLng },
+          health: item.drone.sensorHealth,
+          agentTopicId: item.drone.agentTopicId,
+        },
         score: item.score,
         reason: item.reason,
         breakdown: item.breakdown,
-        status: {
-          batteryLevel: item.drone.batteryLevel,
-          location: { lat: item.drone.currentLat, lng: item.drone.currentLng },
-          flightHoursRemaining: item.drone.flightHoursRemaining,
-          readinessScore: item.drone.readinessScore,
-          isAvailable: item.drone.isAvailable,
-        },
       })),
       boundaryCenter: {
         lat: boundary.coordinates.reduce((sum: number, c: any) => sum + c.lat, 0) / boundary.coordinates.length,

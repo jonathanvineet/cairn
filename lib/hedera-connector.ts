@@ -70,6 +70,14 @@ export async function connectHashPack(): Promise<any> {
 
   try {
     console.log('🔍 Initiating HashPack connection...');
+    console.log('⏱️  Timeout: 3 minutes (180 seconds)');
+    console.log('');
+    console.log('📋 CONNECTION STEPS:');
+    console.log('   1️⃣  Look for HashPack popup in browser (top-right corner)');
+    console.log('   2️⃣  OR scan QR code with HashPack mobile app');
+    console.log('   3️⃣  Approve the connection request');
+    console.log('   4️⃣  Wait for confirmation');
+    console.log('');
     
     // Check if HashPack extension is installed
     const hasExtension = typeof window !== 'undefined' && 
@@ -77,34 +85,94 @@ export async function connectHashPack(): Promise<any> {
     
     if (hasExtension) {
       console.log('✅ HashPack extension detected - using browser extension');
-      console.log('📱 Please approve the connection in your HashPack extension popup');
+      console.log('📱 CHECK YOUR BROWSER EXTENSIONS (top-right) for approval popup');
     } else {
-      console.log('ℹ️ HashPack extension not detected - showing WalletConnect modal');
-      console.log('📱 You can scan QR code with HashPack mobile app or install the extension');
+      console.log('ℹ️  HashPack extension not detected - showing WalletConnect modal');
+      console.log('📱 Scan QR code with HashPack mobile app OR install extension from:');
+      console.log('   https://chrome.google.com/webstore/detail/hashpack/gjagmgiddbbciopjhllkdnddhcglnemk');
     }
     
-    // Connect with timeout (45 seconds - enough time to scan QR or approve extension)
-    const connectionPromise = dapp.openModal();
-    const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('Connection timeout - please try again')), 45000);
+    // Connect with timeout (180 seconds / 3 minutes - plenty of time for mobile QR scan)
+    // Increased to 3 minutes to accommodate:
+    // 1. Finding phone/wallet app (30s)
+    // 2. Opening HashPack mobile (30s)
+    // 3. Scanning QR code (30s)
+    // 4. Reviewing and approving (60s)
+    // 5. Network connection establishment (30s)
+    const connectionPromise = dapp.openModal().catch((err: any) => {
+      console.error('❌ Modal connection error:', err);
+      // Ensure we have a proper Error object
+      if (!err || typeof err !== 'object') {
+        throw new Error('Connection failed with unknown error');
+      }
+      if (!err.message && !err.toString) {
+        throw new Error('Connection failed: ' + JSON.stringify(err));
+      }
+      throw err;
     });
     
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => {
+        reject(new Error('Connection timeout after 3 minutes. Please check:\n• HashPack extension is installed\n• Mobile app is up to date\n• You approved the connection\n• Try refreshing and reconnecting'));
+      }, 180000);
+    });
+    
+    console.log('⏳ Waiting for wallet approval...');
     const session = await Promise.race([connectionPromise, timeoutPromise]);
 
     console.log('✅ HashPack connected successfully');
+    console.log('📊 Session details:', session);
     return session;
   } catch (error: any) {
-    console.error('❌ HashPack connection failed:', error);
+    console.error('❌ HashPack connection failed');
+    console.error('Raw error:', error);
+    console.error('Error type:', typeof error);
+    console.error('Error keys:', error ? Object.keys(error) : 'null');
+    
+    // Handle empty error objects
+    if (!error) {
+      const defaultError = new Error('Connection failed with no error details');
+      console.error('Throwing default error:', defaultError);
+      throw defaultError;
+    }
+    
+    // Convert non-Error objects to Error
+    if (typeof error === 'string') {
+      throw new Error(error);
+    }
+    
+    if (typeof error === 'object' && !error.message) {
+      // Try to extract useful info from the error object
+      const errorStr = JSON.stringify(error, null, 2);
+      console.error('Error object (stringified):', errorStr);
+      
+      if (errorStr === '{}' || errorStr === 'null') {
+        throw new Error('Connection failed - empty error received. Check console for details.');
+      }
+      
+      throw new Error(`Connection failed: ${errorStr}`);
+    }
+    
+    console.error('Error details:', {
+      message: error.message,
+      code: error.code,
+      name: error.name,
+      stack: error.stack?.split('\n').slice(0, 5).join('\n')
+    });
     
     // Provide better error messages
-    if (error.message?.includes('User rejected') || error.message?.includes('User closed')) {
-      throw new Error('Connection cancelled. Please approve the connection request.');
+    if (error.message?.includes('User rejected') || error.message?.includes('User closed') || error.message?.includes('cancelled')) {
+      throw new Error('❌ Connection cancelled by user');
     }
     if (error.message?.includes('timeout')) {
-      throw new Error('Connection timeout. Click "Retry Connection" to try again.');
+      throw new Error('⏱️ Connection timeout - Try again or check your HashPack app');
+    }
+    if (error.message?.includes('not installed') || error.message?.includes('not found')) {
+      throw new Error('📱 HashPack not found - Install extension or use mobile app');
     }
     
-    throw error;
+    // Generic error with original message
+    throw new Error(`Connection failed: ${error.message || error.toString() || 'Unknown error'}`);
   }
 }
 

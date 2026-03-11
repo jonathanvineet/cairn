@@ -76,10 +76,38 @@ export const useWalletStore = create<WalletState>()(persist(
 
     } catch (error: any) {
       console.error('🔴 Connection error:', error);
+      console.error('🔴 Error type:', typeof error);
+      console.error('🔴 Error object:', error);
 
-      let errorMessage = error.message || "Failed to connect wallet";
+      // Handle empty or invalid error objects
+      let errorMessage = 'Failed to connect wallet';
+      
+      if (!error) {
+        errorMessage = 'Connection failed with no error details. Please try again.';
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      } else if (error.message) {
+        errorMessage = error.message;
+      } else if (typeof error === 'object') {
+        try {
+          const errorStr = JSON.stringify(error);
+          if (errorStr && errorStr !== '{}') {
+            errorMessage = `Connection failed: ${errorStr}`;
+          } else {
+            errorMessage = 'Connection failed with empty error. Check console logs.';
+          }
+        } catch (e) {
+          errorMessage = 'Connection failed. Unable to parse error details.';
+        }
+      }
+      
+      // Additional error type checks
       if (errorMessage.includes("User rejected")) {
-        errorMessage = "Connection cancelled by user.";
+        errorMessage = "❌ Connection cancelled by user";
+      } else if (errorMessage.includes("timeout")) {
+        errorMessage = "⏱️ Connection timeout - Click retry to try again";
+      } else if (errorMessage.includes("User closed")) {
+        errorMessage = "❌ Modal closed - Click retry to reconnect";
       }
 
       resetConnector();
@@ -91,7 +119,9 @@ export const useWalletStore = create<WalletState>()(persist(
         error: errorMessage,
         isInitializing: false,
       });
-      throw error;
+      
+      // Always throw a proper Error object
+      throw new Error(errorMessage);
     }
   },
 

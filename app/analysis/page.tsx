@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Zap, Loader2, CheckCircle2, AlertCircle, MapPin, Zap as Battery } from "lucide-react";
-import SkyvaultShell from "../../components/world/SkyvaultShell";
 
 interface Coordinate {
   lat: number;
@@ -170,17 +169,16 @@ export default function AnalysisPage() {
   };
 
   return (
-    <SkyvaultShell title="ANALYSIS REPORTS">
-    <div className="min-h-screen text-white">
+    <div className="scanlines min-h-screen bg-[#FAFAFA] grid-bg">
 
       <div className="max-w-6xl mx-auto px-6 py-8 space-y-8">
         {/* Main Action Card */}
-        <Card className="glass-strong border-purple-500/30">
+        <Card className="card card-offset border border-purple-500">
           <CardHeader>
-            <CardTitle className="text-purple-400">Multi-Criteria Drone Selection</CardTitle>
+            <CardTitle className="text-purple-600">Multi-Criteria Drone Selection</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <p className="text-sm text-gray-300">
+            <p className="text-sm text-[#696969]">
               This analysis uses multi-criteria evaluation (battery, location, health, agent validation) combined with Eliza-inspired reasoning to select the best drone for your mission.
             </p>
             
@@ -206,31 +204,31 @@ export default function AnalysisPage() {
 
         {/* Analysis Steps */}
         <div className="space-y-3">
-          <h2 className="text-lg font-semibold text-green-400">Analysis Progress</h2>
+          <h2 className="text-lg font-semibold text-green-600">Analysis Progress</h2>
           {steps.map((step, idx) => (
             <div
               key={idx}
               className={`p-4 rounded-lg border transition-all ${
                 step.status === "complete"
-                  ? "bg-green-500/10 border-green-500/30"
+                  ? "bg-green-50 border-green-500"
                   : step.status === "running"
-                  ? "bg-blue-500/10 border-blue-500/30"
+                  ? "bg-blue-50 border-blue-500"
                   : step.status === "error"
-                  ? "bg-red-500/10 border-red-500/30"
-                  : "bg-white/5 border-white/10"
+                  ? "bg-red-50 border-red-500"
+                  : "bg-white border-[#D9D9D9]"
               }`}
             >
               <div className="flex items-start gap-3">
                 <div className="mt-0.5">
-                  {step.status === "complete" && <CheckCircle2 className="h-5 w-5 text-green-400" />}
-                  {step.status === "running" && <Loader2 className="h-5 w-5 text-blue-400 animate-spin" />}
-                  {step.status === "error" && <AlertCircle className="h-5 w-5 text-red-400" />}
-                  {step.status === "pending" && <div className="h-5 w-5 rounded-full border-2 border-gray-600" />}
+                  {step.status === "complete" && <CheckCircle2 className="h-5 w-5 text-green-600" />}
+                  {step.status === "running" && <Loader2 className="h-5 w-5 text-blue-600 animate-spin" />}
+                  {step.status === "error" && <AlertCircle className="h-5 w-5 text-red-600" />}
+                  {step.status === "pending" && <div className="h-5 w-5 rounded-full border-2 border-[#969696]" />}
                 </div>
                 <div className="flex-1">
-                  <p className="font-semibold text-sm">{step.name}</p>
+                  <p className="font-semibold text-sm text-[#2E2E2E]">{step.name}</p>
                   {step.message && (
-                    <p className="text-xs text-gray-400 mt-1">{step.message}</p>
+                    <p className="text-xs text-[#696969] mt-1">{step.message}</p>
                   )}
                 </div>
               </div>
@@ -239,13 +237,13 @@ export default function AnalysisPage() {
         </div>
 
         {error && (
-          <Card className="border-red-500/30 bg-red-500/10">
+          <Card className="border-red-500 bg-red-50">
             <CardContent className="pt-6">
               <div className="flex gap-3">
-                <AlertCircle className="h-5 w-5 text-red-400 flex-shrink-0 mt-0.5" />
+                <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
                 <div>
-                  <p className="font-semibold text-red-400">Analysis Failed</p>
-                  <p className="text-sm text-red-300 mt-1">{error}</p>
+                  <p className="font-semibold text-red-600">Analysis Failed</p>
+                  <p className="text-sm text-red-700 mt-1">{error}</p>
                 </div>
               </div>
             </CardContent>
@@ -256,23 +254,23 @@ export default function AnalysisPage() {
         {results && (
           <div className="space-y-6">
             {/* Summary */}
-            <Card className="glass-strong border-purple-500/30">
+            <Card className="card card-offset border border-purple-500">
               <CardHeader>
-                <CardTitle className="text-purple-400">Analysis Summary</CardTitle>
+                <CardTitle className="text-purple-600">Analysis Summary</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-3 gap-4">
-                  <div className="p-3 bg-white/5 rounded border border-white/10">
-                    <p className="text-xs text-gray-400">Total Drones</p>
-                    <p className="text-2xl font-bold text-green-400">{results.analysis.length}</p>
+                  <div className="p-3 bg-white rounded border border-[#D9D9D9]">
+                    <p className="text-xs text-[#696969]">Total Drones</p>
+                    <p className="text-2xl font-bold text-green-600">{results.analysis.length}</p>
                   </div>
-                  <div className="p-3 bg-white/5 rounded border border-white/10">
-                    <p className="text-xs text-gray-400">Analyzed</p>
-                    <p className="text-2xl font-bold text-blue-400">{results.analysis.length}</p>
+                  <div className="p-3 bg-white rounded border border-[#D9D9D9]">
+                    <p className="text-xs text-[#696969]">Analyzed</p>
+                    <p className="text-2xl font-bold text-blue-600">{results.analysis.length}</p>
                   </div>
-                  <div className="p-3 bg-white/5 rounded border border-white/10">
-                    <p className="text-xs text-gray-400">Top Score</p>
-                    <p className="text-2xl font-bold text-yellow-400">{results.analysis.length > 0 ? Math.round(results.analysis[0]?.score || 0) : 0}/100</p>
+                  <div className="p-3 bg-white rounded border border-[#D9D9D9]">
+                    <p className="text-xs text-[#696969]">Top Score</p>
+                    <p className="text-2xl font-bold text-yellow-600">{results.analysis.length > 0 ? Math.round(results.analysis[0]?.score || 0) : 0}/100</p>
                   </div>
                 </div>
               </CardContent>
@@ -280,42 +278,42 @@ export default function AnalysisPage() {
 
             {/* Top Candidate */}
             {results.analysis.length > 0 && (
-              <Card className="glass-strong border-green-500/30">
+              <Card className="card card-offset border-2 border-green-500">
                 <CardHeader>
-                  <CardTitle className="text-green-400 flex items-center gap-2">
+                  <CardTitle className="text-green-600 flex items-center gap-2">
                     <CheckCircle2 className="h-5 w-5" />
                     Recommended Drone
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="p-4 bg-green-500/10 rounded-lg border border-green-500/30">
+                  <div className="p-4 bg-green-50 rounded-lg border border-green-500">
                     <div className="flex items-start justify-between mb-3">
                       <div>
-                        <p className="text-xl font-bold text-green-300">{results.analysis[0]?.drone.cairnDroneId}</p>
-                        <p className="text-xs text-gray-400 font-mono">{results.analysis[0]?.drone.evmAddress.slice(0, 10)}...{results.analysis[0]?.drone.evmAddress.slice(-8)}</p>
+                        <p className="text-xl font-bold text-green-700">{results.analysis[0]?.drone?.cairnDroneId || "Unknown Drone"}</p>
+                        <p className="text-xs text-[#696969] font-mono">{results.analysis[0]?.drone?.evmAddress ? `${results.analysis[0].drone.evmAddress.slice(0, 10)}...${results.analysis[0].drone.evmAddress.slice(-8)}` : "No address"}</p>
                       </div>
-                      <Badge className="bg-green-500/20 text-green-300 border-green-500/30 text-lg px-3 py-1">
+                      <Badge className="bg-green-100 text-green-700 border-green-500 text-lg px-3 py-1">
                         #{Math.round(results.analysis[0]?.score || 0)}
                       </Badge>
                     </div>
 
                     <div className="space-y-2 text-sm">
                       <div className="flex items-center gap-2">
-                        <Battery className="h-4 w-4 text-yellow-400" />
-                        <span className="text-gray-300">Battery: <strong>{results.analysis[0]?.drone.batteryLevel}%</strong></span>
+                        <Battery className="h-4 w-4 text-yellow-600" />
+                        <span className="text-[#2E2E2E]">Battery: <strong>{results.analysis[0]?.drone?.batteryLevel ?? "N/A"}%</strong></span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <MapPin className="h-4 w-4 text-blue-400" />
-                        <span className="text-gray-300">Location: <strong>{results.analysis[0]?.drone.location.lat.toFixed(4)}°, {results.analysis[0]?.drone.location.lng.toFixed(4)}°</strong></span>
+                        <MapPin className="h-4 w-4 text-blue-600" />
+                        <span className="text-[#2E2E2E]">Location: <strong>{results.analysis[0]?.drone?.location ? `${results.analysis[0].drone.location.lat.toFixed(4)}°, ${results.analysis[0].drone.location.lng.toFixed(4)}°` : "Unknown"}</strong></span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Zap className="h-4 w-4 text-purple-400" />
-                        <span className="text-gray-300">Health: <strong className="capitalize">{results.analysis[0]?.drone.health}</strong></span>
+                        <Zap className="h-4 w-4 text-purple-600" />
+                        <span className="text-[#2E2E2E]">Health: <strong className="capitalize">{results.analysis[0]?.drone?.health ?? "Unknown"}</strong></span>
                       </div>
-                      {results.analysis[0]?.drone.agentTopicId && (
+                      {results.analysis[0]?.drone?.agentTopicId && (
                         <div className="flex items-center gap-2">
-                          <CheckCircle2 className="h-4 w-4 text-purple-400" />
-                          <span className="text-gray-300">Agent: <strong>Verified</strong></span>
+                          <CheckCircle2 className="h-4 w-4 text-purple-600" />
+                          <span className="text-[#2E2E2E]">Agent: <strong>Verified</strong></span>
                         </div>
                       )}
                     </div>
@@ -330,32 +328,32 @@ export default function AnalysisPage() {
             )}
 
             {/* All Results */}
-            <Card className="glass-strong border-blue-500/30">
+            <Card className="card card-offset border border-blue-500">
               <CardHeader>
-                <CardTitle className="text-blue-400">All Candidates (Ranked)</CardTitle>
+                <CardTitle className="text-blue-600">All Candidates (Ranked)</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
                   {results.analysis.map((item: AnalysisResultItem, idx: number) => (
                     <div
-                      key={item.drone.evmAddress}
+                      key={item.drone?.evmAddress || idx}
                       onClick={() => setSelectedDrone({ ...item.drone, score: item.score, reason: item.reason, rank: idx + 1 })}
                       className={`p-4 rounded-lg border cursor-pointer transition-all ${
-                        selectedDrone?.evmAddress === item.drone.evmAddress
-                          ? "bg-blue-500/20 border-blue-500/50"
-                          : "bg-white/5 border-white/10 hover:border-blue-500/30"
+                        selectedDrone?.evmAddress === item.drone?.evmAddress
+                          ? "bg-blue-50 border-blue-500"
+                          : "bg-white border-[#D9D9D9] hover:border-blue-500"
                       }`}
                     >
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-3">
-                          <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/30">#{idx + 1}</Badge>
-                          <h4 className="font-semibold">{item.drone.cairnDroneId}</h4>
+                          <Badge className="bg-blue-100 text-blue-700 border-blue-500">#{idx + 1}</Badge>
+                          <h4 className="font-semibold text-[#2E2E2E]">{item.drone?.cairnDroneId || "Unknown"}</h4>
                         </div>
-                        <Badge className="bg-yellow-500/20 text-yellow-300 border-yellow-500/30 text-base">
+                        <Badge className="bg-yellow-100 text-yellow-700 border-yellow-500 text-base">
                           {item.score}/100
                         </Badge>
                       </div>
-                      <p className="text-xs text-gray-400">{item.reason}</p>
+                      <p className="text-xs text-[#696969]">{item.reason}</p>
                     </div>
                   ))}
                 </div>
@@ -365,6 +363,5 @@ export default function AnalysisPage() {
         )}
       </div>
     </div>
-    </SkyvaultShell>
   );
 }
