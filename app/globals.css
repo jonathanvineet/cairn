@@ -104,7 +104,7 @@ body {
 }
 
 .btn-primary {
-  border-radius:25 px;
+  border-radius: 25px;
   background: var(--fg);
   color: var(--bg);
   border: 1px solid var(--fg);
