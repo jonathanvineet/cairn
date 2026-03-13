@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import "./globals.css";
+import "./styles/global.css";
 import { Providers } from "./providers";
 import { Rajdhani, JetBrains_Mono, Exo_2 } from "next/font/google";
 

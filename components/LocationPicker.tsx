@@ -1,9 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { MapPin, Loader2, Search } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import dynamic from "next/dynamic";
 
 interface LocationPickerProps {
   onLocationSelect: (location: { lat: number; lng: number; address?: string }) => void;
@@ -15,6 +13,254 @@ interface NominatimResult {
   lat: string;
   lon: string;
   display_name: string;
+  type: string;
+}
+
+// Dynamic import for Leaflet map (client-side only)
+const MapComponent = dynamic(
+  () => import("./MapComponent").then((mod) => mod.MapComponent),
+  { ssr: false, loading: () => <div style={{ width: "100%", height: "100%", background: "var(--muted)" }} /> }
+);
+
+// Search Results Component
+function SearchResults({ results, onSelect, isSearching }: { results: NominatimResult[]; onSelect: (place: NominatimResult) => void; isSearching: boolean }) {
+  if (!results.length && !isSearching) return null;
+
+  return (
+    <div style={{
+      border: "1px solid var(--border)",
+      borderRadius: "var(--radius)",
+      background: "var(--card)",
+      overflow: "hidden"
+    }}>
+      {isSearching && (
+        <div style={{ padding: "12px 14px", fontSize: 11, color: "var(--muted-fg)", textAlign: "center", borderBottom: "1px solid var(--border)" }}>
+          ⟳ SEARCHING...
+        </div>
+      )}
+      <div style={{
+        maxHeight: "140px",
+        overflowY: "auto"
+      }}>
+        {results.map((result, idx) => (
+          <div
+            key={idx}
+            onClick={() => onSelect(result)}
+            style={{
+              padding: "10px 14px",
+              background: "var(--card)",
+              cursor: "pointer",
+              transition: "all 0.15s",
+              fontSize: 11,
+              borderBottom: idx < results.length - 1 ? "1px solid var(--border)" : "none",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "var(--muted)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "var(--card)";
+            }}
+          >
+            <div style={{ fontWeight: 500, color: "var(--fg)", marginBottom: 3 }}>
+              {result.type.toUpperCase()}
+            </div>
+            <div style={{ color: "var(--muted-fg)", fontSize: 9, lineHeight: 1.4 }}>
+              {result.display_name}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Location Info Component
+function LocationInfo({ location }: { location: { lat: number; lng: number; address?: string } | null }) {
+  if (!location) {
+    return (
+      <div style={{
+        padding: "12px 14px",
+        border: "1px dashed var(--border)",
+        borderRadius: "var(--radius)",
+        background: "var(--muted)",
+        fontSize: 11,
+        color: "var(--muted-fg)",
+        textAlign: "center"
+      }}>
+        Select a location to continue
+      </div>
+    );
+  }
+
+  return (
+    <div style={{
+      padding: "12px 14px",
+      border: "1px solid var(--border)",
+      borderRadius: "var(--radius)",
+      background: "var(--muted)",
+      fontSize: 11
+    }}>
+      <div style={{ color: "var(--muted-fg)", marginBottom: 8, display: "flex", alignItems: "center", gap: 6, fontSize: 10, fontWeight: 500, textTransform: "uppercase", letterSpacing: ".05em" }}>
+        <span>✓</span>
+        <span>Location confirmed</span>
+      </div>
+      <div style={{ fontSize: 10, color: "var(--fg)", fontFamily: "monospace", letterSpacing: ".08em", marginBottom: 8, fontWeight: 500 }}>
+        {location.lat.toFixed(5)}° · {location.lng.toFixed(5)}°
+      </div>
+      {location.address && (
+        <div style={{ fontSize: 9, color: "var(--muted-fg)", lineHeight: 1.5 }}>
+          {location.address}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Map Modal Component
+function MapModal({ 
+  isOpen, 
+  onClose, 
+  onConfirm, 
+  initialLocation 
+}: { 
+  isOpen: boolean; 
+  onClose: () => void; 
+  onConfirm: (location: { lat: number; lng: number }) => void;
+  initialLocation: { lat: number; lng: number } | null;
+}) {
+  const [tempLocation, setTempLocation] = useState<{ lat: number; lng: number } | null>(initialLocation);
+
+  if (!isOpen) return null;
+
+  return (
+    <div style={{
+      position: "fixed",
+      inset: 0,
+      background: "rgba(0,0,0,0.75)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      zIndex: 1000,
+      padding: 16
+    }}>
+      <div style={{
+        background: "var(--bg)",
+        borderRadius: "var(--radius)",
+        border: "1px solid var(--border)",
+        display: "flex",
+        flexDirection: "column",
+        width: "100%",
+        maxWidth: "580px",
+        height: "80vh",
+        maxHeight: "650px",
+        overflow: "hidden",
+        boxShadow: "0 20px 50px rgba(0,0,0,0.3)"
+      }}>
+        {/* Modal Header */}
+        <div style={{
+          padding: "14px 16px",
+          borderBottom: "1px solid var(--border)",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          background: "var(--card)"
+        }}>
+          <div style={{ fontSize: 11, fontWeight: 600, color: "var(--fg)", textTransform: "uppercase", letterSpacing: ".08em" }}>
+            📍 Select Location on Map
+          </div>
+          <button
+            onClick={onClose}
+            style={{
+              background: "transparent",
+              border: "none",
+              fontSize: 18,
+              cursor: "pointer",
+              color: "var(--muted-fg)",
+              padding: "0 8px",
+              transition: "color 0.15s"
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.color = "var(--fg)"}
+            onMouseLeave={(e) => e.currentTarget.style.color = "var(--muted-fg)"}
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Map Container */}
+        <div style={{ flex: 1, minHeight: 0, position: "relative" }}>
+          <MapComponent 
+            selectedLocation={tempLocation} 
+            onLocationSelect={(lat, lng) => setTempLocation({ lat, lng })} 
+          />
+          {/* Center Crosshair */}
+          <div style={{
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            pointerEvents: "none",
+            fontSize: 32,
+            filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.3))"
+          }}>
+            🎯
+          </div>
+          {/* Tip */}
+          <div style={{
+            position: "absolute",
+            top: 14,
+            left: 14,
+            fontSize: 9,
+            color: "#fff",
+            background: "rgba(0,0,0,0.65)",
+            padding: "7px 11px",
+            borderRadius: "4px",
+            pointerEvents: "none",
+            fontWeight: 500
+          }}>
+            Click or drag to select
+          </div>
+        </div>
+
+        {/* Modal Footer */}
+        <div style={{
+          padding: "14px 16px",
+          borderTop: "1px solid var(--border)",
+          display: "flex",
+          gap: 10,
+          alignItems: "center",
+          justifyContent: "space-between",
+          background: "var(--card)"
+        }}>
+          {tempLocation && (
+            <div style={{ fontSize: 9, color: "var(--muted-fg)", fontFamily: "monospace", fontWeight: 500, letterSpacing: ".05em" }}>
+              {tempLocation.lat.toFixed(5)}° · {tempLocation.lng.toFixed(5)}°
+            </div>
+          )}
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              onClick={onClose}
+              className="btn btn-ghost"
+              style={{ fontSize: 10, padding: "8px 14px", fontWeight: 500 }}
+            >
+              CANCEL
+            </button>
+            <button
+              onClick={() => {
+                if (tempLocation) {
+                  onConfirm(tempLocation);
+                }
+              }}
+              className="btn btn-primary"
+              disabled={!tempLocation}
+              style={{ fontSize: 10, padding: "8px 14px", fontWeight: 500 }}
+            >
+              CONFIRM
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export function LocationPicker({ onLocationSelect, initialLocation, disabled }: LocationPickerProps) {
@@ -22,10 +268,44 @@ export function LocationPicker({ onLocationSelect, initialLocation, disabled }: 
     initialLocation || null
   );
   const [isGettingLocation, setIsGettingLocation] = useState(false);
-  const [address, setAddress] = useState("");
-  const [isSearching, setIsSearching] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<NominatimResult[]>([]);
-  const [showResults, setShowResults] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const [isMapModalOpen, setIsMapModalOpen] = useState(false);
+
+  // Search for places by name
+  const searchPlaces = async (query: string) => {
+    if (!query.trim()) {
+      setSearchResults([]);
+      return;
+    }
+
+    setIsSearching(true);
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=5`
+      );
+      const results = await response.json();
+      setSearchResults(results as NominatimResult[]);
+    } catch (error) {
+      console.error("Search failed:", error);
+      setSearchResults([]);
+    }
+    setIsSearching(false);
+  };
+
+  // Handle place selection from search results
+  const selectPlace = (place: NominatimResult) => {
+    const newLocation = {
+      lat: parseFloat(place.lat),
+      lng: parseFloat(place.lon),
+      address: place.display_name,
+    };
+    setLocation(newLocation);
+    setSearchQuery("");
+    setSearchResults([]);
+    onLocationSelect(newLocation);
+  };
 
   useEffect(() => {
     if (initialLocation) {
@@ -47,7 +327,6 @@ export function LocationPicker({ onLocationSelect, initialLocation, disabled }: 
           lng: position.coords.longitude,
         };
         
-        // Reverse geocode to get address
         try {
           const response = await fetch(
             `https://nominatim.openstreetmap.org/reverse?format=json&lat=${newLocation.lat}&lon=${newLocation.lng}`
@@ -72,171 +351,121 @@ export function LocationPicker({ onLocationSelect, initialLocation, disabled }: 
         alert("Unable to get your location. Please check your browser permissions.");
         setIsGettingLocation(false);
       },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0,
-      }
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
   };
 
-  const searchAddress = async () => {
-    if (!address.trim()) {
-      alert("Please enter an address");
-      return;
-    }
-
-    setIsSearching(true);
-    setShowResults(false);
-    
+  const handleMapModalConfirm = async (selectedLocation: { lat: number; lng: number }) => {
     try {
       const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=10&accept-language=en`,
-        {
-          headers: {
-            'User-Agent': 'BoundaryTruth Drone Management App'
-          }
-        }
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${selectedLocation.lat}&lon=${selectedLocation.lng}`
       );
-      const data: NominatimResult[] = await response.json();
-      
-      // Filter to show only English results (remove Tamil and other non-Latin scripts)
-      const englishResults = data.filter(result => {
-        const hasNonLatin = /[\u0080-\uFFFF]/.test(result.display_name);
-        return !hasNonLatin;
-      });
-      
-      if (englishResults.length === 0) {
-        alert("No English results found. Please try a different address.");
-      } else {
-        setSearchResults(englishResults);
-        setShowResults(true);
-      }
+      const data = await response.json();
+      const locationWithAddress = {
+        ...selectedLocation,
+        address: data.display_name,
+      };
+      setLocation(locationWithAddress);
+      onLocationSelect(locationWithAddress);
     } catch (error) {
-      console.error("Geocoding error:", error);
-      alert("Failed to search address. Please try again.");
-    } finally {
-      setIsSearching(false);
+      console.error("Reverse geocoding failed:", error);
+      setLocation(selectedLocation);
+      onLocationSelect(selectedLocation);
     }
-  };
-
-  const selectSearchResult = (result: NominatimResult) => {
-    const newLocation = {
-      lat: parseFloat(result.lat),
-      lng: parseFloat(result.lon),
-      address: result.display_name,
-    };
-    setLocation(newLocation);
-    onLocationSelect(newLocation);
-    setShowResults(false);
-    setAddress("");
-    setSearchResults([]);
+    setIsMapModalOpen(false);
   };
 
   return (
-    <div className="space-y-4">
-      <div className="p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <h3 className="text-sm font-bold text-blue-400 flex items-center gap-2">
-              <MapPin className="h-4 w-4" />
-              Location Selection
-            </h3>
-            <p className="text-xs text-gray-400 mt-1">
-              Use GPS or search for an address
-            </p>
-          </div>
+    <>
+      <div style={{ display: "flex", flexDirection: "column", height: "100%", gap: 14 }}>
+        {/* Search Section */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <label style={{ fontSize: 9, color: "var(--muted-fg)", fontWeight: 600, textTransform: "uppercase", letterSpacing: ".08em" }}>
+            🔍 Search Place
+          </label>
+          <input
+            type="text"
+            className="inp"
+            placeholder="Type place name..."
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              searchPlaces(e.target.value);
+            }}
+            disabled={disabled}
+            style={{ width: "100%" }}
+          />
         </div>
 
-        {/* GPS Location Button */}
-        <div className="mb-3">
-          <Button
-            type="button"
+        {/* Search Results */}
+        {(searchResults.length > 0 || isSearching) && (
+          <SearchResults results={searchResults} onSelect={selectPlace} isSearching={isSearching} />
+        )}
+
+        {/* Action Buttons Section */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <button
+            onClick={() => setIsMapModalOpen(true)}
+            className="btn btn-ghost"
+            disabled={disabled}
+            style={{ 
+              width: "100%",
+              fontSize: 10,
+              padding: "11px 14px",
+              textAlign: "center",
+              border: "1px solid var(--border)",
+              fontWeight: 500,
+              transition: "all 0.15s"
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "var(--muted)";
+              e.currentTarget.style.borderColor = "var(--fg)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "transparent";
+              e.currentTarget.style.borderColor = "var(--border)";
+            }}
+          >
+            📍 SELECT FROM MAP
+          </button>
+
+          <button
+            className="btn btn-ghost"
             onClick={getCurrentLocation}
             disabled={isGettingLocation || disabled}
-            className="w-full bg-blue-600 hover:bg-blue-700"
-            size="sm"
+            style={{ 
+              width: "100%",
+              fontSize: 10, 
+              padding: "11px 14px",
+              textAlign: "center",
+              border: "1px solid var(--border)",
+              fontWeight: 500,
+              transition: "all 0.15s"
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "var(--muted)";
+              e.currentTarget.style.borderColor = "var(--fg)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "transparent";
+              e.currentTarget.style.borderColor = "var(--border)";
+            }}
           >
-            {isGettingLocation ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Getting Location...
-              </>
-            ) : (
-              <>
-                <MapPin className="h-4 w-4 mr-2" />
-                Get My GPS Location
-              </>
-            )}
-          </Button>
+            {isGettingLocation ? `⟳ GETTING GPS...` : `🛰️  USE MY LOCATION`}
+          </button>
         </div>
 
-        {/* Address Search */}
-        <div className="space-y-2">
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && searchAddress()}
-              placeholder="Search address (e.g., Mumbai, India)"
-              className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-              disabled={disabled}
-            />
-            <Button
-              type="button"
-              onClick={searchAddress}
-              disabled={isSearching || !address.trim() || disabled}
-              variant="outline"
-              size="sm"
-            >
-              {isSearching ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Search className="h-4 w-4" />
-              )}
-            </Button>
-          </div>
-
-          {/* Search Results */}
-          {showResults && searchResults.length > 0 && (
-            <div className="max-h-48 overflow-y-auto space-y-1 border border-white/10 rounded p-2 bg-[#0a1f0f]">
-              {searchResults.map((result, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  onClick={() => selectSearchResult(result)}
-                  className="w-full text-left px-3 py-2 rounded hover:bg-blue-500/20 transition-colors text-xs text-gray-300"
-                >
-                  {result.display_name}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Selected Location Display */}
-        {location && (
-          <div className="mt-3 p-3 rounded bg-green-500/10 border border-green-500/30">
-            <Badge variant="outline" className="mb-2 bg-green-500/20 text-green-300 border-green-400/50">
-              Location Selected
-            </Badge>
-            <div className="space-y-1 text-xs">
-              {location.address && (
-                <div className="text-gray-300 mb-2">{location.address}</div>
-              )}
-              <div className="flex items-center justify-between">
-                <span className="text-gray-400">Latitude:</span>
-                <span className="font-mono text-green-400">{location.lat.toFixed(6)}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-gray-400">Longitude:</span>
-                <span className="font-mono text-green-400">{location.lng.toFixed(6)}</span>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Location Info */}
+        <LocationInfo location={location} />
       </div>
-    </div>
+
+      {/* Map Selection Modal */}
+      <MapModal 
+        isOpen={isMapModalOpen}
+        onClose={() => setIsMapModalOpen(false)}
+        onConfirm={handleMapModalConfirm}
+        initialLocation={location}
+      />
+    </>
   );
 }

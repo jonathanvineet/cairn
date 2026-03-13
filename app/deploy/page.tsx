@@ -4,9 +4,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Save, CheckCircle2, Loader2, MapPin, Brain, Plane, Zap } from "lucide-react";
+import { ArrowLeft, Save, CheckCircle2, Loader2, MapPin, Plane, Zap } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { BOUNDARY_ZONE_REGISTRY_ADDRESS, BOUNDARY_ZONE_REGISTRY_ABI } from "@/lib/contracts";
 import { useWalletStore } from "@/stores/walletStore";
@@ -17,10 +15,7 @@ const InteractiveMap = dynamic(
   { ssr: false }
 );
 
-interface Coordinate {
-  lat: number;
-  lng: number;
-}
+interface Coordinate { lat: number; lng: number; }
 
 export default function DeployPage() {
   const router = useRouter();
@@ -37,213 +32,123 @@ export default function DeployPage() {
   const [patrolSubmitSuccess, setPatrolSubmitSuccess] = useState<string | null>(null);
   const [deploymentZoneId, setDeploymentZoneId] = useState<string | null>(null);
   const [deploymentDroneIds, setDeploymentDroneIds] = useState<string[]>([]);
+  const [logs, setLogs] = useState<string[]>([]);
 
-  // Wallet protection
+  const addLog = (msg: string) => setLogs(l => [...l, `[${new Date().toLocaleTimeString()}] ${msg}`]);
+
   useEffect(() => {
-    if (!walletConnected) {
-      alert("Please connect your HashPack wallet first");
-      router.push("/");
-    }
+    if (!walletConnected) { alert("Please connect your HashPack wallet first"); router.push("/"); }
   }, [walletConnected, router]);
 
-  // Auto-sync drones from blockchain on mount
   useEffect(() => {
     fetch("/api/sync-blockchain", { method: "POST" })
       .then(() => refetchDrones())
       .catch((e) => console.warn("Background sync failed:", e));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Countdown timer effect
   useEffect(() => {
     if (countdown === null || countdown <= 0) return;
-    const timer = setInterval(() => {
-      setCountdown((prev) => (prev !== null && prev > 0 ? prev - 1 : 0));
-    }, 1000);
+    const timer = setInterval(() => setCountdown((prev) => (prev !== null && prev > 0 ? prev - 1 : 0)), 1000);
     return () => clearInterval(timer);
   }, [countdown]);
 
-  // Auto-submit patrol when countdown reaches 0
   useEffect(() => {
     if (countdown !== 0 || patrolSubmitted || !deploymentZoneId) return;
     const submitPatrolToVault = async () => {
       setPatrolSubmitted(true);
       try {
-        const dronesList = deploymentDroneIds.length > 0 
-          ? deploymentDroneIds.join(", ") 
-          : "No drones assigned";
-        console.log("✅ Patrol simulation complete - Zone:", deploymentZoneId, "Drones:", dronesList);
+        const dronesList = deploymentDroneIds.length > 0 ? deploymentDroneIds.join(", ") : "No drones assigned";
         setPatrolSubmitSuccess(`Gazebo simulation complete for zone ${deploymentZoneId} with ${deploymentDroneIds.length} drone(s)`);
       } catch (error: any) {
-        console.error("⚠️ Patrol submission failed:", error.message);
         setPatrolSubmitSuccess("Simulation failed (see console)");
       }
     };
     submitPatrolToVault();
   }, [countdown, patrolSubmitted, deploymentZoneId, deploymentDroneIds]);
 
-  // Fetch all zones
   const { data: zonesData, refetch: refetchZones } = useQuery({
     queryKey: ["zones"],
-    queryFn: async () => {
-      const res = await fetch("/api/zones");
-      const data = await res.json();
-      return data;
-    },
+    queryFn: async () => { const res = await fetch("/api/zones"); return res.json(); },
   });
 
-  // Fetch all drones
   const { data: dronesData, refetch: refetchDrones } = useQuery({
     queryKey: ["drones"],
-    queryFn: async () => {
-      const res = await fetch("/api/drones");
-      const data = await res.json();
-      if (!res.ok) throw new Error("Failed to fetch drones");
-      return data;
-    },
+    queryFn: async () => { const res = await fetch("/api/drones"); if (!res.ok) throw new Error("Failed"); return res.json(); },
   });
 
-  const handleBoundaryComplete = (coordinates: Coordinate[]) => {
-    console.log("✅ Boundary completed callback received:", coordinates);
-    setBoundaryCoords(coordinates);
-  };
+  const handleBoundaryComplete = (coordinates: Coordinate[]) => setBoundaryCoords(coordinates);
 
   const handleSaveBoundary = async () => {
-    if (!zoneId.trim()) {
-      alert("Please enter a Zone ID");
-      return;
-    }
-    if (!boundaryCoords || boundaryCoords.length < 3) {
-      alert("Please draw a boundary first (click 'Create Boundary', add points, then click 'Complete')");
-      return;
-    }
-    if (walletInitializing) {
-      alert("Wallet is initializing, please wait a moment...");
-      return;
-    }
-    if (!walletConnected || !selectedAccount) {
-      alert("Please connect your wallet first — coordinates are saved directly to the blockchain.");
-      return;
-    }
-
+    if (!zoneId.trim()) { alert("Please enter a Zone ID"); return; }
+    if (!boundaryCoords || boundaryCoords.length < 3) { alert("Please draw a boundary first"); return; }
+    if (walletInitializing) { alert("Wallet is initializing, please wait..."); return; }
+    if (!walletConnected || !selectedAccount) { alert("Please connect your wallet first"); return; }
     setIsPaymentProcessing(true);
+    setLogs([]);
     try {
-      const { ContractExecuteTransaction, ContractFunctionParameters, ContractId } = 
-        await import("@hiero-ledger/sdk");
+      const { ContractExecuteTransaction, ContractFunctionParameters, ContractId } = await import("@hiero-ledger/sdk");
       const { ethers } = await import("ethers");
-
       const zoneIdBytes32 = ethers.id(zoneId);
-
       const provider = new ethers.JsonRpcProvider("https://testnet.hashio.io/api");
-      const contract = new ethers.Contract(
-        BOUNDARY_ZONE_REGISTRY_ADDRESS,
-        BOUNDARY_ZONE_REGISTRY_ABI,
-        provider
-      );
+      const contract = new ethers.Contract(BOUNDARY_ZONE_REGISTRY_ADDRESS, BOUNDARY_ZONE_REGISTRY_ABI, provider);
       const [, timestamp] = await contract.getZone(zoneIdBytes32);
-      if (Number(timestamp) > 0) {
-        setIsPaymentProcessing(false);
-        alert(`❌ Zone ID "${zoneId}" already exists on blockchain!\n\nPlease choose a different Zone ID.`);
-        return;
-      }
-
-      const coordsStr = zoneId + "|" + boundaryCoords
-        .flatMap(c => [
-          Math.round(c.lat * 1_000_000).toString(),
-          Math.round(c.lng * 1_000_000).toString(),
-        ])
-        .join(",");
+      if (Number(timestamp) > 0) { setIsPaymentProcessing(false); alert(`Zone ID "${zoneId}" already exists!`); return; }
+      const coordsStr = zoneId + "|" + boundaryCoords.flatMap(c => [Math.round(c.lat * 1_000_000).toString(), Math.round(c.lng * 1_000_000).toString()]).join(",");
       const coordsBytes = ethers.toUtf8Bytes(coordsStr);
-
-      console.log(`⛓️ Creating boundary zone "${zoneId}"...`);
-
+      addLog(`Creating boundary zone "${zoneId}"...`);
       const zoneTx = new ContractExecuteTransaction()
-        .setContractId(ContractId.fromEvmAddress(0, 0, BOUNDARY_ZONE_REGISTRY_ADDRESS))
-        .setGas(500000)
-        .setFunction(
-          "createBoundaryZone",
-          new ContractFunctionParameters()
-            .addBytes32(ethers.getBytes(zoneIdBytes32))
-            .addBytes(coordsBytes)
-        );
-
+        .setContractId(ContractId.fromEvmAddress(0, 0, BOUNDARY_ZONE_REGISTRY_ADDRESS)).setGas(500000)
+        .setFunction("createBoundaryZone", new ContractFunctionParameters().addBytes32(ethers.getBytes(zoneIdBytes32)).addBytes(coordsBytes));
       const txResult = await signAndExecuteTransaction(zoneTx);
-      
-      if (!txResult || !txResult.transactionId) {
-        throw new Error("Transaction failed");
-      }
-
-      const txId = txResult.transactionId.toString();
-      console.log("✅ Zone saved on-chain! TX:", txId);
-
-      const zonesRes = await fetch("/api/zones/boundary", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ zoneId }),
-      });
+      if (!txResult || !txResult.transactionId) throw new Error("Transaction failed");
+      addLog(`✓ Zone saved on-chain! TX: ${txResult.transactionId.toString()}`);
+      const zonesRes = await fetch("/api/zones/boundary", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ zoneId }) });
       const zonesResData = await zonesRes.json();
-
       setSavedZoneId(zoneId);
       setAutoAssignedDrones(zonesResData.autoAssignedDrones || []);
       setIsPaymentProcessing(false);
-
-      refetchZones();
-      refetchDrones();
-
-    } catch (err: unknown) {
-      const error = err as any;
+      refetchZones(); refetchDrones();
+    } catch (err: any) {
       setIsPaymentProcessing(false);
-      if (error.code === 4001 || error.code === "ACTION_REJECTED") {
-        alert("Transaction cancelled.");
-      } else {
-        console.error("❌ Error:", error);
-        alert("Error: " + (error.reason || error.message));
-      }
+      if (err.code === 4001 || err.code === "ACTION_REJECTED") alert("Transaction cancelled.");
+      else { console.error("❌ Error:", err); alert("Error: " + (err.reason || err.message)); }
     }
   };
 
   const handleConfirmAndProceed = async () => {
     const activeZoneId = selectedZone?.zoneId || savedZoneId;
     const activeBoundary = selectedZone?.coordinates || boundaryCoords;
-
-    if (!activeZoneId || !activeBoundary || activeBoundary.length === 0) {
-      alert("Please select an existing zone or create and save a new boundary first");
-      return;
-    }
-
+    if (!activeZoneId || !activeBoundary || activeBoundary.length === 0) { alert("Please select or create a boundary zone first"); return; }
     sessionStorage.setItem("pendingZoneId", activeZoneId);
     sessionStorage.setItem("pendingBoundary", JSON.stringify(activeBoundary));
-
+    sessionStorage.setItem("zoneSelectedThisSession", "true");
     window.location.href = "/analysis";
   };
 
-  return (
-    <div className="scanlines min-h-screen bg-[#FAFAFA] grid-bg">
-      {/* Header */}
-      <div className="bg-[#FAFAFA] border-b border-[#D9D9D9] sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Link href="/dashboard">
-              <Button variant="ghost" size="sm" className="gap-2 text-[#696969] hover:text-[#2E2E2E]">
-                <ArrowLeft className="h-4 w-4" />
-                Back
-              </Button>
-            </Link>
-            <div className="flex items-center gap-3">
-              <MapPin className="h-5 w-5 text-cyan-600" />
-              <h1 className="text-xl font-bold text-[#2E2E2E]">Deploy Zone</h1>
-            </div>
-          </div>
-          <p className="text-sm text-[#696969] font-mono">
-            Connected: <span className="text-cyan-600">{selectedAccount?.id.substring(0, 12)}...</span>
-          </p>
-        </div>
-      </div>
+  const pct = countdown !== null ? ((30 - countdown) / 30) * 100 : 0;
 
-      {/* Main Content - Map + Sidebar */}
-      <div className="flex h-[calc(100vh-4rem)]">
-        {/* Map Container */}
-        <div className="flex-1 relative">
+  return (
+    <div style={{ height: "100vh", display: "flex", flexDirection: "column" }}>
+
+      {/* header */}
+      <header className="page-header">
+        <div className="page-header-left">
+          <Link href="/dashboard" style={{ textDecoration: "none" }}>
+            <button className="back-btn">← CAIRN</button>
+          </Link>
+          <span className="header-divider">|</span>
+          <span className="header-subtitle">DEPLOY MISSION</span>
+        </div>
+        <div className="page-header-right">
+          <div className="live-dot" />
+          <span className="network-label">HEDERA TESTNET</span>
+        </div>
+      </header>
+
+      <div style={{ flex: 1, display: "flex", overflow: "hidden", height: "100%" }}>
+
+        {/* map */}
+        <div style={{ flex: 1, position: "relative", height: "100%", minHeight: 0, minWidth: 0 }}>
           <InteractiveMap
             onBoundaryComplete={handleBoundaryComplete}
             drones={dronesData?.drones || []}
@@ -251,220 +156,119 @@ export default function DeployPage() {
           />
         </div>
 
-        {/* Right Sidebar */}
-        <div className="w-96 bg-[#FAFAFA] border-l border-[#D9D9D9] p-6 overflow-y-auto">
-          <div className="space-y-6">
-            {/* Select Existing Zone */}
-            <div className="card card-offset border border-[#D9D9D9] rounded-2xl p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-bold text-[#2E2E2E]">Select Existing Zone</h3>
-                <Badge variant="outline" className="text-cyan-600 border-cyan-400">
-                  {zonesData?.count ?? 0}
-                </Badge>
-              </div>
-              
-              {zonesData?.zones && zonesData.zones.length > 0 ? (
-                <div className="space-y-2 max-h-48 overflow-y-auto">
-                  {zonesData.zones.map((zone: any) => {
-                    // Extract zone name from zoneId or coordinates data
-                    const zoneName = zone.zoneName || zone.zoneId.split('|')[0] || zone.zoneId.substring(0, 20);
-                    return (
-                      <button
-                        key={zone.zoneId}
-                        onClick={() => {
-                          setSelectedZone(zone);
-                        }}
-                        className={`w-full text-left p-3 rounded-lg border transition-all ${
-                          selectedZone?.zoneId === zone.zoneId
-                            ? "bg-cyan-50 border-cyan-500 text-cyan-700"
-                            : "bg-white border-[#D9D9D9] text-[#2E2E2E] hover:bg-gray-50"
-                        }`}
-                      >
-                        <div className="font-semibold text-sm truncate">{zoneName}</div>
-                        <div className="text-xs text-[#696969] mt-1">
-                          {zone.drones?.length || 0} drone(s) • {zone.coordinates?.length || 0} points
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              ) : (
-                <p className="text-sm text-[#696969] text-center py-4">
-                  No zones created yet
-                </p>
-              )}
+        {/* right sidebar */}
+        <div style={{ width: 340, borderLeft: "1px solid var(--border)", background: "var(--bg)", overflowY: "auto", padding: 20, display: "flex", flexDirection: "column", gap: 16 }}>
 
-              {selectedZone && (
-                <Button
-                  onClick={() => {
-                    setSelectedZone(null);
-                  }}
-                  variant="ghost"
-                  size="sm"
-                  className="w-full mt-3 text-[#696969] hover:text-[#2E2E2E]"
-                >
-                  Clear Selection
-                </Button>
-              )}
+          {/* select existing zone */}
+          <div className="card anim-up d0" style={{ padding: 18 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".09em" }}>① SELECT EXISTING ZONE</div>
+              {selectedZone && <span className="badge" style={{ background: "var(--fg)", color: "var(--bg)" }}>SET ✓</span>}
             </div>
-
-            {/* Create New Zone */}
-            <div className="card card-offset border border-[#D9D9D9] rounded-2xl p-6">
-              <h3 className="text-lg font-bold text-[#2E2E2E] mb-4">Create New Zone</h3>
-              
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-[#696969] mb-2">
-                    Zone ID
-                  </label>
-                  <input
-                    type="text"
-                    value={zoneId}
-                    onChange={(e) => setZoneId(e.target.value)}
-                    placeholder="e.g., patrol-zone-1"
-                    className="w-full px-4 py-2 bg-white border border-[#D9D9D9] rounded-lg text-[#2E2E2E] placeholder-[#969696] focus:border-cyan-500 focus:outline-none"
-                  />
-                </div>
-
-                {boundaryCoords && boundaryCoords.length > 0 && (
-                  <div className="bg-green-50 border border-green-500 rounded-lg p-3">
-                    <p className="text-sm text-green-700">
-                      ✓ Boundary drawn: {boundaryCoords.length} points
-                    </p>
-                  </div>
-                )}
-
-                <Button
-                  onClick={handleSaveBoundary}
-                  disabled={isPaymentProcessing || !boundaryCoords || boundaryCoords.length < 3 || !zoneId.trim()}
-                  className="w-full bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white font-semibold"
-                >
-                  {isPaymentProcessing ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Saving to Blockchain...
-                    </>
-                  ) : (
-                    <>
-                      <Save className="mr-2 h-4 w-4" />
-                      Save Zone to Blockchain
-                    </>
-                  )}
-                </Button>
+            {zonesData?.zones && zonesData.zones.length > 0 ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 180, overflowY: "auto" }}>
+                {zonesData.zones.map((zone: any) => {
+                  const zoneName = zone.zoneName || zone.zoneId.split('|')[0] || zone.zoneId.substring(0, 20);
+                  return (
+                    <button key={zone.zoneId} onClick={() => setSelectedZone(zone)} style={{ textAlign: "left", padding: "10px 12px", borderRadius: "var(--radius)", border: `1px solid ${selectedZone?.zoneId === zone.zoneId ? "var(--fg)" : "var(--border)"}`, background: selectedZone?.zoneId === zone.zoneId ? "var(--fg)" : "var(--bg)", color: selectedZone?.zoneId === zone.zoneId ? "var(--bg)" : "var(--fg)", cursor: "pointer", fontFamily: "inherit", transition: "all .15s" }}>
+                      <div style={{ fontSize: 11, fontWeight: 700 }}>{zoneName}</div>
+                      <div style={{ fontSize: 10, opacity: .6, marginTop: 2 }}>{zone.drones?.length || 0} drones · {zone.coordinates?.length || 0} points</div>
+                    </button>
+                  );
+                })}
               </div>
+            ) : (
+              <div style={{ fontSize: 11, color: "var(--muted-fg)", textAlign: "center", padding: 16 }}>No zones yet</div>
+            )}
+            {selectedZone && <button className="btn btn-ghost" style={{ width: "100%", marginTop: 8, fontSize: 10 }} onClick={() => setSelectedZone(null)}>CLEAR</button>}
+          </div>
+
+          {/* create new zone */}
+          <div className="card anim-up d1" style={{ padding: 18 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".09em", marginBottom: 14 }}>② CREATE NEW ZONE</div>
+            <div style={{ marginBottom: 12 }}>
+              <label className="lbl">ZONE ID</label>
+              <input className="inp" placeholder="e.g. patrol-zone-1" value={zoneId} onChange={e => setZoneId(e.target.value)} />
             </div>
-
-            {/* Success State */}
-            {savedZoneId && (
-              <div className="card card-offset border-2 border-green-500 rounded-2xl p-6">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-cyan-500 rounded-full flex items-center justify-center">
-                    <CheckCircle2 className="h-6 w-6 text-white" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-bold text-[#2E2E2E]">Zone Created!</h3>
-                    <p className="text-sm text-[#696969]">ID: {savedZoneId}</p>
-                  </div>
-                </div>
-                
-                {autoAssignedDrones.length > 0 && (
-                  <div className="bg-[#F0F0F0] border border-[#D9D9D9] rounded-lg p-3 mb-4">
-                    <p className="text-sm text-[#2E2E2E] mb-2">
-                      Assigned Drones: {autoAssignedDrones.length}
-                    </p>
-                    <div className="space-y-1">
-                      {autoAssignedDrones.slice(0, 3).map((droneId) => (
-                        <div key={droneId} className="text-xs text-cyan-600 font-mono truncate">
-                          • {droneId}
-                        </div>
-                      ))}
-                      {autoAssignedDrones.length > 3 && (
-                        <div className="text-xs text-[#696969]">
-                          +{autoAssignedDrones.length - 3} more
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {countdown !== null && countdown > 0 && (
-                  <div className="bg-cyan-50 border border-cyan-500 rounded-lg p-3 mb-4">
-                    <p className="text-sm text-cyan-700 text-center">
-                      Simulation starts in {countdown}s...
-                    </p>
-                  </div>
-                )}
-
-                {patrolSubmitSuccess && (
-                  <div className="bg-green-50 border border-green-500 rounded-lg p-3 mb-4">
-                    <p className="text-xs text-green-700">{patrolSubmitSuccess}</p>
-                  </div>
-                )}
-
+            {boundaryCoords && boundaryCoords.length > 0 && (
+              <div style={{ padding: "8px 12px", border: "1px solid var(--border)", borderRadius: "var(--radius)", fontSize: 11, color: "var(--muted-fg)", background: "var(--muted)", marginBottom: 10 }}>
+                ✓ Boundary: {boundaryCoords.length} points
               </div>
             )}
+            <button className="btn btn-ghost" onClick={handleSaveBoundary} disabled={isPaymentProcessing || !boundaryCoords || boundaryCoords.length < 3 || !zoneId.trim()} style={{ width: "100%", fontSize: 11 }}>
+              {isPaymentProcessing ? "SAVING TO CHAIN..." : "SAVE TO BLOCKCHAIN"}
+            </button>
+          </div>
 
-            {/* Zone Ready for Analysis */}
-            {(savedZoneId || selectedZone) && (
-              <div className="card card-offset border border-cyan-500 rounded-2xl p-6">
-                <h3 className="text-lg font-bold text-[#2E2E2E] mb-4">Selected Zone</h3>
-                <div className="bg-[#F0F0F0] border border-[#D9D9D9] rounded-lg p-4 mb-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <MapPin className="h-4 w-4 text-cyan-600" />
-                    <span className="text-sm font-semibold text-[#2E2E2E]">
-                      {selectedZone ? (selectedZone.zoneName || selectedZone.zoneId.split('|')[0] || selectedZone.zoneId.substring(0, 20)) : savedZoneId}
-                    </span>
-                  </div>
-                  <div className="text-xs text-[#696969] space-y-1">
-                    <p>• {(selectedZone?.coordinates?.length || boundaryCoords?.length || 0)} boundary points</p>
-                    {selectedZone && selectedZone.drones && (
-                      <p>• {selectedZone.drones.length} drone(s) assigned</p>
-                    )}
-                  </div>
-                </div>
-                <Button
-                  onClick={handleConfirmAndProceed}
-                  className="w-full bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white font-semibold"
-                >
-                  <Zap className="mr-2 h-4 w-4" />
-                  Analyze & Deploy
-                </Button>
-              </div>
-            )}
-
-            {/* Available Drones */}
-            <div className="card card-offset border border-[#D9D9D9] rounded-2xl p-6">
-              <h3 className="text-lg font-bold text-[#2E2E2E] mb-4 flex items-center gap-2">
-                <Plane className="h-5 w-5 text-cyan-600" />
-                Available Drones
-              </h3>
-              {dronesData?.drones && dronesData.drones.length > 0 ? (
-                <div className="space-y-2 max-h-64 overflow-y-auto">
-                  {dronesData.drones.map((drone: any) => (
-                    <div
-                      key={drone.evmAddress}
-                      className="bg-white border border-[#D9D9D9] rounded-lg p-3 hover:bg-gray-50 transition-all"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-semibold text-[#2E2E2E]">{drone.cairnDroneId}</p>
-                          <p className="text-xs text-[#696969] mt-1">{drone.model}</p>
-                        </div>
-                        <Badge className={drone.status === "ACTIVE" ? "bg-green-50 border-green-500 text-green-700" : "bg-gray-50 border-gray-400 text-gray-600"}>
-                          {drone.status}
-                        </Badge>
-                      </div>
-                      {drone.assignedZoneId !== "UNASSIGNED" && (
-                        <p className="text-xs text-purple-600 mt-2">▸ Deployed: {drone.assignedZoneId.split('|')[0] || drone.assignedZoneId.substring(0, 15)}...</p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-[#696969] text-center py-4">No drones registered</p>
-              )}
+          {/* blockchain log */}
+          <div className="card anim-up d2" style={{ padding: 18 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".09em", marginBottom: 10 }}>BLOCKCHAIN LOG</div>
+            <div style={{ minHeight: 80, fontSize: 11, color: "var(--muted-fg)", lineHeight: 1.9 }}>
+              {logs.length === 0
+                ? <span style={{ color: "var(--border)" }}>// awaiting action...</span>
+                : logs.map((l, i) => (
+                  <div key={i} className="anim-left" style={{ animationDelay: `${i * 40}ms`, color: l.includes("✓") ? "var(--fg)" : "var(--muted-fg)", fontWeight: l.includes("✓") ? 700 : 400 }}>{l}</div>
+                ))
+              }
+              {isPaymentProcessing && <div style={{ display: "flex", gap: 4, marginTop: 4 }}><span className="think-dot" /><span className="think-dot" /><span className="think-dot" /></div>}
             </div>
           </div>
+
+          {/* success state */}
+          {savedZoneId && (
+            <div className="card card-offset anim-scale" style={{ padding: 20, textAlign: "center" }}>
+              <div style={{ width: 44, height: 44, borderRadius: "50%", border: "2px solid var(--fg)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px", fontSize: 18, fontWeight: 700 }}>✓</div>
+              <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 4 }}>Zone Created!</div>
+              <div style={{ fontSize: 11, color: "var(--muted-fg)", marginBottom: 14 }}>ID: {savedZoneId}</div>
+              {autoAssignedDrones.length > 0 && (
+                <div style={{ border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: "8px 12px", fontSize: 11, color: "var(--muted-fg)", marginBottom: 10, textAlign: "left" }}>
+                  {autoAssignedDrones.length} drone(s) auto-assigned
+                </div>
+              )}
+              {patrolSubmitSuccess && (
+                <div style={{ border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: "8px 12px", fontSize: 11, color: "var(--fg)", marginBottom: 10 }}>{patrolSubmitSuccess}</div>
+              )}
+            </div>
+          )}
+
+          {/* proceed to analysis */}
+          {(savedZoneId || selectedZone) && (
+            <div className="card anim-up d0" style={{ padding: 18 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".09em", marginBottom: 14 }}>③ ANALYZE & DEPLOY</div>
+              <div style={{ border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: "10px 13px", background: "var(--muted)", marginBottom: 14 }}>
+                <div className="lbl" style={{ marginBottom: 3 }}>SELECTED ZONE</div>
+                <div style={{ fontSize: 12, fontWeight: 600 }}>
+                  {selectedZone ? (selectedZone.zoneName || selectedZone.zoneId.split('|')[0] || selectedZone.zoneId.substring(0, 20)) : savedZoneId}
+                </div>
+              </div>
+              <button className="btn btn-primary" onClick={handleConfirmAndProceed} style={{ width: "100%", fontSize: 12 }}>
+                ANALYZE & DEPLOY →
+              </button>
+            </div>
+          )}
+
+          {/* available drones */}
+          <div className="card anim-up d3" style={{ padding: 18 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".09em", marginBottom: 12 }}>AVAILABLE DRONES</div>
+            {dronesData?.drones && dronesData.drones.length > 0 ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 200, overflowY: "auto" }}>
+                {dronesData.drones.map((drone: any) => (
+                  <div key={drone.evmAddress} style={{ border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: "10px 12px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 700 }}>{drone.cairnDroneId}</div>
+                      <div style={{ fontSize: 10, color: "var(--muted-fg)", marginTop: 2 }}>{drone.model}</div>
+                    </div>
+                    <span className="badge" style={{ background: drone.status === "ACTIVE" ? "#000" : "transparent", color: drone.status === "ACTIVE" ? "#fff" : "var(--muted-fg)", border: drone.status === "ACTIVE" ? "none" : "1px solid var(--border)" }}>
+                      {drone.status}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{ fontSize: 11, color: "var(--muted-fg)", textAlign: "center", padding: 16 }}>No drones registered</div>
+            )}
+          </div>
+
         </div>
       </div>
     </div>

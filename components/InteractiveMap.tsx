@@ -4,9 +4,6 @@ import { useEffect, useState, useRef } from "react";
 import * as RL from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Trash2, Edit2, Save, Navigation2, Loader2 } from "lucide-react";
 
 const MapContainer = RL.MapContainer as any;
 const TileLayer = RL.TileLayer as any;
@@ -304,117 +301,248 @@ export function InteractiveMap({ onBoundaryComplete, drones = [], selectedZone =
   // Don't render until mounted on client
   if (!isMounted) {
     return (
-      <div className="relative h-full w-full flex items-center justify-center bg-forest-900">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500 mx-auto mb-3"></div>
-          <p className="text-gray-400 text-sm">Loading map...</p>
+      <div style={{ position: "relative", height: "100%", width: "100%", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--muted)" }}>
+        <div style={{ textAlign: "center" }}>
+          <div style={{ animation: "spin 2s linear infinite", borderRadius: "50%", height: 48, width: 48, borderBottom: "2px solid var(--fg)", margin: "0 auto 12px" }} />
+          <p style={{ color: "var(--muted-fg)", fontSize: 13 }}>Loading map...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="relative h-full w-full overflow-hidden" ref={mapContainerRef}>
+    <div style={{ position: "relative", height: "100%", width: "100%", overflow: "hidden" }} ref={mapContainerRef}>
       {/* Control Panel */}
-      <div className="absolute top-4 left-4 z-[1000] flex flex-col gap-2">
-        <div className="glass-strong rounded-lg border border-white/20 p-3 space-y-2">
-          <h3 className="text-xs font-semibold text-green-400 uppercase tracking-wide">Tools</h3>
-          <div className="flex flex-col gap-2">
-            <Button
-              size="sm"
-              variant="outline"
+      <div style={{ position: "absolute", top: 16, left: 16, zIndex: 1000, display: "flex", flexDirection: "column", gap: 12 }}>
+        
+        {/* Tools Section */}
+        <div style={{
+          background: "var(--card)",
+          border: "1px solid var(--border)",
+          borderRadius: "var(--radius)",
+          padding: "14px 16px",
+          minWidth: "200px"
+        }}>
+          <div style={{ fontSize: 9, fontWeight: 600, color: "var(--muted-fg)", textTransform: "uppercase", letterSpacing: ".08em", marginBottom: 10 }}>
+            🛠 Tools
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <button
               onClick={getCurrentLocation}
               disabled={isGettingLocation}
-              className="w-full justify-start bg-blue-600/10 hover:bg-blue-600/20 border-blue-500/30"
+              style={{
+                padding: "10px 12px",
+                border: "1px solid var(--border)",
+                borderRadius: "var(--radius)",
+                background: "var(--bg)",
+                color: "var(--fg)",
+                fontSize: 10,
+                fontWeight: 500,
+                cursor: isGettingLocation ? "not-allowed" : "pointer",
+                transition: "all 0.15s",
+                opacity: isGettingLocation ? 0.6 : 1,
+                textAlign: "center"
+              }}
+              onMouseEnter={(e) => {
+                if (!isGettingLocation) {
+                  e.currentTarget.style.background = "var(--muted)";
+                  e.currentTarget.style.borderColor = "var(--fg)";
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "var(--bg)";
+                e.currentTarget.style.borderColor = "var(--border)";
+              }}
             >
-              {isGettingLocation ? (
-                <>
-                  <Loader2 className="h-3 w-3 mr-2 animate-spin" />
-                  Getting Location...
-                </>
-              ) : (
-                <>
-                  <Navigation2 className="h-3 w-3 mr-2" />
-                  My Location
-                </>
-              )}
-            </Button>
-            <Button
-              size="sm"
-              variant={mode === "pin" ? "default" : "outline"}
+              {isGettingLocation ? "⟳ GETTING LOCATION..." : "📍 MY LOCATION"}
+            </button>
+            
+            <button
               onClick={() => setMode(mode === "pin" ? "none" : "pin")}
-              className="w-full justify-start"
+              style={{
+                padding: "10px 12px",
+                border: "1px solid var(--border)",
+                borderRadius: "var(--radius)",
+                background: mode === "pin" ? "var(--fg)" : "var(--bg)",
+                color: mode === "pin" ? "var(--bg)" : "var(--fg)",
+                fontSize: 10,
+                fontWeight: 500,
+                cursor: "pointer",
+                transition: "all 0.15s",
+                textAlign: "center"
+              }}
+              onMouseEnter={(e) => {
+                if (mode !== "pin") {
+                  e.currentTarget.style.background = "var(--muted)";
+                  e.currentTarget.style.borderColor = "var(--fg)";
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (mode !== "pin") {
+                  e.currentTarget.style.background = "var(--bg)";
+                  e.currentTarget.style.borderColor = "var(--border)";
+                }
+              }}
             >
-              {mode === "pin" ? "✓ " : ""}Drop Pins
-            </Button>
-            <Button
-              size="sm"
-              variant={mode === "boundary" ? "default" : "outline"}
+              {mode === "pin" ? "✓ DROP PINS" : "📌 DROP PINS"}
+            </button>
+            
+            <button
               onClick={() => setMode(mode === "boundary" ? "none" : "boundary")}
-              className="w-full justify-start"
+              style={{
+                padding: "10px 12px",
+                border: "1px solid var(--border)",
+                borderRadius: "var(--radius)",
+                background: mode === "boundary" ? "var(--fg)" : "var(--bg)",
+                color: mode === "boundary" ? "var(--bg)" : "var(--fg)",
+                fontSize: 10,
+                fontWeight: 500,
+                cursor: "pointer",
+                transition: "all 0.15s",
+                textAlign: "center"
+              }}
+              onMouseEnter={(e) => {
+                if (mode !== "boundary") {
+                  e.currentTarget.style.background = "var(--muted)";
+                  e.currentTarget.style.borderColor = "var(--fg)";
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (mode !== "boundary") {
+                  e.currentTarget.style.background = "var(--bg)";
+                  e.currentTarget.style.borderColor = "var(--border)";
+                }
+              }}
             >
-              {mode === "boundary" ? "✓ " : ""}Create Boundary
-            </Button>
+              {mode === "boundary" ? "✓ CREATE BOUNDARY" : "🔲 CREATE BOUNDARY"}
+            </button>
           </div>
         </div>
 
-        {/* Boundary Controls */}
+        {/* Boundary Mode Controls */}
         {mode === "boundary" && (
-          <div className="glass-strong rounded-lg border border-blue-500/30 p-3 space-y-2">
-            <p className="text-xs text-gray-300">
+          <div style={{
+            background: "var(--card)",
+            border: "1px solid var(--border)",
+            borderRadius: "var(--radius)",
+            padding: "12px 14px",
+            minWidth: "200px"
+          }}>
+            <div style={{ fontSize: 9, color: "var(--muted-fg)", marginBottom: 10 }}>
               Click map to add points ({boundaryPoints.length} added)
-            </p>
-            <div className="flex gap-2">
-              <Button
-                size="sm"
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
                 onClick={completeBoundary}
                 disabled={boundaryPoints.length < 3}
-                className="flex-1"
+                style={{
+                  flex: 1,
+                  padding: "8px 12px",
+                  border: "1px solid var(--border)",
+                  borderRadius: "var(--radius)",
+                  background: boundaryPoints.length < 3 ? "var(--muted)" : "var(--fg)",
+                  color: boundaryPoints.length < 3 ? "var(--muted-fg)" : "var(--bg)",
+                  fontSize: 9,
+                  fontWeight: 600,
+                  cursor: boundaryPoints.length < 3 ? "not-allowed" : "pointer",
+                  transition: "all 0.15s",
+                  opacity: boundaryPoints.length < 3 ? 0.6 : 1,
+                  textTransform: "uppercase",
+                  letterSpacing: ".05em"
+                }}
               >
-                <Save className="h-3 w-3 mr-1" />
-                Complete
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
+                COMPLETE
+              </button>
+              <button
                 onClick={cancelBoundary}
+                style={{
+                  flex: 1,
+                  padding: "8px 12px",
+                  border: "1px solid var(--border)",
+                  borderRadius: "var(--radius)",
+                  background: "var(--bg)",
+                  color: "var(--fg)",
+                  fontSize: 9,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  transition: "all 0.15s",
+                  textTransform: "uppercase",
+                  letterSpacing: ".05em"
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = "var(--muted)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = "var(--bg)";
+                }}
               >
-                Cancel
-              </Button>
+                CANCEL
+              </button>
             </div>
           </div>
         )}
 
-        {/* Stats and Actions */}
-        <div className="glass-strong rounded-lg border border-white/20 p-3">
-          <div className="text-xs space-y-2">
-            <div className="flex justify-between">
-              <span className="text-gray-400">Pins:</span>
-              <Badge variant="outline" className="h-5 px-2 text-xs">{pins.length}</Badge>
+        {/* Stats Panel */}
+        <div style={{
+          background: "var(--card)",
+          border: "1px solid var(--border)",
+          borderRadius: "var(--radius)",
+          padding: "14px 16px",
+          minWidth: "200px"
+        }}>
+          <div style={{ fontSize: 9, fontWeight: 600, color: "var(--muted-fg)", textTransform: "uppercase", letterSpacing: ".08em", marginBottom: 10 }}>
+            📊 Stats
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontSize: 9, color: "var(--muted-fg)", fontWeight: 500 }}>PINS</span>
+              <span style={{ fontSize: 11, fontWeight: 600, color: "var(--fg)", background: "var(--muted)", padding: "4px 10px", borderRadius: "4px" }}>
+                {pins.length}
+              </span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-gray-400">Boundaries:</span>
-              <Badge variant="outline" className="h-5 px-2 text-xs">{boundaries.length}</Badge>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontSize: 9, color: "var(--muted-fg)", fontWeight: 500 }}>BOUNDARIES</span>
+              <span style={{ fontSize: 11, fontWeight: 600, color: "var(--fg)", background: "var(--muted)", padding: "4px 10px", borderRadius: "4px" }}>
+                {boundaries.length}
+              </span>
             </div>
             {pins.length >= 3 && (
-              <Button
-                size="sm"
+              <button
                 onClick={convertPinsToBoundary}
-                className="w-full mt-2 bg-green-600 hover:bg-green-700 text-xs h-7"
+                style={{
+                  marginTop: 8,
+                  padding: "10px 12px",
+                  border: "1px solid var(--border)",
+                  borderRadius: "var(--radius)",
+                  background: "var(--fg)",
+                  color: "var(--bg)",
+                  fontSize: 9,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  transition: "all 0.15s",
+                  textTransform: "uppercase",
+                  letterSpacing: ".05em"
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.opacity = "0.9";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.opacity = "1";
+                }}
               >
-                Convert Pins to Boundary
-              </Button>
+                CONVERT TO BOUNDARY
+              </button>
             )}
           </div>
         </div>
       </div>
 
       {/* Map */}
-      <div className="h-full w-full" style={{ position: "relative" }}>
+      <div style={{ position: "relative", height: "100%", width: "100%" }}>
         <MapContainer
           center={mapCenter}
           zoom={13}
-          className="h-full w-full"
+          style={{ height: "100%", width: "100%" }}
           zoomControl={true}
           key="interactive-map"
         >
@@ -430,59 +558,96 @@ export function InteractiveMap({ onBoundaryComplete, drones = [], selectedZone =
         {!selectedZone && pins.map((pin) => (
           <Marker key={pin.id} position={pin.position}>
             <Popup>
-              <div className="p-2 min-w-[180px]">
+              <div style={{ minWidth: 180, padding: 8 }}>
                 {editingPin === pin.id ? (
-                  <div className="space-y-2">
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                     <input
                       type="text"
                       value={editLabel}
                       onChange={(e) => setEditLabel(e.target.value)}
-                      className="w-full px-2 py-1 text-sm border rounded"
+                      style={{
+                        padding: "6px 8px",
+                        fontSize: 11,
+                        border: "1px solid var(--border)",
+                        borderRadius: "4px",
+                        background: "var(--bg)",
+                        color: "var(--fg)"
+                      }}
                       autoFocus
                     />
-                    <div className="flex gap-1">
-                      <Button
-                        size="sm"
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <button
                         onClick={() => saveEditPin(pin.id)}
-                        className="flex-1 h-7 text-xs"
+                        style={{
+                          flex: 1,
+                          padding: "6px 10px",
+                          fontSize: 9,
+                          fontWeight: 600,
+                          border: "1px solid var(--border)",
+                          borderRadius: "4px",
+                          background: "var(--fg)",
+                          color: "var(--bg)",
+                          cursor: "pointer"
+                        }}
                       >
-                        <Save className="h-3 w-3 mr-1" />
-                        Save
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
+                        SAVE
+                      </button>
+                      <button
                         onClick={() => setEditingPin(null)}
-                        className="h-7 text-xs"
+                        style={{
+                          flex: 1,
+                          padding: "6px 10px",
+                          fontSize: 9,
+                          fontWeight: 600,
+                          border: "1px solid var(--border)",
+                          borderRadius: "4px",
+                          background: "var(--bg)",
+                          color: "var(--fg)",
+                          cursor: "pointer"
+                        }}
                       >
-                        Cancel
-                      </Button>
+                        CANCEL
+                      </button>
                     </div>
                   </div>
                 ) : (
-                  <div className="space-y-2">
-                    <h4 className="font-semibold text-sm">{pin.label}</h4>
-                    <p className="text-xs text-gray-600">
-                      {pin.position[0].toFixed(4)}, {pin.position[1].toFixed(4)}
-                    </p>
-                    <div className="flex gap-1 pt-1">
-                      <Button
-                        size="sm"
-                        variant="outline"
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: "var(--fg)" }}>{pin.label}</div>
+                    <div style={{ fontSize: 9, color: "var(--muted-fg)", fontFamily: "monospace" }}>
+                      {pin.position[0].toFixed(4)}° · {pin.position[1].toFixed(4)}°
+                    </div>
+                    <div style={{ display: "flex", gap: 6, paddingTop: 4 }}>
+                      <button
                         onClick={() => startEditPin(pin)}
-                        className="flex-1 h-7 text-xs"
+                        style={{
+                          flex: 1,
+                          padding: "6px 10px",
+                          fontSize: 9,
+                          fontWeight: 600,
+                          border: "1px solid var(--border)",
+                          borderRadius: "4px",
+                          background: "var(--bg)",
+                          color: "var(--fg)",
+                          cursor: "pointer"
+                        }}
                       >
-                        <Edit2 className="h-3 w-3 mr-1" />
-                        Edit
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="destructive"
+                        EDIT
+                      </button>
+                      <button
                         onClick={() => deletePin(pin.id)}
-                        className="h-7 px-2"
+                        style={{
+                          padding: "6px 10px",
+                          fontSize: 9,
+                          fontWeight: 600,
+                          border: "1px solid var(--border)",
+                          borderRadius: "4px",
+                          background: "var(--bg)",
+                          color: "var(--fg)",
+                          cursor: "pointer"
+                        }}
                       >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
+                        DELETE
+                      </button>
                     </div>
                   </div>
                 )}
@@ -504,20 +669,27 @@ export function InteractiveMap({ onBoundaryComplete, drones = [], selectedZone =
             }}
           >
             <Popup>
-              <div className="p-2">
-                <h4 className="font-semibold text-sm mb-2">Boundary</h4>
-                <p className="text-xs text-gray-600 mb-2">
+              <div style={{ padding: 8, minWidth: 200 }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: "var(--fg)", marginBottom: 6 }}>Boundary</div>
+                <div style={{ fontSize: 9, color: "var(--muted-fg)", marginBottom: 10 }}>
                   {boundary.positions.length} points
-                </p>
-                <Button
-                  size="sm"
-                  variant="destructive"
+                </div>
+                <button
                   onClick={() => deleteBoundary(boundary.id)}
-                  className="w-full h-7 text-xs"
+                  style={{
+                    width: "100%",
+                    padding: "6px 10px",
+                    fontSize: 9,
+                    fontWeight: 600,
+                    border: "1px solid var(--border)",
+                    borderRadius: "4px",
+                    background: "var(--fg)",
+                    color: "var(--bg)",
+                    cursor: "pointer"
+                  }}
                 >
-                  <Trash2 className="h-3 w-3 mr-1" />
-                  Delete
-                </Button>
+                  DELETE
+                </button>
               </div>
             </Popup>
           </Polygon>
@@ -556,19 +728,19 @@ export function InteractiveMap({ onBoundaryComplete, drones = [], selectedZone =
               icon={droneIcon}
             >
               <Popup>
-                <div className="p-2 min-w-[200px]">
-                  <h4 className="font-semibold text-sm text-blue-600 mb-2">
+                <div style={{ padding: 8, minWidth: 200 }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: "var(--fg)", marginBottom: 8 }}>
                     🚁 {drone.cairnDroneId}
-                  </h4>
-                  <div className="space-y-1 text-xs">
-                    <p><strong>Model:</strong> {drone.model}</p>
-                    <p><strong>Serial:</strong> {drone.serialNumber}</p>
-                    <p className="text-gray-600 mt-2">
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 9 }}>
+                    <div><strong style={{ color: "var(--fg)" }}>Model:</strong> <span style={{ color: "var(--muted-fg)" }}>{drone.model}</span></div>
+                    <div><strong style={{ color: "var(--fg)" }}>Serial:</strong> <span style={{ color: "var(--muted-fg)" }}>{drone.serialNumber}</span></div>
+                    <div style={{ color: "var(--muted-fg)", marginTop: 6 }}>
                       <strong>Registration Location:</strong>
-                    </p>
-                    <p className="text-gray-500 font-mono">
-                      {drone.registrationLat.toFixed(6)}, {drone.registrationLng.toFixed(6)}
-                    </p>
+                    </div>
+                    <div style={{ color: "var(--muted-fg)", fontFamily: "monospace", fontSize: 8 }}>
+                      {drone.registrationLat.toFixed(6)}° · {drone.registrationLng.toFixed(6)}°
+                    </div>
                   </div>
                 </div>
               </Popup>

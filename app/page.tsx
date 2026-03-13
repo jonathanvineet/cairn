@@ -7,6 +7,38 @@ import { useWalletStore } from "@/stores/walletStore";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 
+const SLIDES = [
+  {
+    tag: "INDIA'S DRONE REGISTRY",
+    h1: "Your drone.",
+    h2: "Your airspace.",
+    h3: "On-chain.",
+    sub: "Deploy autonomous surveillance drones. Register on Hedera. Verify every mission — trustlessly.",
+  },
+  {
+    tag: "THE PROBLEM",
+    h1: "Airspace is",
+    h2: "unregulated &",
+    h3: "unverifiable.",
+    sub: "Drone operations lack tamper-proof logging, verifiable identity, and decentralized oversight.",
+  },
+  {
+    tag: "THE SOLUTION",
+    h1: "Every drone.",
+    h2: "Every mission.",
+    h3: "On Hedera.",
+    sub: "CAIRN registers drones as AI agents on Hedera, stores patrol evidence as cryptographic hashes.",
+  },
+  {
+    tag: "GET STARTED",
+    h1: "Connect.",
+    h2: "Register.",
+    h3: "Deploy.",
+    sub: "Three steps to launch your first blockchain-verified autonomous patrol mission.",
+    cta: true,
+  },
+];
+
 export default function LandingPage() {
   const [mounted, setMounted] = useState(false);
   const [slideIndex, setSlideIndex] = useState(0);
@@ -29,7 +61,7 @@ export default function LandingPage() {
   useEffect(() => {
     setMounted(true);
     const interval = setInterval(() => {
-      setSlideIndex(prev => (prev + 1) % 4);
+      setSlideIndex(prev => (prev + 1) % SLIDES.length);
     }, 4200);
     return () => clearInterval(interval);
   }, []);
@@ -42,127 +74,159 @@ export default function LandingPage() {
     router.push(path);
   };
 
+  const cur = SLIDES[slideIndex];
+
   return (
-    <div className="scanlines">
-      <div className="grid-bg min-h-screen flex flex-col relative">
-        {/* Navbar */}
-        <header className="border-b border-[#D9D9D9] bg-[#FAFAFA] sticky top-0 z-50">
-          <div className="max-w-7xl mx-auto px-8 h-16 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Plane className="w-5 h-5 text-[#2E2E2E]" />
-              <span className="font-bold text-lg text-[#2E2E2E]">CAIRN</span>
-              <span className="text-[#696969]">|</span>
-              <span className="text-sm text-[#696969]">DRONE AIRSPACE REGISTRY</span>
+    <div className="scanlines" style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+
+      {/* grid background */}
+      <div className="grid-bg" style={{ position: "fixed", inset: 0, zIndex: 0, opacity: 0.55, pointerEvents: "none" }} />
+
+      {/* ── NAVBAR ── */}
+      <nav className="anim-down d0" style={{
+        position: "relative", zIndex: 10,
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        padding: "18px 48px",
+        borderBottom: "1px solid var(--border)",
+        background: "rgba(250,250,250,0.88)",
+        backdropFilter: "blur(8px)",
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <Plane size={20} />
+          <span style={{ fontWeight: 700, fontSize: 13, letterSpacing: ".1em" }}>CAIRN</span>
+          <span style={{ color: "var(--border)", fontSize: 16, margin: "0 4px" }}>|</span>
+          <span style={{ fontSize: 11, color: "var(--muted-fg)", letterSpacing: ".05em" }}>
+            DRONE AIRSPACE REGISTRY
+          </span>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <div className="live-dot" />
+            <span style={{ fontSize: 10, letterSpacing: ".08em", color: "var(--muted-fg)" }}>HEDERA TESTNET</span>
+          </div>
+          <WalletConnect />
+        </div>
+      </nav>
+
+      {/* ── HERO ── */}
+      <main style={{ flex: 1, display: "flex", position: "relative", zIndex: 10 }}>
+
+        {/* left — slides */}
+        <div style={{
+          flex: 1, display: "flex", flexDirection: "column", justifyContent: "center",
+          padding: "60px 64px", maxWidth: 640,
+        }}>
+          <div key={slideIndex} className="anim-up d0">
+
+            {/* tag pill */}
+            <div style={{
+              display: "inline-flex", alignItems: "center", gap: 6,
+              border: "1px solid var(--border)", borderRadius: 4,
+              padding: "3px 10px", fontSize: 10, fontWeight: 600,
+              letterSpacing: ".09em", color: "var(--muted-fg)", marginBottom: 20,
+            }}>
+              ▸ {cur.tag}
             </div>
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-[#4ade80] live-dot"></div>
-                <span className="text-xs font-semibold text-[#2E2E2E]">HEDERA TESTNET</span>
-              </div>
-              <WalletConnect />
+
+            {/* heading */}
+            <h1 className="anim-up d1" style={{
+              fontSize: "clamp(30px, 4.5vw, 54px)", fontWeight: 700,
+              lineHeight: 1.12, letterSpacing: "-.02em", marginBottom: 18,
+            }}>
+              <span style={{ display: "block", color: "var(--fg)" }}>{cur.h1}</span>
+              <span style={{ display: "block", color: "var(--fg)" }}>{cur.h2}</span>
+              <span style={{ display: "block", color: "var(--muted-fg)" }}>{cur.h3}</span>
+            </h1>
+
+            {/* subtitle */}
+            <p className="anim-up d2" style={{
+              fontSize: 13, color: "var(--muted-fg)", lineHeight: 1.75,
+              maxWidth: 460, marginBottom: 36,
+            }}>
+              {cur.sub}
+            </p>
+
+
+          </div>
+
+          {/* slide dots */}
+          <div style={{ display: "flex", gap: 6, marginTop: 40 }}>
+            {SLIDES.map((_, i) => (
+              <button key={i} onClick={() => setSlideIndex(i)} style={{
+                width: i === slideIndex ? 20 : 6, height: 6, borderRadius: 999,
+                background: i === slideIndex ? "var(--fg)" : "var(--border)",
+                border: "none", cursor: "pointer", transition: "all .3s",
+              }} />
+            ))}
+          </div>
+        </div>
+
+        {/* right — drone card */}
+        <div style={{
+          flex: 1, display: "flex", alignItems: "center", justifyContent: "center",
+          padding: 48, position: "relative",
+        }}>
+          <div className="drone-ping" style={{ position: "absolute", width: 160, height: 160, borderRadius: "50%", border: "1px solid rgba(0,0,0,0.1)" }} />
+          <div className="drone-ping" style={{ position: "absolute", width: 160, height: 160, borderRadius: "50%", border: "1px solid rgba(0,0,0,0.07)", animationDelay: ".6s" }} />
+
+          <div className="card card-offset drone-float" style={{
+            padding: 32, display: "flex", flexDirection: "column",
+            alignItems: "center", gap: 16, position: "relative", zIndex: 2,
+          }}>
+            <Plane size={64} />
+            <div style={{ textAlign: "center" }}>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".1em", color: "var(--muted-fg)", marginBottom: 3 }}>DRONE AGENT</div>
+              <div style={{ fontSize: 11, color: "var(--muted-fg)" }}>HEDERA TESTNET</div>
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <span className="badge" style={{ background: "#000", color: "#fff", border: "none" }}>ACTIVE</span>
+              <span className="badge" style={{ background: "var(--fg)", color: "var(--bg)" }}>VERIFIED</span>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, width: "100%" }}>
+              {[
+                { l: "REGISTERED", v: String(drones.length) },
+                { l: "ACTIVE",     v: String(activeDrones.length) },
+                { l: "ZONES",      v: String(totalZones) },
+                { l: "NETWORK",    v: "TESTNET" },
+              ].map(s => (
+                <div key={s.l} style={{ border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: "8px 10px", textAlign: "center" }}>
+                  <div style={{ fontSize: 9, color: "var(--muted-fg)", letterSpacing: ".08em", marginBottom: 2 }}>{s.l}</div>
+                  <div style={{ fontSize: 13, fontWeight: 700 }}>{s.v}</div>
+                </div>
+              ))}
             </div>
           </div>
-        </header>
+        </div>
+      </main>
 
-        {/* Hero Section */}
-        <section className="flex-1 px-8 py-20">
-          <div className="max-w-7xl mx-auto grid grid-cols-2 gap-12 items-center">
-            {/* Left Column */}
-            <div className="anim-up">
-              <div className="inline-block mb-6 px-3 py-1.5 border border-[#D9D9D9] rounded-full text-xs font-semibold text-[#696969]">
-                ▸ Welcome to CAIRN
-              </div>
-              <h1 className="text-6xl font-bold text-[#2E2E2E] leading-tight mb-6">
-                India's On-Chain{"\n"}
-                <span className="text-[#696969]">Drone Registry</span>
-              </h1>
-              <p className="text-base text-[#696969] mb-8 leading-relaxed max-w-md">
-                Autonomous airspace trust layer built on Hedera. Register, deploy zones, and monitor with AI agents that watch 24/7.
-              </p>
-              <div className="flex gap-4">
-                <button
-                  onClick={() => handleNavigate("/register")}
-                  className="btn-primary anim-scale d1"
-                >
-                  Register Drone
-                </button>
-                <button
-                  onClick={() => handleNavigate("/deploy")}
-                  className="btn-ghost anim-scale d2"
-                >
-                  Deploy Zone
-                </button>
-              </div>
-            </div>
-
-            {/* Right Column - Card */}
-            <div className="card card-offset anim-scale d2">
-              <div className="mb-6 flex items-center justify-center">
-                <div className="relative w-40 h-40">
-                  <div className="absolute inset-0 rounded-full border border-[#D9D9D9]"></div>
-                  <div className="absolute inset-0 rounded-full border border-[#D9D9D9] drone-ping" style={{transform: 'scale(1.3)', opacity: 0.5}}></div>
-                  <div className="absolute inset-0 flex items-center justify-center drone-float">
-                    <Plane className="w-24 h-24 text-[#2E2E2E]" />
-                  </div>
-                </div>
-              </div>
-              <div className="space-y-3 mb-6">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-[#4ade80] live-dot"></div>
-                  <span className="text-xs font-semibold text-[#4ade80]">LIVE</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="badge badge-active">ACTIVE</span>
-                  <span className="text-xs text-[#696969]">{drones.length} Registered</span>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="bg-[#FAFAFA] border border-[#D9D9D9] rounded-lg p-3 text-center">
-                  <div className="text-xl font-bold text-[#2E2E2E]">{activeDrones.length}</div>
-                  <div className="text-xs text-[#696969]">Active</div>
-                </div>
-                <div className="bg-[#FAFAFA] border border-[#D9D9D9] rounded-lg p-3 text-center">
-                  <div className="text-xl font-bold text-[#2E2E2E]">{totalZones}</div>
-                  <div className="text-xs text-[#696969]">Zones</div>
-                </div>
-              </div>
-            </div>
+      {/* ── BOTTOM STATS BAR ── */}
+      <div style={{
+        borderTop: "1px solid var(--border)",
+        background: "rgba(250,250,250,0.9)",
+        backdropFilter: "blur(8px)",
+        position: "relative", zIndex: 10,
+        padding: "16px 48px",
+        display: "flex", gap: 36, alignItems: "center", flexWrap: "wrap",
+      }}>
+        {[
+          { l: "DRONES ACTIVE",   v: String(activeDrones.length) },
+          { l: "ACTIVE PATROLS",  v: "0" },
+          { l: "EVIDENCE HASHES", v: "0" },
+          { l: "HBAR STAKED",     v: "0" },
+        ].map(s => (
+          <div key={s.l} className="card" style={{ padding: "10px 18px", display: "flex", flexDirection: "column", gap: 3, alignItems: "center", minWidth: 108 }}>
+            <span style={{ fontSize: 17, fontWeight: 700 }}>{s.v}</span>
+            <span style={{ fontSize: 9, color: "var(--muted-fg)", letterSpacing: ".08em" }}>{s.l}</span>
           </div>
-        </section>
-
-        {/* Slide Indicators */}
-        <div className="flex justify-center gap-2 pb-8">
-          {[0, 1, 2, 3].map(i => (
-            <button
-              key={i}
-              onClick={() => setSlideIndex(i)}
-              className={`h-2 rounded-full transition-all ${i === slideIndex ? 'w-8 bg-[#2E2E2E]' : 'w-2 bg-[#D9D9D9]'}`}
-            />
+        ))}
+        <div style={{ flex: 1 }} />
+        <div style={{ display: "flex", gap: 28, overflowX: "auto" }}>
+          {["CAIRN LIVE", "HEDERA TESTNET", "AI AGENTS READY", "ON-CHAIN VERIFIED"].map((t, i) => (
+            <span key={i} style={{ fontSize: 10, color: "var(--muted-fg)", letterSpacing: ".06em", whiteSpace: "nowrap", flexShrink: 0 }}>▸ {t}</span>
           ))}
         </div>
-
-        {/* Bottom Stats Bar */}
-        <div className="border-t border-[#D9D9D9] bg-[#FAFAFA] px-8 py-6">
-          <div className="max-w-7xl mx-auto flex gap-8">
-            <div className="flex-1 card">
-              <div className="text-xs font-semibold text-[#696969] mb-2">DRONES ACTIVE</div>
-              <div className="text-2xl font-bold text-[#2E2E2E] count-pop">{activeDrones.length}</div>
-            </div>
-            <div className="flex-1 card">
-              <div className="text-xs font-semibold text-[#696969] mb-2">PATROLS</div>
-              <div className="text-2xl font-bold text-[#2E2E2E] count-pop">0</div>
-            </div>
-            <div className="flex-1 card">
-              <div className="text-xs font-semibold text-[#696969] mb-2">EVIDENCE HASHES</div>
-              <div className="text-2xl font-bold text-[#2E2E2E] count-pop">0</div>
-            </div>
-            <div className="flex-1 card">
-              <div className="text-xs font-semibold text-[#696969] mb-2">HBAR STAKED</div>
-              <div className="text-2xl font-bold text-[#2E2E2E] count-pop">0</div>
-            </div>
-          </div>
-        </div>
       </div>
+
     </div>
   );
 }

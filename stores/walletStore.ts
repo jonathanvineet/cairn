@@ -108,6 +108,10 @@ export const useWalletStore = create<WalletState>()(persist(
         errorMessage = "⏱️ Connection timeout - Click retry to try again";
       } else if (errorMessage.includes("User closed")) {
         errorMessage = "❌ Modal closed - Click retry to reconnect";
+      } else if (errorMessage.includes("NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID")) {
+        errorMessage = "⚠️ WalletConnect Project ID not configured. Check console for setup instructions.";
+      } else if (errorMessage.includes("Failed to publish custom payload")) {
+        errorMessage = "⚠️ WalletConnect connection failed. Check that your Project ID is valid and restart the server.";
       }
 
       resetConnector();

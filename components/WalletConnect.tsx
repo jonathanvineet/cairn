@@ -1,12 +1,11 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { useWalletStore } from "@/stores/walletStore";
-import { Wallet, LogOut, Shield, AlertCircle } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 export function WalletConnect() {
+  const router = useRouter();
   const {
     connected,
     selectedAccount,
@@ -19,18 +18,26 @@ export function WalletConnect() {
   const [showError, setShowError] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Auto-redirect to dashboard when wallet connects
+  useEffect(() => {
+    if (connected && selectedAccount && mounted) {
+      const timer = setTimeout(() => {
+        router.push("/dashboard");
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [connected, selectedAccount, mounted, router]);
 
   if (!mounted) {
     return null;
   }
 
   const handleConnect = async () => {
-    // Prevent multiple concurrent connections
     if (isConnecting || isInitializing) {
       console.log('⚠️ Connection already in progress');
       return;
@@ -53,64 +60,125 @@ export function WalletConnect() {
 
   if (connected && selectedAccount) {
     return (
-      <div className="flex items-center gap-2">
-        <div className="px-3 py-1.5 border border-[#D9D9D9] rounded-full bg-[#2E2E2E] text-[#FAFAFA] text-[10px] font-semibold">
-          <span className="font-mono max-w-[120px] truncate block">
-            {selectedAccount.id}
-          </span>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <div style={{
+          padding: "6px 12px",
+          border: "1px solid var(--border)",
+          borderRadius: "var(--radius)",
+          background: "var(--card)",
+          fontSize: 9,
+          fontWeight: 600,
+          color: "var(--fg)",
+          fontFamily: "monospace",
+          letterSpacing: ".05em",
+          maxWidth: 180,
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap"
+        }}>
+          {selectedAccount.id}
         </div>
         <button
           onClick={() => disconnect()}
           disabled={isInitializing}
-          className="h-9 w-9 flex items-center justify-center hover:bg-[#D9D9D9] transition-colors rounded-lg"
+          style={{
+            height: 32,
+            width: 32,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "transparent",
+            border: "1px solid var(--border)",
+            borderRadius: "var(--radius)",
+            cursor: "pointer",
+            fontSize: 16,
+            transition: "all 0.15s",
+            opacity: isInitializing ? 0.6 : 1
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = "var(--muted)";
+            e.currentTarget.style.borderColor = "var(--fg)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "transparent";
+            e.currentTarget.style.borderColor = "var(--border)";
+          }}
           title="Disconnect wallet"
         >
-          <LogOut className="h-4 w-4 text-[#696969]" />
+          🔓
         </button>
       </div>
     );
   }
 
   return (
-    <div className="relative" ref={dropdownRef}>
-      <div className="flex flex-col gap-2">
-        <button
-          type="button"
-          onClick={handleConnect}
-          disabled={isInitializing || isConnecting}
-          className="btn-primary gap-2 flex items-center px-4 py-2 h-10 disabled:opacity-50"
-        >
-          <Wallet className="h-4 w-4" />
-          <span className="font-semibold uppercase tracking-wider text-[11px]">
-            {(isInitializing || isConnecting) ? "Connecting..." : "Connect HashPack"}
-          </span>
-        </button>
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      <button
+        type="button"
+        onClick={handleConnect}
+        disabled={isInitializing || isConnecting}
+        style={{
+          padding: "8px 16px",
+          height: 36,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 8,
+          border: "1px solid var(--border)",
+          borderRadius: "var(--radius)",
+          background: "var(--fg)",
+          color: "var(--bg)",
+          fontSize: 10,
+          fontWeight: 600,
+          textTransform: "uppercase",
+          letterSpacing: ".08em",
+          cursor: isInitializing || isConnecting ? "not-allowed" : "pointer",
+          transition: "all 0.15s",
+          opacity: isInitializing || isConnecting ? 0.7 : 1
+        }}
+      >
+        {(isInitializing || isConnecting) ? "⟳ CONNECTING..." : "🔗 CONNECT HASHPACK"}
+      </button>
 
-        {(isInitializing || isConnecting) && (
-          <div className="flex items-start gap-2 text-[10px] text-[#2E2E2E] bg-[#D9D9D9] p-2.5 rounded border border-[#696969]">
-            <Shield className="h-3.5 w-3.5 flex-shrink-0 mt-0.5 animate-pulse" />
-            <div>
-              <p className="font-semibold mb-1">Approve Connection</p>
-              <p className="text-[#696969]">If you have HashPack extension: check browser extensions (top-right). Otherwise: scan QR code with HashPack mobile app.</p>
-            </div>
+      {(isInitializing || isConnecting) && (
+        <div style={{
+          display: "flex",
+          gap: 8,
+          padding: "10px 12px",
+          background: "var(--muted)",
+          border: "1px solid var(--border)",
+          borderRadius: "var(--radius)",
+          fontSize: 9,
+          color: "var(--muted-fg)",
+          lineHeight: 1.4
+        }}>
+          <span style={{ marginTop: 1 }}>ℹ️</span>
+          <div>
+            <div style={{ fontWeight: 600, color: "var(--fg)", marginBottom: 4 }}>Approve Connection</div>
+            <div>Check browser extension (top-right) or scan QR code with HashPack mobile app.</div>
           </div>
-        )}
+        </div>
+      )}
 
-        {showError && error && (
-          <div className="flex flex-col gap-2 text-[11px] text-[#2E2E2E] bg-[#FFE6E6] p-3 rounded-lg border border-[#D9D9D9]">
-            <div className="flex items-center gap-2">
-              <AlertCircle className="h-4 w-4 flex-shrink-0" />
-              <span className="font-semibold">{error}</span>
-            </div>
-            <button
-              onClick={handleConnect}
-              className="btn-ghost h-8 text-[10px] font-semibold"
-            >
-              🔄 Retry Connection
-            </button>
+      {showError && error && (
+        <div style={{
+          display: "flex",
+          gap: 8,
+          padding: "10px 12px",
+          background: "#fee",
+          border: "1px solid #fcc",
+          borderRadius: "var(--radius)",
+          fontSize: 9,
+          color: "#c00",
+          lineHeight: 1.4
+        }}>
+          <span style={{ marginTop: 1 }}>⚠️</span>
+          <div>
+            <div style={{ fontWeight: 600, marginBottom: 3 }}>Connection Failed</div>
+            <div>{error}</div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

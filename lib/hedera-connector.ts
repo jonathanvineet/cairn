@@ -11,6 +11,10 @@ if (typeof window !== 'undefined' && !PROJECT_ID) {
   console.error('❌ NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID is not set!');
 }
 
+if (typeof window !== 'undefined' && PROJECT_ID === 'your_project_id_here') {
+  console.error('❌ NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID is still a placeholder! Replace it with your actual Project ID from https://cloud.walletconnect.com/');
+}
+
 let dAppConnector: DAppConnector | null = null;
 
 /**
@@ -25,8 +29,8 @@ export async function initializeDAppConnector(): Promise<DAppConnector> {
     return dAppConnector;
   }
 
-  if (!PROJECT_ID) {
-    throw new Error('NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID not configured');
+  if (!PROJECT_ID || PROJECT_ID === 'YOUR_ACTUAL_PROJECT_ID_HERE' || PROJECT_ID === 'your_project_id_here') {
+    throw new Error('❌ NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID is not configured.\n\n📋 To fix:\n1. Go to https://cloud.walletconnect.com/\n2. Create a new project and copy your Project ID\n3. Replace the placeholder in .env.local with your actual Project ID\n4. Restart the dev server');
   }
 
   const {
