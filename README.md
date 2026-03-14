@@ -1,174 +1,339 @@
 # CAIRN - Autonomous Drone Patrol System on Hedera
 
-CAIRN is a sophisticated autonomous drone patrol and mission management system built on the Hedera network. It enables intelligent coordination of drone fleets for surveillance, boundary monitoring, and autonomous patrol missions using AI-powered drone selection and Hedera Smart Contracts for permanent, verifiable operation records.
+<div align="center">
 
-## Table of Contents
+**Trustless Drone Operations for India's Airspace**
 
-1. [Overview](#overview)
-2. [Core Features](#core-features)
-3. [System Architecture](#system-architecture)
-4. [Smart Contracts](#smart-contracts)
-5. [Drone Registration](#drone-registration)
-6. [Zone Management](#zone-management)
-7. [AI Analysis & Selection](#ai-analysis--selection)
-8. [Agent Verification](#agent-verification)
-9. [Getting Started](#getting-started)
-10. [API Reference](#api-reference)
-11. [Deployment](#deployment)
+A sophisticated autonomous drone patrol and mission management system built on the Hedera network. Register drones as AI agents, create verifiable boundary zones, and deploy intelligent patrol missions with on-chain proof.
+
+[🚀 Getting Started](#getting-started) • [📖 Documentation](#api-reference) • [🔗 Smart Contracts](#smart-contracts)
+
+</div>
 
 ---
 
 ## Overview
 
 CAIRN orchestrates autonomous drone missions by:
-- **Registering drones** as AI agents on the Hedera network
-- **Creating and managing boundary zones** on the blockchain
-- **Analyzing available drones** using multi-criteria algorithms
-- **Verifying drone agents** via Hedera Consensus Service (HCS)
-- **Selecting optimal drones** for specific missions using Eliza OS
-- **Deploying missions** with verifiable records on the blockchain
 
-The system is designed for large-scale autonomous operations, particularly for environmental monitoring, border patrol, and surveillance in forest ecosystems.
+- **Registering drones** as autonomous AI agents on the Hedera network
+- **Creating and managing boundary zones** with tamper-proof blockchain records
+- **Analyzing available drones** using multi-criteria AI algorithms
+- **Verifying drone agents** via Hedera Consensus Service (HCS)
+- **Selecting optimal drones** for specific missions using Eliza OS multi-phase analysis
+- **Deploying missions** with verifiable, immutable records on the blockchain
+
+**Perfect for**: Environmental monitoring, border patrol, surveillance in forest ecosystems, and any large-scale autonomous drone operations requiring trustless verification.
+
+---
+
+## Table of Contents
+
+1. [Core Features](#core-features)
+2. [Technology Stack](#technology-stack)
+3. [System Architecture](#system-architecture)
+4. [Smart Contracts](#smart-contracts)
+5. [Drone Registration](#drone-registration)
+6. [Zone Management](#zone-management)
+7. [AI Analysis System](#ai-analysis-system)
+8. [Agent Verification](#agent-verification)
+9. [Getting Started](#getting-started)
+10. [Project Structure](#project-structure)
+11. [API Reference](#api-reference)
+12. [Utility Scripts](#utility-scripts)
+13. [Deployment](#deployment)
+14. [Troubleshooting](#troubleshooting)
 
 ---
 
 ## Core Features
 
 ### 🚁 Intelligent Drone Management
-- **Drone Fleet Registry**: Register multiple drones with unique identifiers and EVM addresses
-- **Real-time Status Tracking**: Monitor battery, health, location, and operational status
+- **Drone Fleet Registry**: Register multiple drones with unique Cairn IDs and EVM addresses
+- **Real-time Status Tracking**: Monitor battery level, health status, location, and operational status
 - **Autonomous Agent Assignment**: Each drone automatically becomes an AI agent registered on Hedera
-- **Persistent Records**: All drone registrations stored on the blockchain
+- **Persistent Blockchain Records**: All drone registrations permanently stored on-chain
 
 ### 🗺️ Zone Management System
-- **Interactive Map Interface**: Drop pins on Leaflet maps to create boundary polygons
-- **Zone Persistence**: Save zones to the blockchain with unique identifiers
-- **Zone Selection**: Choose from previously saved zones for mission deployment
-- **Boundary Verification**: Validate zone coordinates and parameters
+- **Interactive Map Interface**: Drop pins on Leaflet-based maps to create boundary polygons
+- **Blockchain-Persisted Zones**: Save zones with immutable on-chain proof of boundaries
+- **Zone Selection UI**: Choose from previously saved zones for mission deployment
+- **Coordinate Validation**: Automatic validation of zone polygons and boundary parameters
 
-### 🧠 Eliza OS Integration
-- **Multi-phase AI Analysis**: 5-stage analysis process (Assessment → Evaluation → Reasoning → Decision → Conclusion)
-- **Real-time Thought Streaming**: Visual representation of AI reasoning process
-- **Multi-criteria Scoring**: Battery (35%), Proximity (30%), Health (25%), Agent Validation (10%)
-- **Confidence Metrics**: 50-100% confidence scoring based on composite analysis
+### 🧠 Eliza OS AI Analysis
+- **Multi-Phase Reasoning**: 5-stage analysis (Assessment → Evaluation → Reasoning → Decision → Conclusion)
+- **Real-time Thought Visualization**: Watch the AI think through drone selection
+- **Multi-Criteria Scoring**:
+  - Battery Level: 35% weight
+  - Proximity to Zone: 30% weight
+  - Health Status: 25% weight
+  - Agent Validation: 10% weight
+- **Confidence Scoring**: 50-100% confidence based on composite analysis
 
-### ✅ Agent Verification
-- **HCS Topic-based Registration**: Each drone creates an HCS topic for identity and communication
-- **Manifest Validation**: Verify agent permissions and capabilities
-- **Permanent Identity**: Agent topics serve as permanent, cryptographically verified identities
-- **Cross-drone Communication**: Agents can communicate and coordinate via HCS
+### ✅ Cryptographic Agent Verification
+- **HCS Topic-Based Identity**: Each drone gets a permanent HCS topic for identity and communication
+- **Manifest Validation**: Verify agent permissions and operational capabilities
+- **Ed25519 Signatures**: Cryptographically signed agent manifests
+- **Inter-Drone Communication**: Agents communicate and coordinate via HCS topics
 
-### 📊 Beautiful Analytics UI
-- **Futuristic Dashboard**: Modern dark theme with animated backgrounds
-- **Stage-by-stage Analysis Display**: Watch the system think through drone selection
-- **Real-time Progress Indicators**: Animated progress bars and status updates
-- **Final Decision Cards**: Comprehensive breakdown of selected drone metrics
+### 📊 Analytics Dashboard
+- **Futuristic UI**: Modern dark theme with animated background effects
+- **Live Analysis Display**: Real-time visualization of the AI reasoning process
+- **Progress Tracking**: Animated progress bars and status indicators
+- **Decision Cards**: Detailed breakdown of selected drone metrics and reasoning
+
+---
+
+## Technology Stack
+
+### Frontend & UI
+| Component | Technology | Version |
+|-----------|-----------|---------|
+| Framework | Next.js | 16.1.6 |
+| React | React | 19.2.3 |
+| Styling | Tailwind CSS | 3.4.17 |
+| Maps | React Leaflet | 5.0.0 |
+| State Management | Zustand | 5.0.11 |
+| Data Fetching | TanStack React Query | 5.90.21 |
+| Icons | Lucide React | 0.542.0 |
+| Animations | Framer Motion | Latest |
+
+### Blockchain & Web3
+| Component | Technology | Version |
+|-----------|-----------|---------|
+| Network | Hedera Testnet | - |
+| RPC Provider | Ethers.js | 6.16.0 |
+| Wallet | Hedera Wallet Connect | 2.0.6 |
+| Contract Language | Solidity | 0.8.34 |
+| Hedera SDK | @hashgraph/sdk | 2.80.0 |
+| Hiero SDK | @hiero-ledger/sdk | 2.79.0 |
+
+### Development & Build
+| Tool | Purpose | Version |
+|------|---------|---------|
+| TypeScript | Type Safety | 5.0 |
+| Turbopack | Build Tool | Latest |
+| ESLint | Code Linting | 9 |
+| tsx | Script Runner | 4.21.0 |
+| solc | Contract Compiler | 0.8.34 |
 
 ---
 
 ## System Architecture
 
-### Technology Stack
-
-- **Framework**: Next.js 16.1.6 with Turbopack
-- **Blockchain**: Hedera (Testnet)
-- **Smart Contracts**: Solidity (EVM-compatible on Hedera)
-- **AI**: Eliza OS for multi-phase analysis
-- **Wallet**: Hedera Wallet Connect v2.0.6
-- **Web3**: Ethers.js v6.16.0
-- **Maps**: React Leaflet v5.0.0
-- **Styling**: Tailwind CSS
-- **Animations**: Framer Motion
-
-### Architecture Layers
+### Architecture Diagram
 
 ```
-┌─────────────────────────────────────────┐
-│       User Interface (Next.js)           │
-│  - Dashboard / Deploy / Analysis Pages   │
-└─────────────────────────────────────────┘
-                    ↓
-┌─────────────────────────────────────────┐
-│      API Layer (Route Handlers)          │
-│  - /api/drones - /api/zones              │
-│  - /api/analysis - /api/sync-blockchain  │
-└─────────────────────────────────────────┘
-                    ↓
-┌─────────────────────────────────────────┐
-│     Core Logic (lib/)                    │
-│  - elizaAnalysis.ts - droneSelector.ts   │
-│  - agentValidator.ts - contracts.ts      │
-│  - hedera-connector.ts                   │
-└─────────────────────────────────────────┘
-                    ↓
-┌─────────────────────────────────────────┐
-│    Blockchain Layer (Hedera)             │
-│  - Smart Contracts (EVM)                 │
-│  - HCS Topics (Communication)            │
-│  - Account Management                    │
-└─────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────┐
+│         User Interface Layer (Next.js Pages)            │
+│   Landing → Dashboard → Deploy → Analysis → Register    │
+│   Evidence → Blockchain Sync                            │
+└─────────────────────────────────────────────────────────┘
+                           ↓
+┌─────────────────────────────────────────────────────────┐
+│       API Layer (Next.js Route Handlers)                │
+│  /api/drones/* | /api/zones/* | /api/analysis           │
+│  /api/patrol/* | /api/sync-blockchain                   │
+└─────────────────────────────────────────────────────────┘
+                           ↓
+┌─────────────────────────────────────────────────────────┐
+│      Core Business Logic (lib/)                         │
+│  elizaAnalysis.ts | droneAgent.ts | agentValidator.ts   │
+│  contracts.ts | hedera-connector.ts | encryption.ts     │
+│  droneBlockchainFetcher.ts | geoUtils.ts                │
+└─────────────────────────────────────────────────────────┘
+                           ↓
+┌─────────────────────────────────────────────────────────┐
+│     Blockchain & Storage Layer                          │
+│  Hedera Smart Contracts (EVM) | HCS Topics              │
+│  Local Database | Wallet Storage                        │
+└─────────────────────────────────────────────────────────┘
+```
+
+### State Management Flow
+
+```
+React Components
+      ↓
+Zustand Stores:
+  ├── walletStore.ts (Wallet connection & account)
+  ├── missionStore.ts (Current mission state)
+  ├── uiStore.ts (UI toggles & modals)
+  └── worldStore.ts (Zones & geographic data)
+      ↓
+API Routes (Server-side processing)
+      ↓
+Blockchain (Hedera) & Local Database
+```
+
+---
+
+## Project Structure
+
+```
+cairn/
+├── app/                                 # Next.js App Router pages
+│   ├── page.tsx                        # Landing page with slides
+│   ├── layout.tsx                      # Root layout with providers
+│   ├── providers.tsx                   # React Query & Zustand setup
+│   │
+│   ├── dashboard/                      # Dashboard page
+│   │   ├── page.tsx                   # Main dashboard view
+│   │   └── loading.tsx                # Loading skeleton
+│   │
+│   ├── deploy/                         # Zone creation & deployment
+│   │   └── page.tsx                   # Deploy interface
+│   │
+│   ├── analysis/                       # AI analysis page
+│   │   └── page.tsx                   # Drone analysis & selection
+│   │
+│   ├── register/                       # Drone registration
+│   │   └── page.tsx                   # Registration form
+│   │
+│   ├── evidence/                       # Patrol evidence management
+│   │   └── page.tsx                   # Evidence display
+│   │
+│   ├── api/                            # API route handlers
+│   │   ├── drones/
+│   │   │   ├── route.ts               # GET all drones
+│   │   │   ├── [id]/route.ts          # GET specific drone
+│   │   │   ├── register/route.ts      # POST new drone
+│   │   │   ├── status/route.ts        # GET drone status
+│   │   │   ├── balance/route.ts       # GET balance
+│   │   │   ├── fund/route.ts          # Fund drone account
+│   │   │   └── test-transfer/route.ts # Test transfers
+│   │   │
+│   │   ├── zones/
+│   │   │   ├── route.ts               # GET all zones
+│   │   │   ├── boundary/route.ts      # POST create zone
+│   │   │   └── assign/route.ts        # POST assign drone to zone
+│   │   │
+│   │   ├── analysis/route.ts          # POST trigger analysis
+│   │   │
+│   │   ├── patrol/
+│   │   │   ├── submit/route.ts        # POST patrol mission
+│   │   │   ├── verify-image/route.ts  # Verify patrol images
+│   │   │   ├── store-image/route.ts   # Store patrol images
+│   │   │   └── blockchain/route.ts    # Record on-chain
+│   │   │
+│   │   ├── submit-patrol/route.ts     # Submit patrol endpoint
+│   │   └── sync-blockchain/route.ts   # Sync blockchain data
+│   │
+│   └── styles/
+│       └── global.css                 # Global Tailwind styles
+│
+├── components/                         # React components
+│   ├── WalletConnect.tsx              # Wallet connection UI
+│   ├── InteractiveMap.tsx             # Map interaction logic
+│   ├── LocationPicker.tsx             # Location selection
+│   ├── MapComponent.tsx               # Leaflet map wrapper
+│   └── ui/                            # Reusable UI components
+│       ├── button.tsx                 # Button component
+│       ├── card.tsx                   # Card component
+│       ├── badge.tsx                  # Badge component
+│       ├── skeleton.tsx               # Loading skeleton
+│       └── progress.tsx               # Progress bar
+│
+├── lib/                               # Core library functions
+│   ├── elizaAnalysis.ts              # Eliza OS analysis engine
+│   ├── droneAgent.ts                 # HCS agent registration
+│   ├── agentValidator.ts             # Agent verification logic
+│   ├── contracts.ts                  # Contract ABIs & addresses
+│   ├── hedera-connector.ts           # Hedera SDK setup
+│   ├── droneBlockchainFetcher.ts     # Fetch drone data from chain
+│   ├── db.ts                         # Database operations
+│   ├── encryption.ts                 # Encryption utilities
+│   ├── geoUtils.ts                   # Geographic calculations
+│   ├── hederaDroneHelpers.ts         # Hedera drone utilities
+│   ├── hederaHelpers.ts              # General Hedera utilities
+│   ├── useHederaWallet.ts            # Wallet hook
+│   └── utils.ts                      # General utilities
+│
+├── stores/                           # Zustand state stores
+│   ├── walletStore.ts                # Wallet connection state
+│   ├── missionStore.ts               # Mission state
+│   ├── uiStore.ts                    # UI state (modals, tabs)
+│   └── worldStore.ts                 # World/zone state
+│
+├── types/                            # TypeScript definitions
+│   └── ethereum.d.ts                 # Ethereum type definitions
+│
+├── public/                           # Static assets
+│   ├── breach-evidence/              # Evidence samples
+│   ├── drones/                       # Drone imagery
+│   └── evidence-samples/             # Sample evidence
+│
+├── scripts/                          # Utility scripts
+│   ├── testConnection.ts             # Test Hedera connection
+│   ├── submitPatrol.ts               # Submit patrol mission
+│   ├── createAccountFromMnemonic.ts  # Account creation
+│   ├── extractKey.ts                 # Extract private key
+│   ├── verifyKeys.ts                 # Verify key pair
+│   ├── checkContract.ts              # Check contract status
+│   └── quickCheck.ts                 # Quick system check
+│
+├── test/                             # Smart contracts & tests
+│   ├── contracts/
+│   │   ├── DroneRegistry.sol         # Drone registry contract
+│   │   ├── BoundaryZoneRegistry.sol  # Zone registry contract
+│   │   └── DroneEvidenceRegistry.sol # Evidence registry contract
+│   ├── hederaContractTest.ts         # Contract tests
+│   ├── deployContracts.ts            # Contract deployment
+│   └── package.json
+│
+└── Configuration Files
+    ├── package.json                   # NPM dependencies
+    ├── tsconfig.json                  # TypeScript configuration
+    ├── next.config.ts                 # Next.js configuration
+    ├── tailwind.config.ts             # Tailwind configuration
+    ├── postcss.config.mjs             # PostCSS configuration
+    ├── eslint.config.mjs              # ESLint configuration
+    ├── .env.example                   # Environment template
+    ├── .env                           # Local environment (git ignored)
+    └── README.md                      # This file
 ```
 
 ---
 
 ## Smart Contracts
 
-### Contract Addresses (Hedera Testnet)
+### Deployed Contract Addresses (Hedera Testnet)
 
 | Contract | Address | Purpose |
 |----------|---------|---------|
+| **DroneRegistry** | `0x5CE1B45F7af14D864146C16D6E1b168Ae599cFCf` | Registers and tracks all drone metadata |
 | **BoundaryZoneRegistry** | `0xeEFfE09953FDCB844Ff69B67e46E8474B70f0E69` | Manages mission boundary zones |
-| **DroneRegistry** | `0x5CE1B45F7af14D864146C16D6E1b168Ae599cFCf` | Registers and tracks drone metadata |
+| **DroneEvidenceRegistry** | TBD | Records patrol evidence on-chain |
 
-### BoundaryZoneRegistry
-
-**Purpose**: Stores and manages geographic boundaries for patrol missions
-
-**Key Functions**:
-- `createZone(zoneId, zoneName, coordinates)` - Create a new boundary zone
-- `getZone(zoneId)` - Retrieve zone details
-- `isZoneRegistered(zoneId)` - Check if zone exists
-- `assignDroneToZone(zoneId, droneAddress)` - Assign drone to zone
-
-**Data Structure**:
-```solidity
-struct BoundaryZone {
-    string zoneId;
-    string zoneName;
-    uint256 createdAt;
-    Coordinate[] coordinates;
-    address creator;
-    DroneAssignment[] assignedDrones;
-}
-
-struct Coordinate {
-    int32 latitude;
-    int32 longitude;
-}
-```
-
-**Events**:
-- `ZoneCreated` - Emitted when a new zone is created
-- `DroneAssigned` - Emitted when a drone is assigned to a zone
-
-### DroneRegistry
+### DroneRegistry Contract
 
 **Purpose**: Maintains the master registry of all drones and their operational metadata
 
 **Key Functions**:
-- `registerDrone(cairnDroneId, evmAddress, agentTopicId)` - Register a new drone
-- `getDrone(droneAddress)` - Retrieve drone information
-- `updateDroneStatus(status)` - Update operational status
-- `getDroneCount()` - Get total registered drones
+```solidity
+registerDrone(
+    string memory _cairnDroneId,
+    address _evmAddress,
+    string memory _model,
+    uint64 _agentTopicId
+) → bool
+
+getDrone(address _droneAddress) → Drone
+
+getTotalDrones() → uint256
+
+updateDroneStatus(address _droneAddress, DroneStatus _status) → bool
+```
 
 **Data Structure**:
 ```solidity
 struct Drone {
-    string cairnDroneId;
-    address evmAddress;
-    uint64 agentTopicId;
-    uint256 registeredAt;
-    DroneStatus status;
+    string cairnDroneId;        // "CAIRN-01"
+    address evmAddress;         // 0x...
+    uint64 agentTopicId;        // Hedera HCS topic
+    string model;               // Drone model
+    uint256 registeredAt;       // Timestamp
+    bool isActive;              // Active status
 }
 
 enum DroneStatus {
@@ -181,33 +346,84 @@ enum DroneStatus {
 ```
 
 **Events**:
-- `DroneRegistered` - Emitted when a drone is registered
-- `DroneStatusUpdated` - Emitted when status changes
+- `DroneRegistered(string indexed cairnId, address indexed evmAddress)`
+- `DroneStatusUpdated(address indexed droneAddress, bool isActive)`
+
+### BoundaryZoneRegistry Contract
+
+**Purpose**: Stores and manages geographic boundaries for patrol missions
+
+**Key Functions**:
+```solidity
+createZone(
+    string memory _zoneId,
+    string memory _zoneName,
+    Coordinate[] memory _coordinates
+) → bool
+
+getZone(string memory _zoneId) → BoundaryZone
+
+isZoneRegistered(string memory _zoneId) → bool
+
+assignDroneToZone(
+    string memory _zoneId,
+    address _droneAddress
+) → bool
+```
+
+**Data Structure**:
+```solidity
+struct BoundaryZone {
+    string zoneId;              // "Wayanad-01"
+    string zoneName;            // "Wayanad Forest Boundary"
+    uint256 createdAt;          // Creation timestamp
+    Coordinate[] coordinates;   // Polygon points
+    address creator;            // Creator address
+    DroneAssignment[] assignedDrones;
+}
+
+struct Coordinate {
+    int32 latitude;             // Lat * 1e6
+    int32 longitude;            // Lng * 1e6
+}
+```
+
+**Events**:
+- `ZoneCreated(string indexed zoneId, address indexed creator)`
+- `DroneAssignedToZone(string indexed zoneId, address indexed droneAddress)`
 
 ### Contract Interaction Flow
 
 ```
-1. User connects MetaMask wallet
+User → Land Page
    ↓
-2. User drops pins on map → Creates boundary polygon
+[Connect Wallet]
    ↓
-3. User clicks "Save Boundary to Blockchain"
+User → Dashboard
    ↓
-4. BoundaryZoneRegistry.createZone() executed
-   → Zone stored permanently on-chain
+User → Deploy
    ↓
-5. User selects zone for mission deployment
+[Drop Pins] → [Create Polygon]
    ↓
-6. User clicks "Analyse Drone"
-   → Redirected to /analyse-drone page
+[Save to Blockchain]
    ↓
-7. System fetches registered drones from DroneRegistry
+BoundaryZoneRegistry.createZone()
    ↓
-8. Eliza OS analyzes drones (4-second analysis)
+Zone stored on-chain ✅
    ↓
-9. Best drone selected and displayed
+User → Analysis
    ↓
-10. User can deploy mission to selected drone
+DroneRegistry.getTotalDrones()
+   ↓
+Fetch all registered drones
+   ↓
+Eliza OS Analysis (5 phases)
+   ↓
+Best drone selected ✅
+   ↓
+[Deploy Mission]
+   ↓
+Mission recorded on-chain
 ```
 
 ---
@@ -216,49 +432,52 @@ enum DroneStatus {
 
 ### Registration Process
 
-When a drone is registered in the system, the following occurs:
+When a drone is registered in CAIRN, the following occurs:
 
-#### 1. **Unique ID Assignment**
+#### Step 1: Unique ID Assignment
 ```
 - System generates cairnDroneId using max ID + 1 algorithm
 - Example: CAIRN-01, CAIRN-02, CAIRN-03, etc.
-- Ensures no duplicate IDs across restarts
+- Ensures no duplicate IDs across system restarts
 ```
 
-#### 2. **EVM Address Registration**
+#### Step 2: EVM Address Registration
 ```
 - Drone's EVM address stored in DroneRegistry contract
-- Address used as primary identifier for blockchain interactions
-- Enables future smart contract interactions directly from drone
+- Address serves as primary blockchain identifier
+- Enables direct smart contract interactions from drone
 ```
 
-#### 3. **HCS Agent Topic Creation**
+#### Step 3: HCS Agent Topic Creation
 ```
-- Automatic HCS topic created for each drone
-- Topic ID: 0.0.XXXXXXX (Hedera format)
-- Drone becomes an autonomous AI agent
-- Topic used for inter-drone communication and verification
+- Automatic HCS topic created for drone agent
+- Topic ID format: 0.0.XXXXXXX (Hedera format)
+- Drone becomes autonomous AI agent on Hedera
+- Topic used for inter-drone communication
 ```
 
-#### 4. **Blockchain Recording**
+#### Step 4: Blockchain Recording
 ```
-- DroneRegistry.registerDrone() called
+- DroneRegistry.registerDrone() executed
 - Event DroneRegistered emitted
-- Permanent record created on blockchain
-- Drone can be queried at any time
+- Permanent on-chain record created
+- Drone queryable at any future time
 ```
 
-### API Endpoint: POST `/api/drones/register`
+### API Endpoint: Register Drone
+
+**POST `/api/drones/register`**
 
 **Request**:
 ```json
 {
-  "walletAddress": "0x...",
+  "walletAddress": "0x1234567890abcdef...",
   "cairnDroneId": "CAIRN-01",
   "location": {
     "latitude": 11.5381,
     "longitude": 76.4204
-  }
+  },
+  "model": "DJI M300 RTK"
 }
 ```
 
@@ -269,48 +488,74 @@ When a drone is registered in the system, the following occurs:
   "drone": {
     "cairnDroneId": "CAIRN-01",
     "evmAddress": "0x...",
-    "agentTopicId": 307216,
+    "agentTopicId": "307216",
+    "hcsTopicId": "0.0.307216",
     "status": "idle",
     "registeredAt": 1709554800,
-    "hcsTopicId": "0.0.307216"
+    "model": "DJI M300 RTK"
   }
 }
+```
+
+### Example: Register a Drone via cURL
+
+```bash
+curl -X POST http://localhost:3000/api/drones/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "walletAddress": "0x...",
+    "cairnDroneId": "CAIRN-01",
+    "location": {
+      "latitude": 11.5381,
+      "longitude": 76.4204
+    }
+  }'
 ```
 
 ---
 
 ## Zone Management
 
-### Zone Registration
+### Creating Zones
 
 Zones represent geographic areas where drone missions will be deployed.
 
-#### 1. **Interactive Zone Creation**
+#### Interactive Zone Creation
+
 ```
-- User opens /deploy page
-- User drops pins on Leaflet map
-- Pins form a polygon boundary
-- System validates polygon closure
+1. User opens /deploy page
+2. User clicks on map to drop pins
+3. Each pin is a coordinate in polygon
+4. System validates polygon closure
+5. Polygon boundary forms on map
 ```
 
-#### 2. **Zone Saving to Blockchain**
+#### Saving Zone to Blockchain
+
 ```
-- User provides unique Zone ID
-- BoundaryZoneRegistry.createZone() called
-- Zone coordinates stored on-chain
-- Zone becomes permanently accessible
+1. User provides Zone ID (e.g., "Wayanad-01")
+2. User names zone (e.g., "Wayanad Forest Boundary")
+3. User clicks "Save Boundary to Blockchain"
+4. System calls BoundaryZoneRegistry.createZone()
+5. Zone coordinates stored on-chain permanently
+6. Blockchain event emitted
 ```
 
-#### 3. **Zone Selection for Missions**
+#### Using Zones for Missions
+
 ```
-- User can select from previously saved zones
-- Zone appears on map with drone visualization
-- Zone coordinates used for proximity calculations
+1. User navigates to Analysis page
+2. User selects previously saved zone from dropdown
+3. Zone coordinates loaded and displayed on map
+4. Center of zone calculated
+5. Used for proximity scoring in analysis
 ```
 
-### API Endpoints
+### API Endpoints for Zones
 
 **POST `/api/zones/boundary`** - Create new zone
+
+Request:
 ```json
 {
   "zoneId": "Wayanad-01",
@@ -318,12 +563,29 @@ Zones represent geographic areas where drone missions will be deployed.
   "coordinates": [
     { "lat": 11.5381, "lng": 76.4204 },
     { "lat": 11.5400, "lng": 76.4220 },
-    { "lat": 11.5390, "lng": 76.4240 }
+    { "lat": 11.5390, "lng": 76.4240 },
+    { "lat": 11.5370, "lng": 76.4210 }
   ]
 }
 ```
 
+Response:
+```json
+{
+  "success": true,
+  "zone": {
+    "zoneId": "Wayanad-01",
+    "zoneName": "Wayanad Forest Boundary",
+    "transactionHash": "0x...",
+    "blockNumber": 12345678,
+    "coordinates": [...]
+  }
+}
+```
+
 **GET `/api/zones`** - Fetch all zones
+
+Response:
 ```json
 {
   "zones": [
@@ -331,65 +593,112 @@ Zones represent geographic areas where drone missions will be deployed.
       "zoneId": "Wayanad-01",
       "zoneName": "Wayanad Forest Boundary",
       "coordinates": [...],
-      "assignedDrones": [...]
+      "assignedDrones": [
+        { "droneId": "CAIRN-01", "assignedAt": 1709554800 }
+      ],
+      "createdAt": 1709554800
     }
   ],
   "count": 5
 }
 ```
 
+**POST `/api/zones/assign`** - Assign drone to zone
+
+Request:
+```json
+{
+  "zoneId": "Wayanad-01",
+  "droneAddress": "0x..."
+}
+```
+
 ---
 
-## AI Analysis & Selection
+## AI Analysis System
 
-### Eliza OS Analysis System
+### Eliza OS 5-Phase Analysis
 
-The analysis page (`/analyse-drone`) showcases a **5-phase AI reasoning system**:
+The analysis page visualizes a **multi-phase AI reasoning system** for optimal drone selection.
 
-#### Phase 1: Assessment 🔍 (Blue)
-```
-Activity: Inventory all available drones
-- Fetch drone list from registry
-- Check operational status
+#### Phase 1️⃣: Assessment (Blue)
+
+**Duration**: ~1 second
+
+**Activity**: System inventory
+- Fetch complete drone list from registry
+- Check operational status of each drone
 - Validate drone metadata
-Duration: ~1 second
+- Prepare for evaluation
+
+**Output**:
+```
+"Loaded 9 registered drones from blockchain"
 ```
 
-#### Phase 2: Evaluation ⚡ (Purple)
+#### Phase 2️⃣: Evaluation (Purple)
+
+**Duration**: ~1 second
+
+**Activity**: Multi-criteria scoring
 ```
-Activity: Score each drone on criteria
-- Battery Level: 35% weight
-- Proximity to Zone: 30% weight
-- Health Status: 25% weight
-- Agent Validation: 10% weight
-Duration: ~1 second
+For each drone, calculate:
+- Battery Score = (batteryLevel / 100) × 35
+- Proximity Score = (1 - distance/maxDistance) × 30
+- Health Score = (healthStatus value) × 25
+- Agent Validation Score = (isValidated ? 1 : 0) × 10
 ```
 
-#### Phase 3: Reasoning 🧠 (Cyan)
+**Output**:
 ```
-Activity: Analyze top candidates
-- Compare scores
-- Calculate Haversine distance
-- Evaluate trade-offs
-Duration: ~1 second
+"CAIRN-01: Battery=29.75, Proximity=24.6, Health=24.5, Agent=10"
+"CAIRN-02: Battery=28.0, Proximity=20.1, Health=22.0, Agent=10"
+...
 ```
 
-#### Phase 4: Decision 🎯 (Yellow)
+#### Phase 3️⃣: Reasoning (Cyan)
+
+**Duration**: ~1 second
+
+**Activity**: Candidate analysis
+- Compare top candidates
+- Calculate Haversine distances to zone center
+- Evaluate trade-offs between criteria
+- Identify best combination
+
+**Output**:
 ```
-Activity: Select best drone
+"Analyzing top 3 candidates..."
+"CAIRN-01 offers best proximity (1.2km) with high battery"
+```
+
+#### Phase 4️⃣: Decision (Yellow)
+
+**Duration**: ~0.5 seconds
+
+**Activity**: Final selection
 - Choose highest-scoring candidate
 - Verify agent validation
 - Prepare deployment parameters
-Duration: ~0.5 seconds
+- Confirm eligibility
+
+**Output**:
+```
+"Selected: CAIRN-01 (Final Score: 87/100)"
 ```
 
-#### Phase 5: Conclusion ✅ (Green)
-```
-Activity: Finalize and report
+#### Phase 5️⃣: Conclusion (Green)
+
+**Duration**: ~0.5 seconds
+
+**Activity**: Report generation
 - Calculate confidence level (50-100%)
-- Prepare result summary
-- Ready for deployment
-Duration: ~0.5 seconds
+- Generate result summary
+- Prepare for deployment
+
+**Output**:
+```
+"Analysis complete. Confidence: 93.5%"
 ```
 
 ### Scoring Algorithm
@@ -412,22 +721,70 @@ Range: 50% - 100%
   "selectedDrone": {
     "cairnDroneId": "CAIRN-01",
     "evmAddress": "0x...",
-    "battery": 85,
+    "batteryLevel": 85,
+    "location": {
+      "lat": 11.5395,
+      "lng": 76.4215
+    },
     "health": "good",
-    "distance": 1.2
+    "agentTopicId": "307216",
+    "model": "DJI M300 RTK"
   },
   "score": 87,
   "confidence": 93.5,
   "thoughts": [
     {
       "phase": "assessment",
-      "text": "Loaded 9 drones from registry",
-      "timestamp": 1709554800
+      "thought": "Loaded 9 drones from registry",
+      "timestamp": 1709554800,
+      "duration": 1050
+    },
+    {
+      "phase": "evaluation",
+      "thought": "Calculated scores for all drones",
+      "timestamp": 1709554801,
+      "duration": 980
+    },
+    {
+      "phase": "reasoning",
+      "thought": "CAIRN-01 offers best proximity (1.2km) with high battery (85%)",
+      "timestamp": 1709554802,
+      "duration": 1100
+    },
+    {
+      "phase": "decision",
+      "thought": "Selected CAIRN-01 as optimal choice",
+      "timestamp": 1709554803,
+      "duration": 450
+    },
+    {
+      "phase": "conclusion",
+      "thought": "Analysis complete with 93.5% confidence",
+      "timestamp": 1709554804,
+      "duration": 520
     }
   ],
-  "reasoning": "CAIRN-01 selected: Best proximity (1.2km), high battery (85%), validated agent"
+  "reasoning": "CAIRN-01 selected: Best proximity (1.2km), high battery (85%), validated agent (10pts), good health"
 }
 ```
+
+### API Endpoint: Trigger Analysis
+
+**POST `/api/analysis`**
+
+Request:
+```json
+{
+  "zoneId": "Wayanad-01",
+  "coordinates": [
+    { "lat": 11.5381, "lng": 76.4204 },
+    { "lat": 11.5400, "lng": 76.4220 },
+    { "lat": 11.5390, "lng": 76.4240 }
+  ]
+}
+```
+
+Response: (Same as example above)
 
 ---
 
@@ -435,19 +792,20 @@ Range: 50% - 100%
 
 ### HCS Topic-Based Agent System
 
-Each drone is automatically registered as an **AI agent** using Hedera Consensus Service.
+Each registered drone becomes an **autonomous AI agent** using Hedera Consensus Service (HCS).
 
-#### Agent Identity Structure
+### Agent Identity Structure
 
 ```
-Drone → HCS Topic
-  ├─ Topic ID: 0.0.XXXXXXX
-  ├─ Messages: Agent manifest, status updates
-  ├─ Keys: Agent's Ed25519 public key
-  └─ Permissions: Read/Write/Delete
+Drone Entity
+    ├─ EVM Address: 0x...
+    ├─ HCS Topic ID: 0.0.307216
+    ├─ Agent Manifest: Signed JSON
+    ├─ Capabilities: [patrol, surveillance, boundary-monitoring]
+    └─ Permissions: zone access, mission execution
 ```
 
-#### Agent Manifest
+### Agent Manifest Format
 
 ```json
 {
@@ -455,51 +813,58 @@ Drone → HCS Topic
   "droneId": "CAIRN-01",
   "version": "1.0.0",
   "capabilities": [
-    "patrol",
+    "autonomous-patrol",
     "surveillance",
-    "boundary-monitoring"
+    "boundary-monitoring",
+    "evidence-collection"
   ],
   "permissions": {
     "zoneAccess": "all",
     "missionExecution": true,
-    "agentCommunication": true
+    "agentCommunication": true,
+    "evidenceLogging": true
   },
   "createdAt": 1709554800,
-  "signature": "0x..."
+  "signature": "0x...",
+  "publicKey": "0x..."
 }
 ```
 
-#### Verification Process
+### Agent Verification Process
 
 ```
-1. User initiates drone selection
+1. User initiates drone selection on /analysis
    ↓
-2. System fetches drone's HCS topic ID
+2. System fetches drone's HCS topic ID from registry
    ↓
-3. Query HCS topic for agent manifest
+3. Query HCS topic for latest agent manifest
    ↓
-4. Verify manifest signature (Ed25519)
+4. Verify manifest signature using Ed25519
    ↓
-5. Check manifest permissions
+5. Check manifest capabilities and permissions
    ↓
-6. Mark agent as "validated" ✅
+6. Validate manifest creation timestamp
    ↓
-7. Agent Validation score = 100 points (10% of total)
+7. Mark drone as "Agent Validated" ✅
    ↓
-8. Drone eligible for mission deployment
+8. Award 10 points (10% of total score)
+   ↓
+9. Drone eligible for mission deployment
 ```
 
-### Agent Communication
-
-Drones can communicate with each other and the system via HCS:
+### Agent Communication Example
 
 ```
 Drone A (Topic 0.0.307216)
-  ↓ Submit message
+    ↓ Submit message
 Hedera Consensus Service
-  ↑ Distribute message
+    ├─ Timestamp & sequence
+    ├─ Cryptographic proof
+    └─ Distributed to all nodes
+        ↓
 Drone B (Topic 0.0.307217)
-  ↓ Receive & process
+    ↓ Receive & process message
+    ↓ Execute cooperative action
 ```
 
 ---
@@ -508,15 +873,17 @@ Drone B (Topic 0.0.307217)
 
 ### Prerequisites
 
-- Node.js 18+ and npm
-- MetaMask or Hedera Wallet Connect
-- Hedera Testnet account with testnet HBAR
+- Node.js 18.0 or higher
+- npm or yarn package manager
+- MetaMask or Hedera Wallet Connect browser extension
+- Hedera Testnet account with testnet HBAR tokens
+- Basic understanding of blockchain concepts
 
 ### Installation
 
 ```bash
-# Clone repository
-git clone <repo-url>
+# Clone the repository
+git clone https://github.com/jonathanvineet/cairn.git
 cd cairn
 
 # Install dependencies
@@ -524,183 +891,583 @@ npm install
 
 # Set up environment variables
 cp .env.example .env.local
-# Edit .env.local with your Hedera credentials
+
+# Edit .env.local with your configuration
+nano .env.local
 ```
 
-### Environment Variables
+### Environment Configuration
+
+**`.env.local`** (Required variables):
 
 ```env
-# Hedera Network
+# Hedera Network Configuration
 NEXT_PUBLIC_HEDERA_NETWORK=testnet
-NEXT_PUBLIC_HEDERA_RPC=https://testnet.hashio.io/api
+NEXT_PUBLIC_HEDERA_RPC_URL=https://testnet.hashio.io/api
 
-# Contracts (Pre-deployed)
-NEXT_PUBLIC_DRONE_REGISTRY=0x5CE1B45F7af14D864146C16D6E1b168Ae599cFCf
-NEXT_PUBLIC_BOUNDARY_ZONE_REGISTRY=0xeEFfE09953FDCB844Ff69B67e46E8474B70f0E69
+# Smart Contract Addresses (Testnet)
+NEXT_PUBLIC_DRONE_REGISTRY_ADDRESS=0x5CE1B45F7af14D864146C16D6E1b168Ae599cFCf
+NEXT_PUBLIC_BOUNDARY_ZONE_REGISTRY_ADDRESS=0xeEFfE09953FDCB844Ff69B67e46E8474B70f0E69
 
-# Wallet Connect
-NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID=<your-project-id>
+# Wallet Configuration
+NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=your_project_id_here
+
+# Local Hedera Account (for backend operations)
+HEDERA_OPERATOR_ID=0.0.YOUR_ACCOUNT_ID
+HEDERA_OPERATOR_PRIVATE_KEY=0xYOUR_PRIVATE_KEY
+
+# Encryption
+ENCRYPTION_SECRET=your_32_byte_hex_key
 ```
+
+**Get Hedera Testnet HBAR**:
+1. Visit [Hedera Faucet](https://portal.hedera.com/faucet)
+2. Connect your wallet
+3. Request testnet HBAR tokens
 
 ### Running Locally
 
 ```bash
-# Development server
+# Start development server
 npm run dev
 
-# Open browser
-open http://localhost:3000
+# Server will start at http://localhost:3000
+# Open browser and navigate to the landing page
 
-# Build for production
-npm run build
-
-# Start production server
-npm start
+# In another terminal, you can run scripts:
+npm run test:connection    # Test Hedera connection
+npm run verify:keys        # Verify key configuration
+npm run check:contract     # Check contract status
 ```
 
-### Accessing Pages
+### Building for Production
 
-- **Dashboard**: `http://localhost:3000/dashboard` - Overview and recent activity
-- **Deploy**: `http://localhost:3000/deploy` - Create zones and manage drones
-- **Analyse Drone**: `http://localhost:3000/analyse-drone` - AI analysis and selection
-- **Register**: `http://localhost:3000/register` - Register new drones
+```bash
+# Create production build
+npm run build
+
+# Test production build locally
+npm start
+
+# Build output in .next/ directory
+```
+
+---
+
+## Project Structure
+
+See [Project Structure](#project-structure) section above for detailed file organization.
 
 ---
 
 ## API Reference
 
-### Drone Management
+### Authentication
 
-**GET `/api/drones`**
-- Fetch all registered drones
-- Returns drone list with status
+All API endpoints are unauthenticated but require a valid wallet connection on the frontend.
 
-**POST `/api/drones/register`**
-- Register a new drone
-- Creates HCS agent topic
-- Records in DroneRegistry contract
+### Drone Management APIs
 
-**GET `/api/drones/status`**
-- Get real-time status of all drones
-- Includes battery, location, health
+#### GET `/api/drones`
+Fetch all registered drones from the blockchain.
 
-**GET `/api/drones/:id`**
-- Get specific drone details
-- Includes agent topic information
+**Query Parameters**: None
 
-### Zone Management
+**Response**:
+```json
+{
+  "success": true,
+  "drones": [
+    {
+      "cairnDroneId": "CAIRN-01",
+      "evmAddress": "0x...",
+      "model": "DJI M300 RTK",
+      "status": "ACTIVE",
+      "batteryLevel": 85,
+      "location": {
+        "lat": 11.5395,
+        "lng": 76.4215
+      },
+      "health": "good",
+      "agentTopicId": "307216",
+      "isAgent": true,
+      "registeredAt": "2024-03-14T10:30:00Z"
+    }
+  ],
+  "count": 9
+}
+```
 
-**GET `/api/zones`**
-- Fetch all saved zones
-- Returns zone boundaries and metadata
+#### GET `/api/drones/:id`
+Get specific drone details.
 
-**POST `/api/zones/boundary`**
-- Create new zone on blockchain
-- Stores coordinates permanently
+**Response**:
+```json
+{
+  "success": true,
+  "drone": { /* drone object */ }
+}
+```
 
-**POST `/api/zones/assign`**
-- Assign drone to zone
-- Links drone with mission area
+#### POST `/api/drones/register`
+Register a new drone in the system.
 
-### Analysis
+**Request**:
+```json
+{
+  "walletAddress": "0x...",
+  "cairnDroneId": "CAIRN-02",
+  "location": {
+    "latitude": 11.5381,
+    "longitude": 76.4204
+  },
+  "model": "DJI M300 RTK"
+}
+```
 
-**POST `/api/analysis`**
-- Trigger Eliza OS analysis
-- Returns drone selection with reasoning
+**Response**:
+```json
+{
+  "success": true,
+  "drone": { /* registered drone object */ }
+}
+```
 
-### Blockchain Sync
+#### GET `/api/drones/status`
+Get real-time status of all drones.
 
-**POST `/api/sync-blockchain`**
-- Fetch latest data from blockchain
-- Updates in-memory cache
-- Ensures consistency with on-chain state
+**Response**:
+```json
+{
+  "success": true,
+  "status": [
+    {
+      "cairnDroneId": "CAIRN-01",
+      "battery": 85,
+      "health": "good",
+      "isOnline": true,
+      "lastUpdate": "2024-03-14T10:35:00Z"
+    }
+  ]
+}
+```
+
+### Zone Management APIs
+
+#### GET `/api/zones`
+Fetch all saved boundary zones.
+
+**Response**:
+```json
+{
+  "success": true,
+  "zones": [
+    {
+      "zoneId": "Wayanad-01",
+      "zoneName": "Wayanad Forest Boundary",
+      "coordinates": [
+        { "lat": 11.5381, "lng": 76.4204 },
+        { "lat": 11.5400, "lng": 76.4220 },
+        { "lat": 11.5390, "lng": 76.4240 },
+        { "lat": 11.5370, "lng": 76.4210 }
+      ],
+      "assignedDrones": ["CAIRN-01", "CAIRN-02"],
+      "createdAt": "2024-03-14T09:00:00Z",
+      "transactionHash": "0x..."
+    }
+  ],
+  "count": 5
+}
+```
+
+#### POST `/api/zones/boundary`
+Create a new boundary zone on the blockchain.
+
+**Request**:
+```json
+{
+  "zoneId": "Wayanad-01",
+  "zoneName": "Wayanad Forest Boundary",
+  "coordinates": [
+    { "lat": 11.5381, "lng": 76.4204 },
+    { "lat": 11.5400, "lng": 76.4220 },
+    { "lat": 11.5390, "lng": 76.4240 },
+    { "lat": 11.5370, "lng": 76.4210 }
+  ]
+}
+```
+
+**Response**:
+```json
+{
+  "success": true,
+  "zone": {
+    "zoneId": "Wayanad-01",
+    "transactionHash": "0x...",
+    "blockNumber": 12345678,
+    "timestamp": "2024-03-14T09:00:00Z"
+  }
+}
+```
+
+#### POST `/api/zones/assign`
+Assign a drone to a zone.
+
+**Request**:
+```json
+{
+  "zoneId": "Wayanad-01",
+  "droneAddress": "0x..."
+}
+```
+
+**Response**:
+```json
+{
+  "success": true,
+  "assignment": {
+    "zoneId": "Wayanad-01",
+    "droneAddress": "0x...",
+    "assignedAt": "2024-03-14T09:05:00Z",
+    "transactionHash": "0x..."
+  }
+}
+```
+
+### Analysis APIs
+
+#### POST `/api/analysis`
+Trigger the Eliza OS analysis for drone selection.
+
+**Request**:
+```json
+{
+  "zoneId": "Wayanad-01",
+  "coordinates": [
+    { "lat": 11.5381, "lng": 76.4204 },
+    { "lat": 11.5400, "lng": 76.4220 },
+    { "lat": 11.5390, "lng": 76.4240 }
+  ]
+}
+```
+
+**Response**:
+```json
+{
+  "success": true,
+  "analysis": {
+    "selectedDrone": {
+      "cairnDroneId": "CAIRN-01",
+      "evmAddress": "0x...",
+      "score": 87,
+      "confidence": 93.5
+    },
+    "thoughts": [
+      {
+        "phase": "assessment",
+        "thought": "Loaded 9 drones from registry",
+        "duration": 1050
+      }
+    ],
+    "reasoning": "CAIRN-01 selected: Best proximity with high battery"
+  }
+}
+```
+
+### Patrol APIs
+
+#### POST `/api/patrol/submit`
+Submit a completed patrol mission.
+
+**Request**:
+```json
+{
+  "droneId": "CAIRN-01",
+  "zoneId": "Wayanad-01",
+  "timestamp": 1709554800,
+  "evidence": [
+    {
+      "type": "image",
+      "hash": "0x...",
+      "ipfsUrl": "ipfs://..."
+    }
+  ]
+}
+```
+
+#### POST `/api/patrol/verify-image`
+Verify patrol evidence images.
+
+#### GET `/api/patrol/blockchain`
+Fetch patrol records from the blockchain.
+
+---
+
+## Utility Scripts
+
+### Available Scripts
+
+**Test Hedera Connection**
+```bash
+npm run test:connection
+# Verifies your Hedera operator credentials
+# Output: Connection status, account balance, network info
+```
+
+**Submit Patrol Mission**
+```bash
+npm run test:patrol
+# Submit a test patrol mission to the blockchain
+# Requires: valid operator credentials
+```
+
+**Verify Keys**
+```bash
+npm run verify:keys
+# Verify that your public/private key pair is valid
+# Output: Key pair validity, derived addresses
+```
+
+**Create Account from Mnemonic**
+```bash
+npm run create:account
+# Create a new Hedera account from a mnemonic phrase
+# Output: New account ID, public key, private key
+```
+
+**Extract Private Key**
+```bash
+npm run extract:key
+# Extract private key from environment
+# ⚠️ Security: Only use in development environments
+```
+
+**Check Contract Status**
+```bash
+npm run check:contract
+# Verify deployed contracts are accessible
+# Output: Contract addresses, ABI status
+```
+
+**Quick System Check**
+```bash
+npm run quick:check
+# Run all diagnostic checks
+# Output: Connection, keys, contracts, database
+```
 
 ---
 
 ## Deployment
 
-### Production Build
+### Vercel Deployment (Recommended)
 
 ```bash
-npm run build
+# Install Vercel CLI
+npm i -g vercel
+
+# Deploy to Vercel
+vercel
+
+# Set environment variables in Vercel dashboard
+# Follow the prompts to connect your Git repository
 ```
 
 ### Docker Deployment
 
 ```bash
+# Build Docker image
 docker build -t cairn:latest .
-docker run -p 3000:3000 -e NEXT_PUBLIC_HEDERA_NETWORK=testnet cairn:latest
+
+# Run container
+docker run -p 3000:3000 \
+  -e NEXT_PUBLIC_HEDERA_NETWORK=testnet \
+  -e HEDERA_OPERATOR_ID=0.0.YOUR_ID \
+  -e HEDERA_OPERATOR_PRIVATE_KEY=0x... \
+  cairn:latest
+
+# Container will start on port 3000
 ```
 
-### Vercel Deployment
+### Manual Server Deployment
 
 ```bash
-vercel deploy
+# Build the application
+npm run build
+
+# Start production server
+npm start
+
+# Use process manager (PM2) for persistence
+pm2 start "npm start" --name cairn
+pm2 save
 ```
 
-### Environment Setup for Production
+### Environment Variables for Production
 
 ```env
+# Hedera Mainnet (for production)
 NEXT_PUBLIC_HEDERA_NETWORK=mainnet
-NEXT_PUBLIC_HEDERA_RPC=https://mainnet.hashio.io/api
+NEXT_PUBLIC_HEDERA_RPC_URL=https://mainnet.hashio.io/api
+
+# Update contract addresses for mainnet
+NEXT_PUBLIC_DRONE_REGISTRY_ADDRESS=MAINNET_ADDRESS
+NEXT_PUBLIC_BOUNDARY_ZONE_REGISTRY_ADDRESS=MAINNET_ADDRESS
+
+# Security
 NODE_ENV=production
+ENCRYPTION_SECRET=your_secure_32_byte_key
 ```
 
 ---
 
-## Technical Highlights
+## Troubleshooting
 
-### Hybrid Architecture
-- **Client-side**: Interactive UI, maps, real-time rendering
-- **Server-side**: API routes, blockchain interaction, data aggregation
-- **Blockchain**: Permanent records, smart contracts, HCS communication
+### Common Issues
 
-### Scalability Features
-- In-memory caching for drone and zone data
-- Efficient distance calculations (Haversine algorithm)
-- Batch agent verification
-- Optimized database queries
+#### Issue: "Contract not found" error
+**Solution**: Verify contract addresses in `.env.local` match deployed addresses for the network you're using.
 
-### Security
-- MetaMask wallet integration
-- Smart contract permissions
-- Ed25519 signature verification
-- HCS topic access control
+#### Issue: Wallet connection fails
+**Solution**: 
+1. Clear browser cookies and cache
+2. Ensure MetaMask is properly installed
+3. Verify network is set to Hedera Testnet
+4. Check WalletConnect project ID in environment
 
-### User Experience
-- Beautiful animated UI
-- Real-time progress indicators
-- Intuitive map interface
-- Clear drone selection reasoning
+#### Issue: "Insufficient HBAR balance"
+**Solution**: 
+1. Request testnet HBAR from [Hedera Faucet](https://portal.hedera.com/faucet)
+2. Wait for transaction confirmation
+3. Refresh page and try again
+
+#### Issue: Analysis returns no drones
+**Solution**:
+1. Verify drones are registered via `/api/drones`
+2. Check drone status is "ACTIVE"
+3. Ensure zone coordinates are valid
+4. Try with a different zone
+
+#### Issue: Zone not saving to blockchain
+**Solution**:
+1. Check Hedera account has sufficient balance
+2. Verify zone coordinates are valid polygon
+3. Check browser console for detailed error
+4. Ensure metamask is connected
+
+### Debug Mode
+
+Enable verbose logging:
+
+```typescript
+// In .env.local
+NEXT_PUBLIC_DEBUG_MODE=true
+```
+
+### Getting Help
+
+1. **Check GitHub Issues**: https://github.com/jonathanvineet/cairn/issues
+2. **Review Logs**: Check browser console and terminal logs
+3. **Test Connection**: Run `npm run test:connection`
+4. **Verify Config**: Run `npm run verify:keys`
+
+---
+
+## Development Guidelines
+
+### Code Style
+
+- **TypeScript**: Strict mode enabled
+- **Formatting**: ESLint + Prettier
+- **Naming**: camelCase for variables, PascalCase for components/classes
+
+### Running Linter
+
+```bash
+npm run lint
+```
+
+### Type Checking
+
+```bash
+npx tsc --noEmit
+```
 
 ---
 
 ## Future Enhancements
 
-- [ ] Real telemetry integration (live battery, health data)
-- [ ] Multi-drone coordination missions
+- [ ] Real telemetry integration (live battery, health data from drones)
+- [ ] Multi-drone coordination and swarm optimization
 - [ ] Weather integration for mission planning
-- [ ] Mission execution and telemetry logging
-- [ ] Advanced path planning algorithm
-- [ ] Drone swarm optimization
-- [ ] Historical mission analytics
+- [ ] Mission execution with real-time telemetry logging
+- [ ] Advanced path planning algorithms
 - [ ] Mobile app for field operations
+- [ ] Historical mission analytics and reports
+- [ ] Drone maintenance tracking
+- [ ] Energy-efficient routing optimization
+- [ ] AR visualization for drone operations
 
 ---
 
 ## Contributing
 
-Contributions are welcome! Please follow the existing code structure and add tests for new features.
+Contributions are welcome! Please follow these guidelines:
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit changes (`git commit -m 'Add amazing feature'`)
+4. Push to branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+### Development Setup
+
+```bash
+# Install dependencies
+npm install
+
+# Create feature branch
+git checkout -b feature/your-feature
+
+# Make changes and test
+npm run dev
+
+# Lint your code
+npm run lint
+
+# Push and create PR
+git push origin feature/your-feature
+```
 
 ---
 
 ## License
 
-Proprietary - CAIRN Project
+**Proprietary License** - CAIRN Project
+
+This software is proprietary and confidential. Unauthorized copying, modification, or distribution is prohibited.
 
 ---
 
-## Support
+## Support & Contact
 
-For issues, questions, or feature requests, please open an issue in the repository.
-"# cairn" 
+- **GitHub Issues**: [Create an issue](https://github.com/jonathanvineet/cairn/issues)
+- **Email**: contact@cairn.io
+- **Discord**: Join our community server
+
+---
+
+## Acknowledgments
+
+- [Hedera Hashgraph](https://hedera.com/) for blockchain infrastructure
+- [Next.js](https://nextjs.org/) for the React framework
+- [Eliza OS](https://eliza.ai/) for AI analysis capabilities
+- [Leaflet](https://leafletjs.com/) for mapping functionality
+
+---
+
+**Built with ❤️ for trustless drone operations on Hedera**
+
+---
+
+*Last Updated: 14 March 2026*
