@@ -115,6 +115,7 @@ export async function POST(req: Request) {
                         // Execute transaction
                         const txResponse = await signedTx.execute(client);
                         const receipt = await txResponse.getReceipt(client);
+                        const transactionId = txResponse.transactionId.toString();
 
                         successCount++;
 
@@ -126,7 +127,8 @@ export async function POST(req: Request) {
                             droneId: drone.cairnDroneId,
                             droneAccount: drone.hederaAccountId,
                             status: receipt.status.toString(),
-                            transactionId: txResponse.transactionId.toString(),
+                            transactionId: transactionId,
+                            explorerLink: `https://testnet.mirrornode.hedera.com/#/transaction/${transactionId}`,
                             amount: "2 HBAR"
                         });
 

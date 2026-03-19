@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Plane, MapPin, Shield, CheckCircle, Loader2, ArrowLeft, Zap } from "lucide-react";
 import { LocationPicker } from "@/components/LocationPicker";
+import { TransactionLog, TransactionLogEntry } from "@/components/TransactionLog";
 import { useWalletStore } from "@/stores/walletStore";
 import { useHederaWallet } from "@/lib/useHederaWallet";
 import { DRONE_REGISTRY_ADDRESS } from "@/lib/contracts";
@@ -28,7 +29,7 @@ export default function RegisterDronePage() {
   const [registeredDroneData, setRegisteredDroneData] = useState<any>(null);
   const [currentLocation, setCurrentLocation] = useState<{lat: number; lng: number} | null>(null);
   const [step, setStep] = useState(0);
-  const [logs, setLogs] = useState<string[]>([]);
+  const [transactionLogs, setTransactionLogs] = useState<TransactionLogEntry[]>([]);
 
   const [formData, setFormData] = useState({
     droneName: "", model: "dji-m30t", serialNumber: "",
@@ -46,7 +47,16 @@ export default function RegisterDronePage() {
 
   const handleLocationSelect = (location: { lat: number; lng: number }) => setCurrentLocation(location);
 
-  const addLog = (msg: string) => setLogs(l => [...l, `[${new Date().toLocaleTimeString()}] ${msg}`]);
+  const addLog = (message: string, status: "info" | "success" | "error" | "loading" = "info", transactionId?: string, explorerLink?: string, type?: "account" | "transfer" | "contract" | "topic" | "manifest") => {
+    setTransactionLogs(l => [...l, {
+      timestamp: new Date().toLocaleTimeString(),
+      message,
+      status,
+      transactionId,
+      explorerLink,
+      type
+    }]);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,40 +64,63 @@ export default function RegisterDronePage() {
     if (!currentLocation) { alert("Please select deployment location on the map"); return; }
     if (!formData.droneName.trim()) { alert("Please provide a name for your drone"); return; }
     setIsSubmitting(true);
-    setLogs([]);
+    setTransactionLogs([]);
     try {
       const selectedModel = DRONE_MODELS.find(m => m.id === formData.model);
-      addLog("Creating drone account...");
+      addLog("Creating drone account...", "loading");
       const createAccRes = await fetch("/api/drones/register", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "createDroneAccount", cairnDroneId: formData.droneName.trim(), serialNumber: formData.serialNumber, model: selectedModel?.name, registrationLat: currentLocation.lat, registrationLng: currentLocation.lng }),
       });
       const createAccData = await createAccRes.json();
       if (!createAccRes.ok) throw new Error(createAccData.error || "Failed to create drone account");
-      const { droneAccountId, evmAddress, encryptedPrivateKey, encryptedPublicKey } = createAccData;
-      addLog(`✓ Account: ${droneAccountId}`);
-      addLog("Waiting for HashPack approval...");
+      const { droneAccountId, evmAddress, encryptedPrivateKey, encryptedPublicKey, transactionId: accountCreationTxId, explorerLink: accountExplorerLink } = createAccData;
+      addLog(`Account created: ${droneAccountId}`, "success", accountCreationTxId, accountExplorerLink, "account");
+      
+      addLog("Requesting HashPack approval...", "loading");
       let contractTransactionIdString = "";
+      let contractExplorerLink = "";
       try {
         const { ContractExecuteTransaction, ContractFunctionParameters, ContractId, AccountId } = await import("@hiero-ledger/sdk");
         const droneTx = new ContractExecuteTransaction()
           .setContractId(ContractId.fromEvmAddress(0, 0, DRONE_REGISTRY_ADDRESS)).setGas(300000)
           .setFunction("registerDrone", new ContractFunctionParameters().addString(formData.droneName.trim()).addAddress(AccountId.fromString(droneAccountId).toEvmAddress()).addString("UNASSIGNED").addString(selectedModel?.name || "Unknown"));
         const contractResult = await signAndExecuteTransaction(droneTx);
-        if (contractResult && contractResult.transactionId) { contractTransactionIdString = contractResult.transactionId.toString(); addLog("✓ Contract registered"); }
+        if (contractResult && contractResult.transactionId) { 
+          contractTransactionIdString = contractResult.transactionId.toString();
+          contractExplorerLink = `https://testnet.mirrornode.hedera.com/#/transaction/${contractTransactionIdString}`;
+          addLog("Smart contract registration completed", "success", contractTransactionIdString, contractExplorerLink, "contract");
+        }
         else throw new Error("Contract registration failed");
       } catch (contractErr: any) { throw new Error(`Contract failed: ${contractErr.message}`); }
-      addLog("Finalizing registration...");
+      
+      addLog("Finalizing registration...", "loading");
       const finalizeRes = await fetch("/api/drones/register", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "completeRegistration", droneAccountId, evmAddress, encryptedPrivateKey, encryptedPublicKey, cairnDroneId: formData.droneName.trim(), serialNumber: formData.serialNumber, model: selectedModel?.name, dgcaCertNumber: formData.dgcaCertNumber, certExpiryDate: formData.certExpiryDate, assignedZoneId: "UNASSIGNED", sensorType: formData.sensorType, maxFlightMinutes: parseInt(formData.maxFlightMinutes), registeredByOfficerId: selectedAccount.id, userWalletAddress: selectedAccount.id, registrationLat: currentLocation.lat, registrationLng: currentLocation.lng, contractTransactionId: contractTransactionIdString }),
       });
       const finalizeData = await finalizeRes.json();
       if (!finalizeRes.ok) throw new Error(finalizeData.error || "Failed to finalize");
-      addLog("✓ Registration complete!");
+      
+      // Log all transaction IDs from the finalize response
+      if (finalizeData.explorerLinks?.accountCreation) {
+        const acctLink = finalizeData.explorerLinks.accountCreation;
+        if (acctLink.transactionId) {
+          addLog("Drone registration on blockchain finalized", "success", acctLink.transactionId, acctLink.explorerUrl, "account");
+        }
+      }
+      if (finalizeData.drone?.agentTopicId) {
+        addLog(`Agent topic created: ${finalizeData.drone.agentTopicId}`, "success", undefined, `https://testnet.mirrornode.hedera.com/#/topic/${finalizeData.drone.agentTopicId}`, "topic");
+      }
+      
+      addLog("Registration complete!", "success");
       setRegisteredDroneData(finalizeData.drone);
       setRegistrationComplete(true);
-    } catch (error: any) { console.error("❌ Error:", error); alert(error.message || "Failed to register drone"); }
+    } catch (error: any) { 
+      console.error("❌ Error:", error);
+      addLog(error.message || "Failed to register drone", "error");
+      alert(error.message || "Failed to register drone"); 
+    }
     finally { setIsSubmitting(false); }
   };
 
@@ -97,24 +130,37 @@ export default function RegisterDronePage() {
   if (registrationComplete && registeredDroneData) {
     return (
       <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }} className="grid-bg scanlines">
-        <div className="card card-offset anim-scale" style={{ maxWidth: 520, width: "100%", padding: 32 }}>
+        <div className="card card-offset anim-scale" style={{ maxWidth: 720, width: "100%", padding: 32 }}>
           <div style={{ width: 56, height: 56, borderRadius: "50%", border: "2px solid var(--fg)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 18px", fontSize: 22, fontWeight: 700 }}>✓</div>
           <div style={{ textAlign: "center", marginBottom: 24 }}>
             <div style={{ fontSize: 18, fontWeight: 700, letterSpacing: "-.01em", marginBottom: 5 }}>Drone registered.</div>
             <div style={{ fontSize: 12, color: "var(--muted-fg)" }}>{registeredDroneData.cairnDroneId} is now live on Hedera Testnet</div>
           </div>
+          
+          {/* Transaction Logs */}
+          <div style={{ marginBottom: 24, maxHeight: 300, overflow: "auto" }}>
+            <TransactionLog 
+              entries={transactionLogs}
+              title="REGISTRATION TRANSACTIONS"
+              maxHeight="280px"
+            />
+          </div>
+
+          {/* Core Data */}
           {[
             { l: "HEDERA ACCOUNT", v: registeredDroneData.hederaAccountId },
             { l: "MODEL",          v: registeredDroneData.model },
+            ...(registeredDroneData.agentTopicId ? [{ l: "AGENT TOPIC", v: registeredDroneData.agentTopicId }] : []),
           ].map(r => (
             <div key={r.l} style={{ marginBottom: 10 }}>
               <div className="lbl">{r.l}</div>
               <div style={{ border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: "8px 12px", fontSize: 11, color: "var(--muted-fg)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span>{r.v}</span>
+                <span style={{ fontFamily: "monospace", fontSize: 10, wordBreak: "break-all" }}>{r.v}</span>
                 <button onClick={() => navigator.clipboard.writeText(r.v)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--muted-fg)", fontSize: 13, marginLeft: 8 }}>⎘</button>
               </div>
             </div>
           ))}
+          
           <div style={{ display: "flex", gap: 10, marginTop: 22 }}>
             <Link href="/dashboard" style={{ flex: 1 }}><button className="btn btn-ghost" style={{ width: "100%" }}>DASHBOARD</button></Link>
             <Link href="/deploy" style={{ flex: 1 }}><button className="btn btn-primary" style={{ width: "100%" }}>DEPLOY →</button></Link>
@@ -259,18 +305,12 @@ export default function RegisterDronePage() {
 
           {/* right — log */}
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <div className="card anim-up d2" style={{ padding: 18 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".09em", marginBottom: 12 }}>TRANSACTION LOG</div>
-              <div style={{ minHeight: 170, fontSize: 11, color: "var(--muted-fg)", lineHeight: 1.9 }}>
-                {logs.length === 0
-                  ? <span style={{ color: "var(--border)" }}>// awaiting submission...</span>
-                  : logs.map((l, i) => (
-                    <div key={i} className="anim-left" style={{ animationDelay: `${i * 40}ms`, color: l.includes("✓") ? "var(--fg)" : "var(--muted-fg)", fontWeight: l.includes("✓") ? 700 : 400 }}>{l}</div>
-                  ))
-                }
-                {isSubmitting && <div style={{ display: "flex", gap: 4, marginTop: 4 }}><span className="think-dot" /><span className="think-dot" /><span className="think-dot" /></div>}
-              </div>
-            </div>
+            <TransactionLog 
+              entries={transactionLogs} 
+              isLoading={isSubmitting}
+              title="TRANSACTION LOG"
+              maxHeight="420px"
+            />
             <div className="card anim-up d3" style={{ padding: 18 }}>
               <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".09em", marginBottom: 12 }}>WHAT HAPPENS</div>
               {[

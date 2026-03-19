@@ -7,6 +7,7 @@ import {
     AccountBalanceQuery,
 } from "@hiero-ledger/sdk";
 import { db } from "@/lib/db";
+import { formatTransactionResponse } from "@/lib/explorerLinks";
 
 /**
  * POST /api/drones/fund
@@ -118,13 +119,15 @@ export async function POST(req: Request) {
                     .execute(client);
 
                 const receipt = await transferTx.getReceipt(client);
+                const transactionId = transferTx.transactionId.toString();
 
                 results.push({
                     droneId: drone.cairnDroneId,
                     droneAccount: drone.hederaAccountId,
                     amount: `${amount} HBAR`,
                     status: receipt.status.toString(),
-                    transactionId: transferTx.transactionId.toString(),
+                    transactionId: transactionId,
+                    explorerLink: `https://testnet.mirrornode.hedera.com/#/transaction/${transactionId}`,
                     success: true,
                 });
 

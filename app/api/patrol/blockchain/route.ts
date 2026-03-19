@@ -3,6 +3,8 @@ import { ContractExecuteTransaction, ContractFunctionParameters, ContractId, Acc
 import { ethers } from "ethers";
 import { DRONE_EVIDENCE_VAULT_ADDRESS } from "@/lib/contracts";
 
+const HEDERA_TESTNET_EXPLORER = "https://testnet.mirrornode.hedera.com";
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -128,15 +130,19 @@ export async function POST(request: NextRequest) {
     console.log("   Transaction ID:", txResponse.transactionId.toString());
     console.log("   Status:", receipt.status.toString());
 
+    const transactionId = txResponse.transactionId.toString();
+
     client.close();
 
     return NextResponse.json({
       success: true,
-      transactionId: txResponse.transactionId.toString(),
+      transactionId: transactionId,
       status: receipt.status.toString(),
       droneId,
       zoneId,
-      ipfsCid
+      ipfsCid,
+      explorerLink: `${HEDERA_TESTNET_EXPLORER}/#/transaction/${transactionId}`,
+      explorerUrl: `${HEDERA_TESTNET_EXPLORER}/api/v1/transactions/${transactionId}`
     });
 
   } catch (error: any) {

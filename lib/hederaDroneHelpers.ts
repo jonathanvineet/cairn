@@ -11,6 +11,8 @@ import {
     DRONE_REGISTRY_ADDRESS
 } from "./contracts";
 
+const HEDERA_TESTNET_EXPLORER = "https://testnet.mirrornode.hedera.com";
+
 export async function mintDroneCredentialNFT(data: {
     cairnDroneId: string;
     droneAccountId: string;
@@ -65,8 +67,10 @@ export async function registerDroneInSmartContract(data: {
             );
 
         const zoneResponse = await zoneRegistryTx.execute(data.operatorClient);
-        await zoneResponse.getReceipt(data.operatorClient);
-        console.log("Registered in BoundaryZoneRegistry");
+        const zoneReceipt = await zoneResponse.getReceipt(data.operatorClient);
+        const zoneTransactionId = zoneResponse.transactionId.toString();
+        console.log(`✅ Registered in BoundaryZoneRegistry (TX: ${zoneTransactionId})`);
+        console.log(`   Explorer: ${HEDERA_TESTNET_EXPLORER}/#/transaction/${zoneTransactionId}`);
 
         // 2. Register in DroneRegistry
         const droneRegistryTx = new ContractExecuteTransaction()
@@ -82,12 +86,26 @@ export async function registerDroneInSmartContract(data: {
             );
 
         const droneResponse = await droneRegistryTx.execute(data.operatorClient);
-        await droneResponse.getReceipt(data.operatorClient);
-        console.log("Registered in DroneRegistry");
+        const droneReceipt = await droneResponse.getReceipt(data.operatorClient);
+        const droneTransactionId = droneResponse.transactionId.toString();
+        console.log(`✅ Registered in DroneRegistry (TX: ${droneTransactionId})`);
+        console.log(`   Explorer: ${HEDERA_TESTNET_EXPLORER}/#/transaction/${droneTransactionId}`);
 
-        return "SUCCESS";
+        return {
+            success: true,
+            zoneRegistryTransaction: {
+                transactionId: zoneTransactionId,
+                explorerLink: `${HEDERA_TESTNET_EXPLORER}/#/transaction/${zoneTransactionId}`
+            },
+            droneRegistryTransaction: {
+                transactionId: droneTransactionId,
+                explorerLink: `${HEDERA_TESTNET_EXPLORER}/#/transaction/${droneTransactionId}`
+            }
+        };
     } catch (error) {
         console.error("Contract Registration Error:", error);
         throw error;
     }
 }
+
+```

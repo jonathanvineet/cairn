@@ -22,6 +22,8 @@ import {
     TopicId,
 } from "@hiero-ledger/sdk";
 
+const HEDERA_TESTNET_EXPLORER = "https://testnet.mirrornode.hedera.com";
+
 export interface DroneAgentManifest {
     /** Cairn drone ID e.g. "CAIRN-03" */
     cairnDroneId: string;
@@ -45,6 +47,10 @@ export interface DroneAgentRegistrationResult {
     agentTopicId: string;
     /** HCS sequence number of the manifest message */
     agentManifestSequence: number;
+    /** Topic creation transaction ID */
+    topicCreationTransactionId?: string;
+    /** Manifest submission transaction ID */
+    manifestTransactionId?: string;
 }
 
 /**
@@ -78,7 +84,11 @@ export async function registerDroneAsAgent(
     const topicResponse = await topicTx.execute(operatorClient);
     const topicReceipt = await topicResponse.getReceipt(operatorClient);
     const topicId = topicReceipt.topicId!;
+    const topicCreationTxId = topicResponse.transactionId.toString();
     console.log(`  📡 HCS topic created: ${topicId.toString()}`);
+    console.log(`     Explorer: ${HEDERA_TESTNET_EXPLORER}/#/topic/${topicId.toString()}`);
+    console.log(`     Creation TX: ${topicCreationTxId}`);
+    console.log(`     TX Explorer: ${HEDERA_TESTNET_EXPLORER}/#/transaction/${topicCreationTxId}`);
 
     // ── Step 2: Build and submit the signed agent manifest ─────────────────
     const agentManifest = {
@@ -116,13 +126,17 @@ export async function registerDroneAsAgent(
     const messageResponse = await messageTx.execute(operatorClient);
     const messageReceipt = await messageResponse.getReceipt(operatorClient);
     const sequenceNumber = Number(messageReceipt.topicSequenceNumber);
+    const manifestTxId = messageResponse.transactionId.toString();
 
     console.log(
         `  ✅ Agent manifest published — topic: ${topicId.toString()}, seq: ${sequenceNumber}`,
     );
+    console.log(`     Manifest TX: ${manifestTxId}`);
+    console.log(`     TX Explorer: ${HEDERA_TESTNET_EXPLORER}/#/transaction/${manifestTxId}`);
 
     return {
         agentTopicId: topicId.toString(),
         agentManifestSequence: sequenceNumber,
-    };
+        topicCreationTransactionId: topicCreationTxId,
+        manifestTransactionId: manifestTxId,    };
 }

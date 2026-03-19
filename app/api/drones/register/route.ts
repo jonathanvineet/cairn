@@ -11,6 +11,7 @@ import { db } from "@/lib/db";
 import { encrypt } from "@/lib/encryption";
 import { mintDroneCredentialNFT, registerDroneInSmartContract } from "@/lib/hederaDroneHelpers";
 import { registerDroneAsAgent } from "@/lib/droneAgent";
+import { formatTransactionResponse } from "@/lib/explorerLinks";
 
 export async function POST(req: Request) {
     try {
@@ -120,6 +121,7 @@ export async function POST(req: Request) {
             const receipt = await txResponse.getReceipt(client);
             const droneAccountId = receipt.accountId!.toString();
             const droneEvmAddress = `0x${dronePublicKey.toEvmAddress()}`;
+            const transactionId = txResponse.transactionId.toString();
 
             // STEP 3: Encrypt and return keys (do NOT save to DB yet - only after contract registration)
             const encryptionSecret = process.env.ENCRYPTION_SECRET || "";
@@ -135,6 +137,7 @@ export async function POST(req: Request) {
                 cairnDroneId,
                 encryptedPrivateKey,
                 encryptedPublicKey,
+                ...formatTransactionResponse(transactionId),
                 message: "Drone account created with 10 HBAR. Ready for contract registration."
             });
         }
@@ -366,6 +369,10 @@ export async function POST(req: Request) {
                     testReturnTransactionId: testReturnTxId,
                     contractTransactionId,
                     message: `Drone ${cairnDroneId} registered successfully with 10 HBAR!`
+                },
+                explorerLinks: {
+                    accountCreation: `https://testnet.mirrornode.hedera.com/#/transaction/${contractTransactionId}`,
+                    ...(testReturnTxId && { testTransfer: `https://testnet.mirrornode.hedera.com/#/transaction/${testReturnTxId}` })
                 }
             });
         }
@@ -764,6 +771,10 @@ export async function POST(req: Request) {
                 agentManifestSequence,
                 isAgent: agentTopicId !== null,
                 message: `Drone ${cairnDroneId} registered as Hedera AI Agent${agentTopicId ? ` (topic: ${agentTopicId})` : ""}. 10 HBAR funded (TX: ${accountCreationTxId})`
+            },
+            explorerLinks: {
+                accountCreation: formatTransactionResponse(accountCreationTxId),
+                ...(agentTopicId && { agentTopic: `https://testnet.mirrornode.hedera.com/#/topic/${agentTopicId}` })
             }
         });
 
