@@ -157,12 +157,28 @@ export default function EvidencePage() {
       addLog(`🎬 [${drone.cairnDroneId}] Collecting patrol evidence...`);
       addLog(`🔐 [${drone.cairnDroneId}] Submitting to blockchain...`);
       
-      const zoneId = sessionStorage.getItem("deploymentZoneId") || "patrol-zone-1";
+      // Get the actual zone name/ID from deployment - not a hardcoded default
+      let zoneName = sessionStorage.getItem("pendingZoneName");
+      let zoneId = sessionStorage.getItem("pendingZoneId");
+      
+      if (!zoneName) {
+        zoneName = sessionStorage.getItem("deploymentZoneName");
+      }
+      if (!zoneId) {
+        zoneId = sessionStorage.getItem("deploymentZoneId");
+      }
+      
+      // Use zone name if available, otherwise fallback to zone ID
+      const submissionZone = zoneName || zoneId;
+      
+      if (!submissionZone) {
+        throw new Error("No zone selected. Please deploy a mission first.");
+      }
       
       console.log('📮 [submitPatrol] Calling API endpoint...');
       console.log('   Endpoint: /api/submit-evidence');
       console.log('   Drone:', drone.cairnDroneId);
-      console.log('   Zone:', zoneId);
+      console.log('   Zone:', submissionZone);
       console.log('   Account:', selectedAccount.id);
 
       addLog(`⏳ [${drone.cairnDroneId}] Sending transaction to blockchain...`);
@@ -176,7 +192,7 @@ export default function EvidencePage() {
         },
         body: JSON.stringify({
           droneId: drone.cairnDroneId,
-          zoneId,
+          zoneId: submissionZone,
           accountId: selectedAccount.id,
           agentTopicId: drone.agentTopicId, // Pass the drone's HCS topic for autonomous submission
         }),
@@ -407,25 +423,6 @@ export default function EvidencePage() {
             <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".09em", marginBottom: 12, textTransform: "uppercase", color: "var(--muted-fg)" }}>
               📋 BLOCKCHAIN LOG
             </div>
-            
-            {isSubmitting && (
-              <div style={{
-                padding: 12,
-                marginBottom: 12,
-                backgroundColor: "#1e3a8a",
-                border: "1px solid #3b82f6",
-                borderRadius: "var(--radius)",
-                fontSize: 11,
-                color: "#60a5fa",
-                animation: "pulse 1.5s ease-in-out infinite",
-                textAlign: "center"
-              }}>
-                ⏳ WAITING FOR WALLET APPROVAL...
-                <div style={{ fontSize: 10, marginTop: 6, opacity: 0.8 }}>
-                  Check your HashPack wallet for approval popup
-                </div>
-              </div>
-            )}
             
             <div style={{
               flex: 1,

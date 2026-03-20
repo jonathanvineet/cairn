@@ -16,6 +16,7 @@ contract DroneRegistry {
         string hederaAccountId;              // e.g., "0.0.5555"
         string encryptedPrivateKey;          // AES-256-CBC encrypted, hex-encoded
         string agentTopicId;                 // HCS topic for autonomous agent
+        uint256 missionCount;                // Total missions submitted by this drone
         uint256 registeredAt;
         bool isActive;
     }
@@ -55,6 +56,7 @@ contract DroneRegistry {
             hederaAccountId: _hederaAccountId,
             encryptedPrivateKey: _encryptedPrivateKey,
             agentTopicId: "",
+            missionCount: 0,
             registeredAt: block.timestamp,
             isActive: true
         });
@@ -95,6 +97,20 @@ contract DroneRegistry {
         
         drones[droneAddr].agentTopicId = _agentTopicId;
         emit AgentTopicUpdated(_cairnId, _agentTopicId);
+    }
+
+    function incrementMissionCount(string memory _cairnId) external {
+        address droneAddr = cairnIdToAddress[_cairnId];
+        require(droneAddr != address(0), "Drone not found");
+        
+        drones[droneAddr].missionCount++;
+    }
+
+    function getMissionCount(string memory _cairnId) external view returns (uint256) {
+        address droneAddr = cairnIdToAddress[_cairnId];
+        require(droneAddr != address(0), "Drone not found");
+        
+        return drones[droneAddr].missionCount;
     }
 
     function getDrone(address _accountId) public view returns (Drone memory) {

@@ -35,12 +35,10 @@ export default function DashboardPage() {
     dataRate: 2.4,
   });
   const [copied, setCopied] = useState(false);
-  const [missions] = useState([
-    { id: "PATROL-001", zone: "Z-001", status: "COMPLETED", time: "2h ago", hash: "0x7a2c9f4e..." },
-    { id: "PATROL-002", zone: "Z-002", status: "COMPLETED", time: "4h ago", hash: "0x3b5d8e1a..." },
-    { id: "PATROL-003", zone: "Z-003", status: "IN_PROGRESS", time: "12m ago", hash: "0x6f1c2b9d..." },
-  ]);
-  const [evidenceCount] = useState(47);
+  const [missions, setMissions] = useState<any[]>([]);
+  const [totalMissions, setTotalMissions] = useState(0);
+  const [evidenceCount, setEvidenceCount] = useState(0);
+  const [missionFilter, setMissionFilter] = useState<"ALL" | "SUCCESS" | "PROCESSING" | "FAILED">("ALL");
 
   useEffect(() => {
     if (!connected) {
@@ -65,14 +63,42 @@ export default function DashboardPage() {
     return () => clearInterval(interval);
   }, []);
 
+  // Refetch missions when tab changes to missions
+  useEffect(() => {
+    if (activeTab === "missions") {
+      const fetchMissions = async () => {
+        try {
+          const res = await fetch("/api/missions/all");
+          if (res.ok) {
+            const data = await res.json();
+            setMissions(data.missions || []);
+            setTotalMissions(data.totalMissions || 0);
+            console.log("✅ Missions fetched:", data.missions?.length || 0);
+          }
+        } catch (error) {
+          console.error("Failed to fetch missions:", error);
+        }
+      };
+      fetchMissions();
+    }
+  }, [activeTab]);
+
   const fetchData = async () => {
     try {
-      const [dronesRes, zonesRes] = await Promise.all([
+      const [dronesRes, zonesRes, missionsRes] = await Promise.all([
         fetch("/api/drones"),
-        fetch("/api/zones")
+        fetch("/api/zones"),
+        fetch("/api/missions/all")
       ]);
       if (dronesRes.ok) setDrones((await dronesRes.json()).drones || []);
       if (zonesRes.ok) setZones((await zonesRes.json()).zones || []);
+      if (missionsRes.ok) {
+        const missionData = await missionsRes.json();
+        console.log("📊 Missions loaded:", missionData.missions?.length || 0);
+        setMissions(missionData.missions || []);
+        setTotalMissions(missionData.totalMissions || 0);
+        setEvidenceCount(missionData.totalMissions || 0);
+      }
     } catch (error) {
       console.error("Failed to fetch data:", error);
     } finally {
@@ -247,14 +273,18 @@ export default function DashboardPage() {
                     <tr>{["MISSION ID", "ZONE", "STATUS", "TIME"].map(h => <th key={h}>{h}</th>)}</tr>
                   </thead>
                   <tbody>
-                    {missions.map(m => (
-                      <tr key={m.id}>
-                        <td style={{ fontFamily: "monospace", fontSize: 11, color: "var(--fg)" }}>{m.id}</td>
-                        <td>{m.zone}</td>
-                        <td><span style={{ padding: "3px 8px", background: m.status === "COMPLETED" ? "var(--fg)" : "rgba(34, 197, 94, 0.2)", color: m.status === "COMPLETED" ? "var(--bg)" : "#22c55e", fontSize: 10, borderRadius: "3px", fontWeight: 600 }}>{m.status}</span></td>
-                        <td style={{ color: "var(--muted-fg)" }}>{m.time}</td>
-                      </tr>
-                    ))}
+                    {missions && missions.length > 0 ? (
+                      missions.slice(0, 5).map((m: any, idx: number) => (
+                        <tr key={idx}>
+                          <td style={{ fontFamily: "monospace", fontSize: 11, color: "var(--fg)" }}>MISSION-{m.missionId}</td>
+                          <td>{m.zoneId}</td>
+                          <td><span style={{ padding: "3px 8px", background: "rgba(34, 197, 94, 0.2)", color: "#22c55e", fontSize: 10, borderRadius: "3px", fontWeight: 600 }}>SUBMITTED</span></td>
+                          <td style={{ color: "var(--muted-fg)", fontSize: 11 }}>{new Date(m.timestamp).toLocaleDateString()}</td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr><td colSpan={4} style={{ textAlign: "center", color: "var(--muted-fg)", fontSize: 12, padding: 16 }}>No missions yet</td></tr>
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -376,26 +406,84 @@ export default function DashboardPage() {
               <div className="anim-down d0" style={{ marginBottom: 22, display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                 <div>
                   <h2 style={{ fontSize: 19, fontWeight: 700 }}>Mission History</h2>
-                  <p style={{ fontSize: 12, color: "var(--muted-fg)", marginTop: 3 }}>All patrol missions & on-chain evidence hashes</p>
+                  <p style={{ fontSize: 12, color: "var(--muted-fg)", marginTop: 3 }}>All patrol missions & on-chain evidence hashes ({totalMissions} total)</p>
                 </div>
-                <Link href="/deploy">
-                  <button className="btn btn-primary" style={{ fontSize: 11, padding: "8px 16px" }}>+ DEPLOY MISSION</button>
-                </Link>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button 
+                    className="btn btn-ghost" 
+                    style={{ fontSize: 11, padding: "8px 12px" }}
+                    onClick={fetchData}
+                  >
+                    ↻ REFRESH
+                  </button>
+                  <Link href="/deploy">
+                    <button className="btn btn-primary" style={{ fontSize: 11, padding: "8px 16px" }}>+ DEPLOY MISSION</button>
+                  </Link>
+                </div>
               </div>
-              <div className="card anim-up d1" style={{ padding: 0, overflow: "hidden" }}>
+
+              {/* Mission Stats */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12, marginBottom: 16 }}>
+                <div className="card anim-up d0" style={{ padding: "12px 16px" }}>
+                  <div style={{ fontSize: 11, color: "var(--muted-fg)", marginBottom: 6 }}>TOTAL MISSIONS</div>
+                  <div style={{ fontSize: 20, fontWeight: 700, color: "var(--fg)" }}>{totalMissions}</div>
+                </div>
+                <div className="card anim-up d1" style={{ padding: "12px 16px" }}>
+                  <div style={{ fontSize: 11, color: "var(--muted-fg)", marginBottom: 6 }}>ACTIVE DRONES</div>
+                  <div style={{ fontSize: 20, fontWeight: 700, color: "var(--fg)" }}>{drones.length}</div>
+                </div>
+                <div className="card anim-up d2" style={{ padding: "12px 16px" }}>
+                  <div style={{ fontSize: 11, color: "var(--muted-fg)", marginBottom: 6 }}>SUCCESS RATE</div>
+                  <div style={{ fontSize: 20, fontWeight: 700, color: "#22c55e" }}>100%</div>
+                </div>
+              </div>
+
+              <div className="card anim-up d3" style={{ padding: 0, overflow: "hidden" }}>
                 <div style={{ padding: "12px 20px", borderBottom: "1px solid var(--border)", display: "flex", gap: 16 }}>
                   {["ALL", "SUCCESS", "PROCESSING", "FAILED"].map(f => (
-                    <button key={f} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 11, fontFamily: "inherit", fontWeight: 600, color: f === "ALL" ? "var(--fg)" : "var(--muted-fg)", letterSpacing: ".06em", paddingBottom: 4, borderBottom: f === "ALL" ? "2px solid var(--fg)" : "2px solid transparent" }}>{f}</button>
+                    <button 
+                      key={f} 
+                      onClick={() => setMissionFilter(f as any)}
+                      style={{ 
+                        background: "none", 
+                        border: "none", 
+                        cursor: "pointer", 
+                        fontSize: 11, 
+                        fontFamily: "inherit", 
+                        fontWeight: 600, 
+                        color: f === missionFilter ? "var(--fg)" : "var(--muted-fg)", 
+                        letterSpacing: ".06em", 
+                        paddingBottom: 4, 
+                        borderBottom: f === missionFilter ? "2px solid var(--fg)" : "2px solid transparent" 
+                      }}
+                    >
+                      {f}
+                    </button>
                   ))}
                 </div>
-                <table className="tbl">
-                  <thead>
-                    <tr>{["MISSION ID", "ZONE", "DRONE", "STATUS", "HASH", "TIME"].map(h => <th key={h}>{h}</th>)}</tr>
-                  </thead>
-                  <tbody>
-                    <tr><td colSpan={6} style={{ textAlign: "center", color: "var(--muted-fg)", fontSize: 12, padding: 24 }}>No missions yet</td></tr>
-                  </tbody>
-                </table>
+                <div style={{ maxHeight: "600px", overflowY: "auto" }}>
+                  <table className="tbl" style={{ width: "100%" }}>
+                    <thead>
+                      <tr>{["MISSION ID", "ZONE", "DRONE", "STATUS", "HASH", "TIME"].map(h => <th key={h}>{h}</th>)}</tr>
+                    </thead>
+                    <tbody>
+                      {missions && missions.length > 0 ? (
+                        missions.map((m: any, idx: number) => (
+                          <tr key={idx}>
+                            <td style={{ fontFamily: "monospace", fontSize: 11 }}>MISSION-{m.missionId || idx + 1}</td>
+                            <td style={{ fontSize: 11 }}>{m.zoneId}</td>
+                            <td style={{ fontSize: 11 }}>{m.droneId}</td>
+                            <td><span style={{ padding: "2px 8px", borderRadius: 4, background: "rgba(34, 197, 94, 0.1)", color: "#22c55e", fontSize: 10, fontWeight: 600 }}>SUBMITTED</span></td>
+                            <td style={{ fontFamily: "monospace", fontSize: 10, maxWidth: "120px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={m.hash}>{m.hash?.substring(0, 16) || "N/A"}...</td>
+                            <td style={{ fontSize: 11, color: "var(--muted-fg)", minWidth: "140px" }}>{new Date(m.timestamp).toLocaleString()}</td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr><td colSpan={6} style={{ textAlign: "center", color: "var(--muted-fg)", fontSize: 12, padding: 24 }}>No missions yet</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           )}

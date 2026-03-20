@@ -119,7 +119,15 @@ export default function DeployPage() {
     const activeZoneId = selectedZone?.zoneId || savedZoneId;
     const activeBoundary = selectedZone?.coordinates || boundaryCoords;
     if (!activeZoneId || !activeBoundary || activeBoundary.length === 0) { alert("Please select or create a boundary zone first"); return; }
+    
+    // Extract zone name from selectedZone
+    let zoneName = "";
+    if (selectedZone) {
+      zoneName = selectedZone.zoneName || selectedZone.zoneId.split('|')[0] || selectedZone.zoneId.substring(0, 20);
+    }
+    
     sessionStorage.setItem("pendingZoneId", activeZoneId);
+    sessionStorage.setItem("pendingZoneName", zoneName);
     sessionStorage.setItem("pendingBoundary", JSON.stringify(activeBoundary));
     sessionStorage.setItem("zoneSelectedThisSession", "true");
     window.location.href = "/analysis";

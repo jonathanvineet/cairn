@@ -351,76 +351,82 @@ export async function POST(request: Request): Promise<Response> {
       // Don't fail - HCS submission is what matters
     }
 
+    // STEP 6.5: Submit mission to vault contract for permanent record
+    console.log(`\n📋 [API-OnChain] STEP 6.5: Submit mission to vault contract (permanent record)`);
+    try {
+      const client2 = Client.forTestnet().setOperator(AccountId.fromString(operatorId), PrivateKey.fromStringECDSA(operatorKey.startsWith('0x') ? operatorKey.slice(2) : operatorKey));
+      
+      const missionTx = new ContractExecuteTransaction()
+        .setContractId(ContractId.fromEvmAddress(0, 0, DRONE_EVIDENCE_VAULT_ADDRESS))
+        .setGas(500000)
+        .setFunction(
+          "submitMission",
+          new ContractFunctionParameters()
+            .addString(droneId)
+            .addString(accountId)
+            .addString(zoneId)
+            .addUint256(1)
+            .addString(hashHex)
+            .addString(evidenceTopicId || "0.0.0")
+            .addString("submitted")
+        );
+
+      await missionTx.freezeWith(client2);
+      const missionResult = await missionTx.execute(client2);
+      const missionReceipt = await missionResult.getReceipt(client2);
+      
+      console.log(`✅ [API-OnChain] Mission submitted to vault contract`);
+      console.log(`   TX: ${missionResult.transactionId?.toString()}`);
+      console.log(`   Status: ${missionReceipt.status.toString()}`);
+      
+      await client2.close();
+    } catch (missionErr: any) {
+      console.warn(`⚠️  [API-OnChain] Mission submission to vault failed (non-critical): ${missionErr?.message}`);
+    }
+
     // Close client
     await client.close();
 
-    // STEP 7: Query mission history from contract
-    console.log(`\n📋 [API-OnChain] STEP 7: Query drone mission history`);
+    // STEP 7: Query mission history from HCS topic
+    console.log(`\n📋 [API-OnChain] STEP 7: Query drone mission history from HCS`);
     let missionHistory: any[] = [];
     try {
-      const rpc = process.env.HEDERA_TESTNET_RPC || "https://testnet.hashio.io/api";
-      const provider = new ethers.JsonRpcProvider(rpc);
-      
-      const vaultABI = [
-        {
-          inputs: [{ internalType: "string", name: "droneId", type: "string" }],
-          name: "getDroneEvidence",
-          outputs: [{ internalType: "uint256[]", name: "", type: "uint256[]" }],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [{ internalType: "uint256", name: "evidenceId", type: "uint256" }],
-          name: "getEvidenceImage",
-          outputs: [
-            {
-              components: [
-                { internalType: "uint256", name: "evidenceId", type: "uint256" },
-                { internalType: "string", name: "droneId", type: "string" },
-                { internalType: "string", name: "zoneId", type: "string" },
-                { internalType: "bytes32", name: "imageHash", type: "bytes32" },
-                { internalType: "string", name: "ipfsCid", type: "string" },
-                { internalType: "uint256", name: "timestamp", type: "uint256" },
-                { internalType: "address", name: "submittedBy", type: "address" },
-                { internalType: "bool", name: "verified", type: "bool" },
-              ],
-              internalType: "struct DroneEvidenceVault.EvidenceImage",
-              name: "",
-              type: "tuple",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-      ];
+      if (evidenceTopicId) {
+        const mirrorNodeUrl = "https://testnet.mirrornode.hedera.com/api/v1";
+        const topicResponse = await fetch(
+          `${mirrorNodeUrl}/topics/${evidenceTopicId}/messages?limit=50&order=desc`
+        );
 
-      const vaultContract = new ethers.Contract(
-        DRONE_EVIDENCE_VAULT_ADDRESS,
-        vaultABI,
-        provider
-      );
+        if (topicResponse.ok) {
+          const topicData = await topicResponse.json() as any;
+          const messages = topicData.messages || [];
 
-      const evidenceIds = await vaultContract.getDroneEvidence(droneId);
-      
-      if (evidenceIds && evidenceIds.length > 0) {
-        console.log(`✅ [API-OnChain] Found ${evidenceIds.length} evidence record(s)`);
-        
-        for (const evidenceId of evidenceIds) {
-          const evidence = await vaultContract.getEvidenceImage(evidenceId);
-          missionHistory.push({
-            id: Number(evidence.evidenceId),
-            droneId: evidence.droneId,
-            zone: evidence.zoneId,
-            hash: evidence.imageHash.substring(0, 16) + "...",
-            timestamp: new Date(Number(evidence.timestamp) * 1000).toISOString(),
-            verified: evidence.verified,
-          });
+          console.log(`✅ [API-OnChain] Found ${messages.length} evidence record(s) in HCS topic`);
+
+          for (const msg of messages) {
+            try {
+              const decodedMessage = Buffer.from(msg.message, "base64").toString("utf-8");
+              const messageObj = JSON.parse(decodedMessage);
+
+              // Only include evidence messages (skip agent manifest)
+              if (messageObj["@type"] === "PatrolEvidence/v1") {
+                missionHistory.push({
+                  sequence: msg.sequence_number,
+                  timestamp: new Date(msg.consensus_timestamp * 1000).toISOString(),
+                  drone: messageObj.droneId,
+                  zone: messageObj.zoneId,
+                  hash: messageObj.evidenceHash?.substring(0, 16) + "..." || "unknown",
+                  status: messageObj.status,
+                });
+              }
+            } catch (parseErr) {
+              // Skip unparseable messages
+            }
+          }
         }
-      } else {
-        console.log(`ℹ️  [API-OnChain] No mission history found yet`);
       }
     } catch (historyErr: any) {
-      console.warn(`⚠️  [API-OnChain] Could not query mission history: ${historyErr.message}`);
+      console.warn(`⚠️  [API-OnChain] Could not query HCS topic history: ${historyErr.message}`);
     }
 
     // Return success with mission logs
