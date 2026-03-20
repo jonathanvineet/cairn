@@ -53,7 +53,6 @@ export async function POST(req: NextRequest) {
     }
 
     // 3. Fetch all drones from contract
-    const HEDERA_TESTNET_RPC = "https://testnet.hashio.io/api";
     const droneProvider = new ethers.JsonRpcProvider(HEDERA_TESTNET_RPC);
     const droneContract = new ethers.Contract(DRONE_REGISTRY_ADDRESS, DRONE_REGISTRY_ABI, droneProvider);
     

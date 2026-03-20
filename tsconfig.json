@@ -38,6 +38,8 @@
   ],
   "exclude": [
     "node_modules",
+    "scripts/**",
+    "test/**",
     "**/*.bak",
     "**/*.tsx.bak",
     "**/*.ts.bak",
