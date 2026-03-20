@@ -5,8 +5,9 @@ import {
     Hbar,
     AccountId,
 } from "@hiero-ledger/sdk";
-import { db } from "@/lib/db";
 import { decrypt } from "@/lib/encryption";
+import { ethers } from "ethers";
+import { DRONE_REGISTRY_ADDRESS, DRONE_REGISTRY_ABI } from "@/lib/contracts";
 
 /**
  * POST /api/drones/test-transfer
@@ -62,8 +63,21 @@ export async function POST(req: Request) {
                 const client = Client.forTestnet()
                     .setOperator(AccountId.fromString(operatorId), operatorPrivKey);
 
-                // Get all registered drones
-                const drones = await db.drones.findMany();
+                // Get all registered drones from contract
+                let drones: any[] = [];
+                try {
+                    const HEDERA_TESTNET_RPC = "https://testnet.hashio.io/api";
+                    const provider = new ethers.JsonRpcProvider(HEDERA_TESTNET_RPC);
+                    const contract = new ethers.Contract(DRONE_REGISTRY_ADDRESS, DRONE_REGISTRY_ABI, provider);
+                    drones = await contract.getAllDrones();
+                } catch (err: any) {
+                    sendMessage({
+                        type: 'error',
+                        error: `Failed to fetch drones from contract: ${err.message}`
+                    });
+                    controller.close();
+                    return;
+                }
                 
                 if (drones.length === 0) {
                     sendMessage({

@@ -109,8 +109,8 @@ export async function fetchDronesFromBlockchain(): Promise<DroneStatus[]> {
     const totalDrones = await contract.getTotalDrones();
     const count = Number(totalDrones);
     
-    // Import db to get real coordinates
-    const { db } = await import("./db");
+    // All drone data now comes directly from the blockchain contract
+    // No local database lookups (db.ts has been eliminated)
     
     const drones: any[] = [];
     const seenAddresses = new Set<string>();
@@ -123,20 +123,17 @@ export async function fetchDronesFromBlockchain(): Promise<DroneStatus[]> {
 
         const droneData = await contract.getDrone(droneAddress);
         
-        // Fetch real location from database
-        const localDrone = await db.drones.findByEvmAddress(droneAddress);
-        
         drones.push({
           cairnId: droneData.cairnId,
           evmAddress: droneAddress,
           model: droneData.model || "Unknown Model",
           status: droneData.isActive ? "ACTIVE" : "INACTIVE",
           registeredAt: new Date(Number(droneData.registeredAt) * 1000).toISOString(),
-          // Use REAL coordinates from database, not random ones!
-          registrationLat: localDrone?.registrationLat || 11.6,
-          registrationLng: localDrone?.registrationLng || 76.1,
-          assignedZoneId: localDrone?.assignedZoneId || droneData.zoneId || "UNASSIGNED",
-          agentTopicId: localDrone?.agentTopicId || null,
+          // Use coordinates from contract if available, otherwise defaults
+          registrationLat: 11.6,
+          registrationLng: 76.1,
+          assignedZoneId: droneData.zoneId || "UNASSIGNED",
+          agentTopicId: droneData.agentTopicId || null,
         });
       } catch (err: any) {
         console.error(`Error fetching drone at index ${i}:`, err.message);

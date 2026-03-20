@@ -11,6 +11,7 @@ import * as ethers from "ethers";
 interface SelectedDrone {
   cairnDroneId: string;
   evmAddress: string;
+  agentTopicId?: string;
   location: { lat: number; lng: number };
   batteryLevel: number;
   health: string;
@@ -42,24 +43,42 @@ export default function EvidencePage() {
     setMounted(true);
   }, []);
 
-  // Load selected drone from sessionStorage
+  // Load selected drone from sessionStorage - STRICT ENFORCEMENT
   useEffect(() => {
     try {
       const droneData = sessionStorage.getItem("selectedDrone");
       if (droneData) {
-        setDrone(JSON.parse(droneData));
+        const parsedDrone = JSON.parse(droneData);
+        setDrone(parsedDrone);
+        addLog(`✓ Loaded authorized drone: ${parsedDrone.cairnDroneId}`);
+      } else {
+        // No drone selected - this page should not be accessible
+        addLog(`❌ ERROR: No drone selected from analysis. Redirecting...`);
       }
     } catch (error) {
       console.error("Failed to load drone data:", error);
+      addLog(`❌ ERROR: Invalid drone authorization data`);
     }
   }, []);
 
-  // Check wallet connection - only redirect after hydration
+  // Check wallet connection - only redirect after hydration and with delay to allow wallet to initialize
   useEffect(() => {
+    // Don't redirect if we're in the middle of submission
+    if (submitted) return;
+    
     if (hasHydrated && !connected) {
-      router.push("/");
+      // Give wallet 3 seconds to initialize before redirecting (longer timeout for restoration)
+      const timer = setTimeout(() => {
+        if (!connected) {
+          console.warn("Wallet not connected after timeout, redirecting to home");
+          addLog("⚠️ Wallet connection failed. Please connect your wallet.");
+          router.push("/");
+        }
+      }, 3000);
+      
+      return () => clearTimeout(timer);
     }
-  }, [connected, hasHydrated, router]);
+  }, [connected, hasHydrated, router, submitted]);
 
   // Countdown timer
   useEffect(() => {
@@ -80,85 +99,146 @@ export default function EvidencePage() {
 
   // Submit patrol when countdown reaches 0
   useEffect(() => {
-    if (countdown === 0 && !submitted && drone) {
+    if (countdown === 0 && !submitted && drone && connected) {
+      console.log("⏰ Countdown reached 0, submitting patrol...");
       submitPatrol();
     }
-  }, [countdown, submitted, drone]);
+  }, [countdown, submitted, drone, connected]);
 
   const submitPatrol = async () => {
-    if (!drone || !selectedAccount) {
-      addLog("❌ Missing drone or account data");
+    console.log("🚀 submitPatrol called");
+    console.log("  Drone:", drone?.cairnDroneId);
+    console.log("  Account:", selectedAccount?.id);
+    console.log("  Connected:", connected);
+    
+    // Check wallet is connected
+    if (!connected || !selectedAccount) {
+      addLog("❌ ERROR: Wallet not connected. Please reconnect wallet.");
+      console.error("Wallet not connected when trying to submit");
+      setIsSubmitting(false);
+      setSubmitted(false);
       return;
     }
 
-    // Import SDK types
-    const { ContractExecuteTransaction, ContractFunctionParameters, ContractId } = await import("@hiero-ledger/sdk");
+    // STRICT DRONE AUTHENTICATION - Only selected drone can submit
+    if (!drone) {
+      addLog("❌ ERROR: Missing drone data. Access denied.");
+      setIsSubmitting(false);
+      setSubmitted(false);
+      return;
+    }
+
+    // Verify drone selection is still in memory (not tampered with)
+    const storedDrone = sessionStorage.getItem("selectedDrone");
+    if (!storedDrone) {
+      addLog("❌ ERROR: Drone authorization lost. Session may have expired.");
+      return;
+    }
+
+    try {
+      const verifyDrone = JSON.parse(storedDrone);
+      if (verifyDrone.cairnDroneId !== drone.cairnDroneId) {
+        addLog("❌ ERROR: Drone ID mismatch. Attempted unauthorized drone submission!");
+        console.warn("SECURITY: Attempted submission with mismatched drone ID");
+        return;
+      }
+    } catch {
+      addLog("❌ ERROR: Failed to verify drone authorization");
+      return;
+    }
+
+    // Log authorized submission
+    addLog(`✓ AUTHORIZED: ${drone.cairnDroneId} initiating evidence submission`);
 
     setIsSubmitting(true);
     setSubmitted(true);
 
     try {
-      // Mock image hash (simulating drone evidence data)
-      // In a real scenario, this would be computed from actual drone footage
-      const mockImagePath = "C:\\Users\\hp\\Documents\\broken-metallic-fence.jpg";
-      // Convert ethers.id() result to proper bytes32 format
-      const hashHex = ethers.id(mockImagePath);
-      const hashBytes32 = ethers.getBytes(hashHex); // Convert hex string to bytes
-
-      addLog(`🎬 Simulating drone patrol data collection...`);
+      addLog(`🎬 [${drone.cairnDroneId}] Collecting patrol evidence...`);
+      addLog(`🔐 [${drone.cairnDroneId}] Submitting to blockchain...`);
       
-      // Step 1: Register drone on vault if not already registered
-      addLog(`🔐 Registering drone on DroneEvidenceVault...`);
-      try {
-        const registerTx = new ContractExecuteTransaction()
-          .setContractId(ContractId.fromEvmAddress(0, 0, DRONE_EVIDENCE_VAULT_ADDRESS))
-          .setGas(500000)
-          .setFunction("registerDrone", new ContractFunctionParameters().addString(drone.cairnDroneId));
+      const zoneId = sessionStorage.getItem("deploymentZoneId") || "patrol-zone-1";
+      
+      console.log('📮 [submitPatrol] Calling API endpoint...');
+      console.log('   Endpoint: /api/submit-evidence');
+      console.log('   Drone:', drone.cairnDroneId);
+      console.log('   Zone:', zoneId);
+      console.log('   Account:', selectedAccount.id);
 
-        const registerResult = await signAndExecuteTransaction(registerTx);
-        addLog(`✓ Drone registered! TX: ${registerResult?.transactionId?.toString() || "pending"}`);
-      } catch (error: any) {
-        if (error.message?.includes("already") || error.message?.includes("registered")) {
-          addLog(`✓ Drone already registered`);
-        } else {
-          addLog(`⚠️ Registration error (continuing): ${error.message}`);
-        }
+      addLog(`⏳ [${drone.cairnDroneId}] Sending transaction to blockchain...`);
+
+      // Call the backend API which will handle the transaction with the drone's agent credentials
+      // The drone agent was configured during deployment with its own HCS topic
+      const response = await fetch('/api/submit-evidence', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          droneId: drone.cairnDroneId,
+          zoneId,
+          accountId: selectedAccount.id,
+          agentTopicId: drone.agentTopicId, // Pass the drone's HCS topic for autonomous submission
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || `HTTP ${response.status}`);
       }
 
-      // Step 2: Submit patrol data
-      addLog(`📤 Submitting patrol evidence to blockchain...`);
-      const zoneId = sessionStorage.getItem("deploymentZoneId") || "patrol-zone-1";
-      const ipfsCid = "QmXxxx...mock-cid"; // Mock IPFS CID
+      if (!result.success) {
+        throw new Error(result.error || 'Transaction failed');
+      }
 
-      const submitTx = new ContractExecuteTransaction()
-        .setContractId(ContractId.fromEvmAddress(0, 0, DRONE_EVIDENCE_VAULT_ADDRESS))
-        .setGas(500000)
-        .setFunction(
-          "submitPatrol",
-          new ContractFunctionParameters()
-            .addString(drone.cairnDroneId)
-            .addString(zoneId)
-            .addString(ipfsCid)
-            .addBytes32(hashBytes32)
-        );
-
-      const submitResult = await signAndExecuteTransaction(submitTx);
-      addLog(`✓ Patrol submitted! TX: ${submitResult?.transactionId?.toString()}`);
-      addLog(`📍 Location: ${drone.location.lat.toFixed(4)}°, ${drone.location.lng.toFixed(4)}°`);
-      addLog(`🖼️ Evidence Hash: ${hashHex.substring(0, 16)}...`);
-      addLog(`✅ Evidence secured on-chain!`);
+      console.log('✅ Transaction successful:', result);
+      
+      const txId = result.transactionId || result.hash || "confirmed";
+      addLog(`✓ [${drone.cairnDroneId}] Evidence submitted! TX: ${txId}`);
+      addLog(`📍 [${drone.cairnDroneId}] Location: ${drone.location.lat.toFixed(4)}°, ${drone.location.lng.toFixed(4)}°`);
+      addLog(`🖼️ [${drone.cairnDroneId}] Evidence Hash: ${result.hash?.substring(0, 16)}...`);
+      addLog(`✅ [${drone.cairnDroneId}] Evidence secured on-chain!`);
       
       // Store evidence data for display
-      setEvidenceHash(hashHex);
+      setEvidenceHash(result.hash || "");
       setImageData({
-        path: mockImagePath,
-        hash: hashHex
+        path: "C:\\Users\\hp\\Documents\\broken-metallic-fence.jpg",
+        hash: result.hash || ""
       });
+
+      // Mission complete - no modal, just stay on evidence page
     } catch (error: any) {
       const errorMsg = error?.message || JSON.stringify(error);
-      addLog(`❌ Submission failed: ${errorMsg}`);
-    } finally {
+      console.error("❌ Patrol submission error:", error);
+      console.error("❌ Error details - Message:", error?.message);
+      
+      // User rejection
+      if (errorMsg.includes("User rejected") || errorMsg.includes("rejected") || errorMsg.includes("cancelled")) {
+        addLog(`⚠️ Transaction cancelled. Please try again.`);
+      } 
+      // Contract error
+      else if (errorMsg.includes("contract") || errorMsg.includes("revert")) {
+        addLog(`❌ Smart contract error: ${errorMsg}`);
+      }
+      // Network error
+      else if (errorMsg.includes("network") || errorMsg.includes("timeout") || errorMsg.includes("ENOTFOUND")) {
+        addLog(`❌ Network error: Check your connection. ${errorMsg}`);
+      }
+      // API error
+      else if (errorMsg.includes("fetch") || errorMsg.includes("HTTP")) {
+        addLog(`❌ API error: ${errorMsg}`);
+      }
+      // Generic error
+      else {
+        addLog(`❌ Submission failed: ${errorMsg}`);
+      }
+      
+      // Allow retry by resetting submitted flag
+      setSubmitted(false);
       setIsSubmitting(false);
+    } finally {
+      // Don't set isSubmitting to false here since we handle it in try/catch
     }
   };
 
@@ -248,7 +328,8 @@ export default function EvidencePage() {
 
         {/* Right: Submission Status */}
         <div style={{ flex: 0.6, display: "flex", flexDirection: "column", gap: 18 }}>
-          {/* Countdown */}
+          {/* Countdown - Hidden after submission */}
+          {!submitted && (
           <div className="card card-offset anim-scale" style={{ padding: 32, textAlign: "center" }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted-fg)", letterSpacing: ".1em", marginBottom: 16, textTransform: "uppercase" }}>
               📸 SIMULATING DRONE PATROL
@@ -291,13 +372,61 @@ export default function EvidencePage() {
               <br />
               Will submit to chain after completion
             </div>
+
+            {/* Manual submit button if auto-submit fails */}
+            {countdown === 0 && !isSubmitting && (
+              <button
+                onClick={submitPatrol}
+                style={{
+                  marginTop: 16,
+                  padding: "10px 20px",
+                  background: "var(--fg)",
+                  color: "var(--bg)",
+                  border: "none",
+                  borderRadius: "var(--radius)",
+                  fontSize: 11,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  transition: "all 0.2s ease",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.opacity = "0.9";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.opacity = "1";
+                }}
+              >
+                SUBMIT NOW →
+              </button>
+            )}
           </div>
+          )}
 
           {/* Blockchain Log */}
           <div className="card anim-up d0" style={{ padding: 18, flex: 1, display: "flex", flexDirection: "column" }}>
             <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".09em", marginBottom: 12, textTransform: "uppercase", color: "var(--muted-fg)" }}>
               📋 BLOCKCHAIN LOG
             </div>
+            
+            {isSubmitting && (
+              <div style={{
+                padding: 12,
+                marginBottom: 12,
+                backgroundColor: "#1e3a8a",
+                border: "1px solid #3b82f6",
+                borderRadius: "var(--radius)",
+                fontSize: 11,
+                color: "#60a5fa",
+                animation: "pulse 1.5s ease-in-out infinite",
+                textAlign: "center"
+              }}>
+                ⏳ WAITING FOR WALLET APPROVAL...
+                <div style={{ fontSize: 10, marginTop: 6, opacity: 0.8 }}>
+                  Check your HashPack wallet for approval popup
+                </div>
+              </div>
+            )}
+            
             <div style={{
               flex: 1,
               overflowY: "auto",

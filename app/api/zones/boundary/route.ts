@@ -1,8 +1,7 @@
 import { NextRequest } from "next/server";
-import { db } from "@/lib/db";
 import { findDronesInZone } from "@/lib/geoUtils";
 import { ethers } from "ethers";
-import { BOUNDARY_ZONE_REGISTRY_ADDRESS, BOUNDARY_ZONE_REGISTRY_ABI } from "@/lib/contracts";
+import { BOUNDARY_ZONE_REGISTRY_ADDRESS, BOUNDARY_ZONE_REGISTRY_ABI, DRONE_REGISTRY_ADDRESS, DRONE_REGISTRY_ABI } from "@/lib/contracts";
 
 const HEDERA_TESTNET_RPC = "https://testnet.hashio.io/api";
 
@@ -53,65 +52,29 @@ export async function POST(req: NextRequest) {
       }, { status: 400 });
     }
 
-    // 3. Fetch all drones from database
-    const allDrones = await db.drones.findMany();
-    console.log(`📦 Found ${allDrones.length} drones in database`);
+    // 3. Fetch all drones from contract
+    const HEDERA_TESTNET_RPC = "https://testnet.hashio.io/api";
+    const droneProvider = new ethers.JsonRpcProvider(HEDERA_TESTNET_RPC);
+    const droneContract = new ethers.Contract(DRONE_REGISTRY_ADDRESS, DRONE_REGISTRY_ABI, droneProvider);
     
-    // Log drones with location data
-    allDrones.forEach(drone => {
-      if (drone.registrationLat && drone.registrationLng) {
-        console.log(`  ✓ ${drone.cairnDroneId}: [${drone.registrationLat}, ${drone.registrationLng}]`);
-      } else {
-        console.log(`  ✗ ${drone.cairnDroneId}: NO LOCATION DATA`);
-      }
-    });
-
-    // 4. Find drones within this zone's boundary
-    console.log(`🔍 Checking zone "${zoneId}" with ${coordinates.length} boundary points:`);
-    coordinates.forEach((coord, i) => {
-      console.log(`  Point ${i + 1}: [${coord.lat}, ${coord.lng}]`);
-    });
+    let allDrones: any[] = [];
+    try {
+      allDrones = await droneContract.getAllDrones();
+    } catch (err: any) {
+      return Response.json({
+        success: false,
+        error: `Failed to fetch drones from contract: ${err.message}`
+      }, { status: 500 });
+    }
     
-    const dronesInZone = findDronesInZone(allDrones, coordinates);
+    console.log(`📦 Found ${allDrones.length} drones on contract`);
+    
+    // Filter drones in zone
+    const dronesInZone = allDrones
+      .filter((d: any) => findDronesInZone([d], coordinates).includes(d.cairnId.trim()))
+      .map((d: any) => d.cairnId.trim());
     
     console.log(`✅ Found ${dronesInZone.length} drones inside zone boundary`);
-
-    // 5. Update each drone's assigned zone in the database
-    for (const droneId of dronesInZone) {
-      try {
-        const drone = allDrones.find(d => d.cairnDroneId === droneId);
-        if (drone) {
-          await db.drones.update(drone.id, {
-            assignedZoneId: zoneId
-          });
-          console.log(`  ✓ Updated ${droneId} → ${zoneId}`);
-        }
-      } catch (updateError) {
-        console.warn(`  ✗ Failed to update drone ${droneId}:`, updateError);
-      }
-    }
-
-    // 6. Update zone in local database (for caching)
-    try {
-      const existingZone = await db.zones.findByZoneId(zoneId);
-      if (existingZone) {
-        await db.zones.update(zoneId, {
-          assignedDrones: dronesInZone,
-          coordinates,
-          name: zoneName,
-        });
-      } else {
-        await db.zones.create({
-          zoneId,
-          name: zoneName,
-          coordinates,
-          assignedDrones: dronesInZone,
-        });
-      }
-    } catch (dbError) {
-      console.warn("Zone DB update failed (non-critical):", dbError);
-    }
-
     console.log(`✅ Zone ${zoneId}: Auto-assigned ${dronesInZone.length} drones`);
     console.log("Assigned drones:", dronesInZone);
 

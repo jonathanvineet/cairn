@@ -82,9 +82,25 @@ export default function RegisterDronePage() {
       let contractExplorerLink = "";
       try {
         const { ContractExecuteTransaction, ContractFunctionParameters, ContractId, AccountId } = await import("@hiero-ledger/sdk");
+
+        // Deployed contract expects 4 parameters (old signature):
+        // 1) cairnId (string)
+        // 2) accountId (address - EVM form of droneAccountId)
+        // 3) zoneId (string)
+        // 4) model (string)
         const droneTx = new ContractExecuteTransaction()
-          .setContractId(ContractId.fromEvmAddress(0, 0, DRONE_REGISTRY_ADDRESS)).setGas(300000)
-          .setFunction("registerDrone", new ContractFunctionParameters().addString(formData.droneName.trim()).addAddress(AccountId.fromString(droneAccountId).toEvmAddress()).addString("UNASSIGNED").addString(selectedModel?.name || "Unknown"));
+          .setContractId(ContractId.fromEvmAddress(0, 0, DRONE_REGISTRY_ADDRESS))
+          .setGas(750000)
+          .setFunction(
+            "registerDrone",
+            new ContractFunctionParameters()
+              .addString(formData.droneName.trim())
+              .addAddress(AccountId.fromString(droneAccountId).toEvmAddress())
+              .addString("UNASSIGNED")
+              .addString(selectedModel?.name || "Unknown")
+              .addString(droneAccountId)
+              .addString(encryptedPrivateKey)
+          );
         const contractResult = await signAndExecuteTransaction(droneTx);
         if (contractResult && contractResult.transactionId) { 
           contractTransactionIdString = contractResult.transactionId.toString();

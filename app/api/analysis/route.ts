@@ -208,8 +208,18 @@ export async function POST(req: NextRequest) {
     const topDrone = rankedDrones[0];
     const drone = topDrone.drone;
     
+    // 🤖 ElizaOS Integration: Ensure selected drone has an agent topic
+    // Note: Agent topics are now stored on the blockchain contract
+    let agentTopicId = drone.agentTopicId;
+    
+    // TODO: Implement agent topic creation using contract's updateAgentTopic()
+    // For now, we'll use the topic from the contract if available
+    
     console.log(`✅ Analysis complete. Top drone: ${drone.cairnDroneId} (Score: ${topDrone.score}/100)`);
     console.log(`   Battery: ${drone.batteryLevel}%, Location: ${drone.currentLat},${drone.currentLng}`);
+    if (agentTopicId) {
+      console.log(`   Agent Topic: ${agentTopicId}`);
+    }
 
     return NextResponse.json({
       success: true,
@@ -219,7 +229,7 @@ export async function POST(req: NextRequest) {
       selectedDrone: {
         cairnDroneId: drone.cairnDroneId,
         evmAddress: drone.evmAddress,
-        agentTopicId: drone.agentTopicId,
+        agentTopicId: agentTopicId || drone.agentTopicId,
         score: topDrone.score,
         batteryLevel: drone.batteryLevel,
         distance: topDrone.breakdown.distance,

@@ -6,8 +6,9 @@ import {
     AccountId,
     AccountBalanceQuery,
 } from "@hiero-ledger/sdk";
-import { db } from "@/lib/db";
 import { formatTransactionResponse } from "@/lib/explorerLinks";
+import { ethers } from "ethers";
+import { DRONE_REGISTRY_ADDRESS, DRONE_REGISTRY_ABI } from "@/lib/contracts";
 
 /**
  * POST /api/drones/fund
@@ -79,23 +80,53 @@ export async function POST(req: Request) {
         let dronesToFund: any[] = [];
         
         if (fundAll) {
-            dronesToFund = await db.drones.findMany();
-            dronesToFund = dronesToFund.filter(d => d.hederaAccountId); // Only fund drones with accounts
+            // Get all drones from contract
+            try {
+                const HEDERA_TESTNET_RPC = "https://testnet.hashio.io/api";
+                const provider = new ethers.JsonRpcProvider(HEDERA_TESTNET_RPC);
+                const contract = new ethers.Contract(DRONE_REGISTRY_ADDRESS, DRONE_REGISTRY_ABI, provider);
+                dronesToFund = await contract.getAllDrones();
+                // Filter for drones with Hedera accounts
+                dronesToFund = dronesToFund.filter((d: any) => d.hederaAccountId);
+            } catch (err: any) {
+                return Response.json({
+                    success: false,
+                    error: `Failed to fetch drones from contract: ${err.message}`
+                }, { status: 500 });
+            }
         } else {
-            const drone = await db.drones.findByCairnId(droneId);
-            if (!drone) {
+            // Find single drone by ID in contract
+            try {
+                const HEDERA_TESTNET_RPC = "https://testnet.hashio.io/api";
+                const provider = new ethers.JsonRpcProvider(HEDERA_TESTNET_RPC);
+                const contract = new ethers.Contract(DRONE_REGISTRY_ADDRESS, DRONE_REGISTRY_ABI, provider);
+                const allDrones = await contract.getAllDrones();
+                
+                const drone = allDrones.find((d: any) => 
+                    d.cairnId === droneId || 
+                    d.cairnId.trim() === droneId ||
+                    d.hederaAccountId === droneId
+                );
+                
+                if (!drone) {
+                    return Response.json({
+                        success: false,
+                        error: `Drone ${droneId} not found`
+                    }, { status: 404 });
+                }
+                if (!drone.hederaAccountId) {
+                    return Response.json({
+                        success: false,
+                        error: `Drone ${droneId} does not have a Hedera account`
+                    }, { status: 400 });
+                }
+                dronesToFund = [drone];
+            } catch (err: any) {
                 return Response.json({
                     success: false,
-                    error: `Drone ${droneId} not found`
-                }, { status: 404 });
+                    error: `Failed to fetch drone from contract: ${err.message}`
+                }, { status: 500 });
             }
-            if (!drone.hederaAccountId) {
-                return Response.json({
-                    success: false,
-                    error: `Drone ${droneId} does not have a Hedera account`
-                }, { status: 400 });
-            }
-            dronesToFund = [drone];
         }
 
         const totalRequired = dronesToFund.length * amount + 1; // +1 for fees

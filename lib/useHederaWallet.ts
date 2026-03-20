@@ -53,6 +53,9 @@ export function useHederaWallet() {
       }
 
       try {
+        console.log('🔐 [useHederaWallet] Starting transaction signing and execution...');
+        console.log('🔐 [useHederaWallet] Selected account:', selectedAccount.id);
+        
         // Create a client with the user's account as operator for freezing
         const client = Client.forTestnet();
         client.setOperator(
@@ -62,8 +65,10 @@ export function useHederaWallet() {
           "0000000000000000000000000000000000000000000000000000000000000000"
         );
         
+        console.log('❄️ [useHederaWallet] Freezing transaction with client...');
         // Freeze the transaction with the client
         await transaction.freezeWith(client);
+        console.log('❄️ [useHederaWallet] Transaction frozen successfully');
         
         // Use signAndExecuteTransaction directly - this only prompts ONCE
         const connector = getConnector();
@@ -71,12 +76,21 @@ export function useHederaWallet() {
           throw new Error("Wallet connector not available");
         }
         
+        console.log('📮 [useHederaWallet] Getting signer from connector...');
         const signer = connector.getSigner(AccountId.fromString(selectedAccount.id));
+        
+        console.log('✍️ [useHederaWallet] Sending transaction to wallet for signing and execution...');
+        console.log('✍️ [useHederaWallet] This may take 30+ seconds. Waiting for wallet response...');
+        
         const result = await signer.call(transaction);
         
+        console.log('✅ [useHederaWallet] Transaction executed successfully');
+        console.log('✅ [useHederaWallet] Result:', result);
         return result;
       } catch (err) {
-        console.error("Transaction execution error:", err);
+        console.error("❌ [useHederaWallet] Transaction execution error:", err);
+        console.error("❌ [useHederaWallet] Error message:", (err as any)?.message);
+        console.error("❌ [useHederaWallet] Error code:", (err as any)?.code);
         throw err;
       }
     },

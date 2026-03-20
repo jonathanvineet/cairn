@@ -50,6 +50,8 @@ export async function registerDroneInSmartContract(data: {
     droneAccountId: string;
     assignedZoneId: string;
     model: string;
+    hederaAccountId: string;
+    encryptedPrivateKey: string;
     operatorClient: Client;
 }) {
     console.log("REGISTERING drone in Smart Contracts:", data.droneAccountId);
@@ -72,17 +74,59 @@ export async function registerDroneInSmartContract(data: {
         console.log(`✅ Registered in BoundaryZoneRegistry (TX: ${zoneTransactionId})`);
         console.log(`   Explorer: ${HEDERA_TESTNET_EXPLORER}/#/transaction/${zoneTransactionId}`);
 
-        // 2. Register in DroneRegistry
+        // 2. Register in DroneRegistry with full credentials
+        const evmAddress = AccountId.fromString(data.droneAccountId).toEvmAddress();
+        
+        // Validate required parameters
+        if (!data.cairnDroneId || data.cairnDroneId.trim().length === 0) {
+            throw new Error("cairnDroneId cannot be empty");
+        }
+        if (!data.assignedZoneId || data.assignedZoneId.trim().length === 0) {
+            throw new Error("assignedZoneId cannot be empty");
+        }
+        if (!data.model || data.model.trim().length === 0) {
+            throw new Error("model cannot be empty");
+        }
+        
+        console.log("📋 DroneRegistry Parameters (6-parameter signature):");
+        console.log(`   cairnDroneId: "${data.cairnDroneId}"`);
+        console.log(`   evmAddress: ${evmAddress}`);
+        console.log(`   assignedZoneId: "${data.assignedZoneId}"`);
+        console.log(`   model: "${data.model}"`);
+        console.log(`   hederaAccountId: "${data.hederaAccountId}"`);
+        console.log(`   encryptedPrivateKey: [${data.encryptedPrivateKey.length} chars]`);
+
+        // Build the function parameters
+        const functionParams = new ContractFunctionParameters()
+            .addString(data.cairnDroneId)
+            .addAddress(evmAddress)
+            .addString(data.assignedZoneId)
+            .addString(data.model)
+            .addString(data.hederaAccountId)
+            .addString(data.encryptedPrivateKey);
+
+        // Log the actual payload being sent
+        console.log("\n🔍 ACTUAL PAYLOAD BEING SENT TO CONTRACT:");
+        console.log("─".repeat(70));
+        console.log(`Function: registerDrone`);
+        console.log(`Param 1 (string cairnDroneId): "${data.cairnDroneId}"`);
+        console.log(`Param 2 (address accountId): ${evmAddress}`);
+        console.log(`Param 3 (string zoneId): "${data.assignedZoneId}"`);
+        console.log(`Param 4 (string model): "${data.model}"`);
+        console.log(`Param 5 (string hederaAccountId): "${data.hederaAccountId}"`);
+        console.log(`Param 6 (string encryptedPrivateKey):`);
+        console.log(`  - First 50 chars: "${data.encryptedPrivateKey.substring(0, 50)}"`);
+        console.log(`  - Last 50 chars: "...${data.encryptedPrivateKey.substring(Math.max(0, data.encryptedPrivateKey.length - 50))}"`);
+        console.log(`  - Total length: ${data.encryptedPrivateKey.length} characters`);
+        console.log(`  - Is empty: ${data.encryptedPrivateKey.length === 0 ? "YES ❌" : "NO ✅"}`);
+        console.log("─".repeat(70));
+
         const droneRegistryTx = new ContractExecuteTransaction()
             .setContractId(ContractId.fromEvmAddress(0, 0, DRONE_REGISTRY_ADDRESS))
-            .setGas(150000)
+            .setGas(300000)
             .setFunction(
                 "registerDrone",
-                new ContractFunctionParameters()
-                    .addString(data.cairnDroneId)
-                    .addAddress(AccountId.fromString(data.droneAccountId).toEvmAddress())
-                    .addString(data.assignedZoneId)
-                    .addString(data.model)
+                functionParams
             );
 
         const droneResponse = await droneRegistryTx.execute(data.operatorClient);
@@ -104,6 +148,43 @@ export async function registerDroneInSmartContract(data: {
         };
     } catch (error) {
         console.error("Contract Registration Error:", error);
+        throw error;
+    }
+}
+
+export async function updateDroneAgentTopic(data: {
+    cairnDroneId: string;
+    agentTopicId: string;
+    operatorClient: Client;
+}) {
+    console.log("📢 Updating drone agent topic:", data.cairnDroneId);
+
+    try {
+        const agentTopicTx = new ContractExecuteTransaction()
+            .setContractId(ContractId.fromEvmAddress(0, 0, DRONE_REGISTRY_ADDRESS))
+            .setGas(100000)
+            .setFunction(
+                "updateAgentTopic",
+                new ContractFunctionParameters()
+                    .addString(data.cairnDroneId)
+                    .addString(data.agentTopicId)
+            );
+
+        const response = await agentTopicTx.execute(data.operatorClient);
+        const receipt = await response.getReceipt(data.operatorClient);
+        const transactionId = response.transactionId.toString();
+        
+        console.log(`✅ Agent topic updated in DroneRegistry (TX: ${transactionId})`);
+        console.log(`   Topic ID: ${data.agentTopicId}`);
+        console.log(`   Explorer: ${HEDERA_TESTNET_EXPLORER}/#/transaction/${transactionId}`);
+
+        return {
+            success: true,
+            transactionId,
+            explorerLink: `${HEDERA_TESTNET_EXPLORER}/#/transaction/${transactionId}`
+        };
+    } catch (error) {
+        console.error("Agent Topic Update Error:", error);
         throw error;
     }
 }

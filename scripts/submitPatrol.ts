@@ -5,8 +5,7 @@
  * 1. Uploads breach image to IPFS
  * 2. Creates patrol JSON with breach data
  * 3. Uploads patrol JSON to IPFS
- * 4. Waits 30 seconds
- * 5. Submits IPFS CID to Hedera blockchain
+ * 4. Submits IPFS CID to Hedera blockchain IMMEDIATELY (no waiting)
  * 
  * Usage:
  *   node scripts/submitPatrol.js
@@ -223,17 +222,8 @@ async function main() {
     const dataHash = createDataHash(patrolData);
     console.log("🔒 Data Hash:", dataHash);
 
-    // Step 5: Wait 30 seconds
-    console.log("\n📍 Step 5: Waiting 30 seconds...");
-    console.log("-".repeat(50));
-    for (let i = 30; i > 0; i--) {
-      process.stdout.write(`\r⏳ ${i} seconds remaining...`);
-      await new Promise(resolve => setTimeout(resolve, 1000));
-    }
-    console.log("\n");
-
-    // Step 6: Submit to blockchain
-    console.log("\n📍 Step 6: Submit to blockchain");
+    // Step 5: Submit to blockchain IMMEDIATELY (NO 30-SECOND WAIT)
+    console.log("\n📍 Step 5: Submit to blockchain immediately");
     console.log("-".repeat(50));
     const txId = await submitToBlockchain(droneId, zoneId, patrolDataCID, dataHash);
 

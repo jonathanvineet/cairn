@@ -9,20 +9,10 @@ function WalletRestorer() {
   const hasRestored = useRef(false);
   
   useEffect(() => {
-    // CLEAR ALL WALLETCONNECT SESSIONS ON APP LOAD
-    // This ensures no auto-connection occurs
+    // Restore persisted wallet session on app load
     if (typeof window !== 'undefined' && !hasRestored.current) {
-      // Clear all WalletConnect localStorage items
-      const keysToRemove = [];
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && (key.startsWith('wc@2') || key === 'wallet-storage')) {
-          keysToRemove.push(key);
-        }
-      }
-      keysToRemove.forEach(key => localStorage.removeItem(key));
-      
       hasRestored.current = true;
+      console.log('📱 App initialized - attempting to restore wallet session...');
       restoreSession();
     }
   }, [restoreSession]);

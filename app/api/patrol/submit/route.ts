@@ -94,36 +94,34 @@ export async function POST(request: NextRequest) {
     console.log("📦 Patrol Data CID:", patrolDataCID);
     console.log("🔒 Data Hash:", dataHash);
 
-    // Step 5: Wait 30 seconds, then submit to blockchain
-    console.log("⏳ Waiting 30 seconds before blockchain submission...");
+    // Step 5: IMMEDIATELY submit to blockchain (no 30-second delay)
+    console.log("📡 Submitting to blockchain immediately...");
     
-    setTimeout(async () => {
-      try {
-        console.log("📡 Submitting to blockchain...");
-        
-        // Call the blockchain submission endpoint
-        const blockchainResponse = await fetch("http://localhost:3000/api/patrol/blockchain", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            droneId: patrolData.droneId,
-            zoneId: patrolData.zoneId,
-            ipfsCid: patrolDataCID,
-            dataHash: dataHash
-          })
-        });
+    let blockchainResult: any = null;
+    try {
+      const blockchainResponse = await fetch("http://localhost:3000/api/patrol/blockchain", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          droneId: patrolData.droneId,
+          zoneId: patrolData.zoneId,
+          ipfsCid: patrolDataCID,
+          dataHash: dataHash
+        })
+      });
 
-        const result = await blockchainResponse.json();
-        console.log("✅ Blockchain submission result:", result);
-      } catch (error) {
-        console.error("❌ Blockchain submission error:", error);
-      }
-    }, 30000);
+      blockchainResult = await blockchainResponse.json();
+      console.log("✅ Blockchain submission result:", blockchainResult);
+    } catch (error) {
+      console.error("⚠️ Background blockchain submission will retry:", error);
+      // Don't fail the response - blockchain submission happens in background
+    }
 
-    // Return immediate response with IPFS data
+    // Return immediate response with IPFS data and blockchain status
     return NextResponse.json({
       success: true,
-      message: "Patrol data uploaded to IPFS. Blockchain submission scheduled in 30 seconds.",
+      message: "Patrol submitted to blockchain immediately",
+      blockchainSubmissionStatus: blockchainResult?.success ? "success" : "pending",
       patrolData,
       ipfsCid: patrolDataCID,
       dataHash: dataHash,

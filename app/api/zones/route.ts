@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ethers } from "ethers";
-import { BOUNDARY_ZONE_REGISTRY_ADDRESS, BOUNDARY_ZONE_REGISTRY_ABI } from "@/lib/contracts";
-import { db } from "@/lib/db";
+import { BOUNDARY_ZONE_REGISTRY_ADDRESS, BOUNDARY_ZONE_REGISTRY_ABI, DRONE_REGISTRY_ADDRESS, DRONE_REGISTRY_ABI } from "@/lib/contracts";
 
 const HEDERA_TESTNET_RPC = "https://testnet.hashio.io/api";
 
@@ -43,17 +42,17 @@ export async function GET(req: NextRequest) {
             });
           }
 
-          // Try to get assigned drones from local DB cache
+          // Get assigned drones from contract
           let assignedDrones: string[] = [];
           try {
-            // Convert bytes32 to human-readable zone ID
+            const droneContract = new ethers.Contract(DRONE_REGISTRY_ADDRESS, DRONE_REGISTRY_ABI, new ethers.JsonRpcProvider(HEDERA_TESTNET_RPC));
+            const allDrones = await droneContract.getAllDrones();
             const zoneIdStr = coordsStr.split("|")[0] || zoneIdBytes32;
-            const cachedZone = await db.zones.findByZoneId(zoneIdStr);
-            if (cachedZone) {
-              assignedDrones = cachedZone.assignedDrones || [];
-            }
-          } catch (dbError) {
-            console.warn("Failed to fetch assigned drones from DB:", dbError);
+            assignedDrones = allDrones
+              .filter((d: any) => d.zoneId === zoneIdStr || d.zoneId.trim() === zoneIdStr)
+              .map((d: any) => d.cairnId.trim());
+          } catch (droneError) {
+            console.warn("Failed to fetch assigned drones from contract:", droneError);
           }
 
           return {

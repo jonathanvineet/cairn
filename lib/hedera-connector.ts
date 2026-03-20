@@ -205,9 +205,10 @@ export function resetConnector(): void {
 }
 
 /**
- * Check for persisted WalletConnect session and restore if available
+ * Check for persisted WalletConnect session
+ * Returns true if a valid session exists, false otherwise
  */
-export async function checkPersistedState(): Promise<any | null> {
+export async function checkPersistedState(): Promise<boolean> {
   try {
     const dapp = await initializeDAppConnector();
     
@@ -215,15 +216,19 @@ export async function checkPersistedState(): Promise<any | null> {
     const sessions = dapp.walletConnectClient?.session.getAll();
     
     if (sessions && sessions.length > 0) {
-      console.log('✅ Found persisted WalletConnect session');
-      return sessions[0];
+      const session = sessions[0];
+      // Validate that session has Hedera namespace
+      if (session?.namespaces?.hedera) {
+        console.log('✅ Found valid persisted WalletConnect session');
+        return true;
+      }
     }
     
-    console.log('ℹ️ No persisted session found');
-    return null;
+    console.log('ℹ️ No valid persisted session found');
+    return false;
   } catch (error) {
     console.error('❌ Error checking persisted state:', error);
-    return null;
+    return false;
   }
 }
 

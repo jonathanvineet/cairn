@@ -7,11 +7,12 @@ import {
     AccountBalanceQuery,
     TransferTransaction,
 } from "@hiero-ledger/sdk";
-import { db } from "@/lib/db";
-import { encrypt } from "@/lib/encryption";
-import { mintDroneCredentialNFT, registerDroneInSmartContract } from "@/lib/hederaDroneHelpers";
+import { encrypt, decrypt } from "@/lib/encryption";
+import { mintDroneCredentialNFT, registerDroneInSmartContract, updateDroneAgentTopic } from "@/lib/hederaDroneHelpers";
 import { registerDroneAsAgent } from "@/lib/droneAgent";
 import { formatTransactionResponse } from "@/lib/explorerLinks";
+import { ethers } from "ethers";
+import { DRONE_REGISTRY_ADDRESS, DRONE_REGISTRY_ABI } from "@/lib/contracts";
 
 export async function POST(req: Request) {
     try {
@@ -43,13 +44,26 @@ export async function POST(req: Request) {
                 }, { status: 400 });
             }
 
-            // Check if drone name already exists
-            const existingDrone = await db.drones.findByCairnId(cairnDroneId);
-            if (existingDrone) {
-                return Response.json({
-                    success: false,
-                    error: `Drone with name "${cairnDroneId}" already exists. Please choose a different name.`
-                }, { status: 400 });
+            // Check if drone name already exists in the contract
+            try {
+                const HEDERA_TESTNET_RPC = "https://testnet.hashio.io/api";
+                const provider = new ethers.JsonRpcProvider(HEDERA_TESTNET_RPC);
+                const contract = new ethers.Contract(DRONE_REGISTRY_ADDRESS, DRONE_REGISTRY_ABI, provider);
+                const allDrones = await contract.getAllDrones();
+                
+                const existingDrone = allDrones.find((d: any) => 
+                    d.cairnId === cairnDroneId || d.cairnId.trim() === cairnDroneId
+                );
+                
+                if (existingDrone) {
+                    return Response.json({
+                        success: false,
+                        error: `Drone with name "${cairnDroneId}" already exists. Please choose a different name.`
+                    }, { status: 400 });
+                }
+            } catch (contractError: any) {
+                console.warn("Warning: Could not check existing drones on contract", contractError.message);
+                // Continue - contract check is non-critical at this stage
             }
 
             // Setup Hedera client
@@ -208,32 +222,9 @@ export async function POST(req: Request) {
             const client = Client.forTestnet()
                 .setOperator(AccountId.fromString(operatorId), operatorPrivKey);
 
-            // STEP 4: CREATE drone in database (only now after contract success)
-            const { decrypt } = await import("@/lib/encryption");
-            const dronePublicKey = decrypt(encryptedPublicKey, encryptionSecret);
-            
-            const drone = await db.drones.create({
-                cairnDroneId,
-                hederaAccountId: droneAccountId,
-                hederaPublicKey: dronePublicKey,
-                hederaPrivateKeyEncrypted: encryptedPrivateKey,
-                evmAddress,
-                serialNumber,
-                model,
-                dgcaCertNumber,
-                certExpiryDate: new Date(certExpiryDate),
-                assignedZoneId,
-                sensorType,
-                maxFlightMinutes: Number(maxFlightMinutes),
-                registeredByOfficerId,
-                status: "ACTIVE",
-                missionCount: 0,
-                completionRate: null,
-                registeredAt: new Date(),
-                initialHBARBalance: 10,
-                registrationLat: Number(registrationLat),
-                registrationLng: Number(registrationLng),
-            });
+            // NOTE: All drone state is now managed on-chain via the smart contract.
+            // Local database persistence has been eliminated.
+            // The contract is the single source of truth for drone credentials.
 
             // STEP 5: Mint DroneCredential NFT
             const nftResult = await mintDroneCredentialNFT({
@@ -272,10 +263,22 @@ export async function POST(req: Request) {
                 agentTopicId = agentResult.agentTopicId;
                 agentManifestSequence = agentResult.agentManifestSequence;
 
-                await db.drones.update(drone.id, {
-                    agentTopicId,
-                    agentManifestSequence,
-                });
+                // STEP 6.5: Save agent topic ID to smart contract
+                if (agentTopicId) {
+                    try {
+                        console.log(`\n📢 STEP 6.5: Saving agent topic to contract...`);
+                        const topicUpdateResult = await updateDroneAgentTopic({
+                            cairnDroneId,
+                            agentTopicId,
+                            operatorClient: client,
+                        });
+                        console.log(`✅ Agent topic saved to contract (TX: ${topicUpdateResult.transactionId})`);
+                    } catch (topicErr: any) {
+                        console.error("❌ Failed to save agent topic to contract:", topicErr.message);
+                        // Non-fatal: agent was registered but topic wasn't saved to contract
+                        // The agent can still operate, just without the topic reference in the contract
+                    }
+                }
             } catch (agentErr: any) {
                 console.error("⚠️  Agent registration failed (non-fatal):", agentErr.message);
             }
@@ -637,45 +640,49 @@ export async function POST(req: Request) {
         // STEP 4: Use custom CAIRN drone ID from user
         // ─────────────────────────────────────────
         // User provides their own drone name like "drone-mumbai-andheri"
-        // Validate it's unique
-        const existingDrone = await db.drones.findByCairnId(cairnDroneId);
-        if (existingDrone) {
-            return Response.json({
-                success: false,
-                error: `Drone with name "${cairnDroneId}" already exists. Please choose a different name.`
-            }, { status: 400 });
+        // Validate it's unique via contract check
+        try {
+            const HEDERA_TESTNET_RPC = "https://testnet.hashio.io/api";
+            const provider = new ethers.JsonRpcProvider(HEDERA_TESTNET_RPC);
+            const contract = new ethers.Contract(DRONE_REGISTRY_ADDRESS, DRONE_REGISTRY_ABI, provider);
+            const allDrones = await contract.getAllDrones();
+            
+            const existingDrone = allDrones.find((d: any) => 
+                d.cairnId === cairnDroneId || d.cairnId.trim() === cairnDroneId
+            );
+            
+            if (existingDrone) {
+                return Response.json({
+                    success: false,
+                    error: `Drone with name "${cairnDroneId}" already exists. Please choose a different name.`
+                }, { status: 400 });
+            }
+        } catch (contractError: any) {
+            console.warn("Warning: Could not check existing drones on contract", contractError.message);
+            // Continue - contract check is non-critical at this stage
         }
 
         // ─────────────────────────────────────────
-        // STEP 5: Store in database
+        // STEP 5: Encrypt private key (will be stored on contract)
         // ─────────────────────────────────────────
         const encryptedPrivateKey = encrypt(
             dronePrivateKey.toString(),
             encryptionSecret
         );
 
-        const drone = await db.drones.create({
-            cairnDroneId,
-            hederaAccountId: droneAccountId,
-            hederaPublicKey: dronePublicKey.toString(),
-            hederaPrivateKeyEncrypted: encryptedPrivateKey,
-            evmAddress: droneEvmAddress,
-            serialNumber,
-            model,
-            dgcaCertNumber,
-            certExpiryDate: new Date(certExpiryDate),
-            assignedZoneId,
-            sensorType,
-            maxFlightMinutes: Number(maxFlightMinutes),
-            registeredByOfficerId,
-            status: "ACTIVE",
-            missionCount: 0,
-            completionRate: null,
-            registeredAt: new Date(),
-            initialHBARBalance: 10,
-            registrationLat: Number(registrationLat),
-            registrationLng: Number(registrationLng),
-        });
+        // Validate encryption worked
+        if (!encryptedPrivateKey || encryptedPrivateKey.trim().length === 0) {
+            console.error("❌ Encryption failed - empty result");
+            return Response.json({
+                success: false,
+                error: "Failed to encrypt drone private key"
+            }, { status: 500 });
+        }
+        console.log(`✅ Private key encrypted successfully (${encryptedPrivateKey.length} chars)`);
+
+        // NOTE: All drone state is now managed on-chain via the smart contract.
+        // Local database persistence has been eliminated.
+        // The contract is the single source of truth for drone credentials.
 
         // ─────────────────────────────────────────
         // STEP 6: Mint DroneCredential NFT
@@ -696,17 +703,38 @@ export async function POST(req: Request) {
         // STEP 6.5: Register drone in Smart Contract
         // ─────────────────────────────────────────
         try {
-            console.log("📝 Registering drone in blockchain smart contract...");
+            console.log("\n" + "=".repeat(70));
+            console.log("📝 STEP 6.5: Registering drone in blockchain smart contract");
+            console.log("=".repeat(70));
+            console.log(`\n🔑 ENCRYPTION CHECK:`);
+            console.log(`   Drone private key (before encryption): ${dronePrivateKey.toString().substring(0, 30)}...`);
+            console.log(`   encryptedPrivateKey length: ${encryptedPrivateKey.length} characters`);
+            console.log(`   Is empty: ${encryptedPrivateKey.length === 0 ? "YES ❌" : "NO ✅"}`);
+            console.log(`\n📤 CALLING registerDroneInSmartContract with:`);
+            console.log(`   cairnDroneId: "${cairnDroneId}"`);
+            console.log(`   droneAccountId: "${droneAccountId}"`);
+            console.log(`   assignedZoneId: "${assignedZoneId}"`);
+            console.log(`   model: "${model}"`);
+            console.log(`   hederaAccountId: "${droneAccountId}"`);
+            console.log(`   encryptedPrivateKey: ${encryptedPrivateKey.length === 0 ? "EMPTY ❌" : `${encryptedPrivateKey.length} chars`}`);
+            
             await registerDroneInSmartContract({
                 cairnDroneId,
                 droneAccountId,
                 assignedZoneId,
                 model,
+                hederaAccountId: droneAccountId,
+                encryptedPrivateKey: encryptedPrivateKey,
                 operatorClient: client,
             });
-            console.log("✅ Drone registered in smart contract successfully!");
+            console.log("\n✅ Drone registered in smart contract successfully!");
+            console.log("=".repeat(70) + "\n");
         } catch (scError: any) {
-            console.error("⚠️  Smart contract registration failed (non-fatal):", scError.message);
+            console.error("\n" + "=".repeat(70));
+            console.error("❌ CRITICAL: Smart contract registration FAILED");
+            console.error("=".repeat(70));
+            console.error("Error:", scError.message);
+            console.error("=".repeat(70) + "\n");
             // Non-fatal: continue with registration even if smart contract fails
         }
 
@@ -736,11 +764,23 @@ export async function POST(req: Request) {
             agentTopicId = agentResult.agentTopicId;
             agentManifestSequence = agentResult.agentManifestSequence;
 
-            // Persist agent fields into the in-memory DB record
-            await db.drones.update(drone.id, {
-                agentTopicId,
-                agentManifestSequence,
-            });
+            // Store agent topic on the blockchain contract so drone can be contacted
+            if (agentTopicId) {
+                try {
+                    await updateDroneAgentTopic({
+                        cairnDroneId,
+                        agentTopicId,
+                        operatorClient: client,
+                    });
+                    console.log("✅ Agent topic stored on smart contract");
+                } catch (topicErr: any) {
+                    console.error("⚠️  Failed to store agent topic on contract:", topicErr.message);
+                    // Non-fatal: topic update failure should not block drone registration
+                }
+            }
+
+            // NOTE: Agent topic ID is now stored on the contract via updateAgentTopic()
+            // No local database update needed
         } catch (agentErr: any) {
             // Non-fatal: agent registration failure should not block drone registration
             console.error("⚠️  Agent registration failed (non-fatal):", agentErr.message);

@@ -146,14 +146,7 @@ export const useWalletStore = create<WalletState>()(persist(
         isInitializing: false,
       });
 
-      // Clear localStorage completely
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('wallet-storage');
-        localStorage.removeItem('wc@2:client:0.3//session');
-        localStorage.removeItem('wc@2:core:0.3//messages');
-      }
-
-      console.log("✓ Disconnected from wallet and cleared all sessions");
+      console.log("✓ Disconnected from wallet");
     } catch (error) {
       const msg = error instanceof Error ? error.message : "Unknown error";
       set({ error: msg });
@@ -163,16 +156,97 @@ export const useWalletStore = create<WalletState>()(persist(
   restoreSession: async () => {
     if (typeof window === 'undefined') return;
     
-    // COMPLETELY DISABLE AUTO-CONNECTION
-    // User must manually connect wallet every time
-    console.log('ℹ️ Wallet restoreSession called - NO auto-connection');
-    set({ 
-      hasHydrated: true,
-      connected: false,
-      selectedAccount: null,
-      accounts: [],
-      error: null,
-    });
+    try {
+      console.log('🔄 Attempting to restore wallet session...');
+      
+      // Check if there's a persisted session
+      const persistedState = localStorage.getItem('wallet-storage');
+      if (!persistedState) {
+        console.log('ℹ️ No persisted wallet session found');
+        set({ hasHydrated: true });
+        return;
+      }
+
+      const state = JSON.parse(persistedState);
+      const savedAccount = state?.state?.selectedAccount;
+      
+      if (!savedAccount) {
+        console.log('ℹ️ No saved account in persisted state');
+        set({ hasHydrated: true });
+        return;
+      }
+
+      console.log('🔍 Found persisted session, checking WalletConnect...');
+      
+      // Initialize connector to restore sessions
+      try {
+        await initializeDAppConnector();
+      } catch (err) {
+        console.log('⚠️ Failed to initialize connector during restore:', err);
+        localStorage.removeItem('wallet-storage');
+        set({ hasHydrated: true });
+        return;
+      }
+
+      const connector = getConnector();
+      if (!connector) {
+        console.log('⚠️ Connector not available after initialization');
+        localStorage.removeItem('wallet-storage');
+        set({ hasHydrated: true });
+        return;
+      }
+
+      // Get the restored sessions from connector
+      const sessions = connector.walletConnectClient?.session.getAll();
+      
+      if (!sessions || sessions.length === 0) {
+        console.log('⚠️ No WalletConnect sessions found, clearing storage');
+        localStorage.removeItem('wallet-storage');
+        set({ hasHydrated: true });
+        return;
+      }
+
+      const wcSession = sessions[0];
+      
+      // Validate that session has Hedera namespace
+      if (!wcSession?.namespaces?.hedera) {
+        console.log('⚠️ Session missing Hedera namespace, clearing storage');
+        localStorage.removeItem('wallet-storage');
+        set({ hasHydrated: true });
+        return;
+      }
+
+      console.log('✅ WalletConnect session found with Hedera namespace, restoring connection...');
+      
+      try {
+        const accounts = extractAccounts(wcSession);
+        
+        if (accounts.length > 0) {
+          set({
+            connected: true,
+            selectedAccount: accounts[0],
+            accounts,
+            hasHydrated: true,
+            error: null,
+            isInitializing: false,
+          });
+          console.log('✅ Wallet session restored:', accounts[0].id);
+          return;
+        }
+      } catch (accountError) {
+        console.log('⚠️ Failed to extract accounts from session:', accountError);
+        localStorage.removeItem('wallet-storage');
+        set({ hasHydrated: true });
+        return;
+      }
+
+      console.log('ℹ️ Could not restore session');
+      set({ hasHydrated: true });
+    } catch (error) {
+      console.warn('⚠️ Session restore failed:', error);
+      localStorage.removeItem('wallet-storage');
+      set({ hasHydrated: true });
+    }
   },
 
   setHasHydrated: (hydrated: boolean) => set({ hasHydrated: hydrated }),
@@ -180,18 +254,15 @@ export const useWalletStore = create<WalletState>()(persist(
   {
     name: 'wallet-storage',
     partialize: (state) => ({
-      // DON'T persist anything to prevent auto-connection
-      // User must manually connect on every app load
+      // Persist the connection state and account info
+      selectedAccount: state.selectedAccount,
+      accounts: state.accounts,
+      hasManuallyConnected: state.hasManuallyConnected,
     }),
     onRehydrateStorage: () => (state) => {
       if (state) {
-        // Always start disconnected
-        state.connected = false;
-        state.selectedAccount = null;
-        state.accounts = [];
-        state.hasManuallyConnected = false;
+        // Mark as hydrated so pages can check when store is ready
         state.hasHydrated = true;
-        state.error = null;
       }
     },
   }

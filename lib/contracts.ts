@@ -1,5 +1,5 @@
 export const BOUNDARY_ZONE_REGISTRY_ADDRESS = "0xeEFfE09953FDCB844Ff69B67e46E8474B70f0E69";
-export const DRONE_REGISTRY_ADDRESS = "0x5CE1B45F7af14D864146C16D6E1b168Ae599cFCf";
+export const DRONE_REGISTRY_ADDRESS = "0xC53EeE798A81DE4E6D74A65bCFE8563490AEE769";
 export const DRONE_EVIDENCE_VAULT_ADDRESS = "0x4873df8de78955b758F0b81808c4c01aA52A382A";
 
 export const BOUNDARY_ZONE_REGISTRY_ABI = [
@@ -44,234 +44,570 @@ export const BOUNDARY_ZONE_REGISTRY_ABI = [
 		"stateMutability": "view",
 		"type": "function"
 	}
-];
+] as const;
 
 export const DRONE_REGISTRY_ABI = [
-    {
-        "anonymous": false,
-        "inputs": [
-            {
-                "indexed": false,
-                "internalType": "string",
-                "name": "cairnId",
-                "type": "string"
-            },
-            {
-                "indexed": true,
-                "internalType": "address",
-                "name": "accountId",
-                "type": "address"
-            },
-            {
-                "indexed": false,
-                "internalType": "string",
-                "name": "zoneId",
-                "type": "string"
-            }
-        ],
-        "name": "DroneRegistered",
-        "type": "event"
-    },
-    {
-        "anonymous": false,
-        "inputs": [
-            {
-                "indexed": true,
-                "internalType": "address",
-                "name": "accountId",
-                "type": "address"
-            },
-            {
-                "indexed": false,
-                "internalType": "bool",
-                "name": "isActive",
-                "type": "bool"
-            }
-        ],
-        "name": "DroneStatusUpdated",
-        "type": "event"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "string",
-                "name": "_cairnId",
-                "type": "string"
-            },
-            {
-                "internalType": "address",
-                "name": "_accountId",
-                "type": "address"
-            },
-            {
-                "internalType": "string",
-                "name": "_zoneId",
-                "type": "string"
-            },
-            {
-                "internalType": "string",
-                "name": "_model",
-                "type": "string"
-            }
-        ],
-        "name": "registerDrone",
-        "outputs": [
-            {
-                "internalType": "bool",
-                "name": "",
-                "type": "bool"
-            }
-        ],
-        "stateMutability": "nonpayable",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "uint256",
-                "name": "",
-                "type": "uint256"
-            }
-        ],
-        "name": "allDrones",
-        "outputs": [
-            {
-                "internalType": "address",
-                "name": "",
-                "type": "address"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "string",
-                "name": "",
-                "type": "string"
-            }
-        ],
-        "name": "cairnIdToAddress",
-        "outputs": [
-            {
-                "internalType": "address",
-                "name": "",
-                "type": "address"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "",
-                "type": "address"
-            }
-        ],
-        "name": "drones",
-        "outputs": [
-            {
-                "internalType": "string",
-                "name": "cairnId",
-                "type": "string"
-            },
-            {
-                "internalType": "address",
-                "name": "accountId",
-                "type": "address"
-            },
-            {
-                "internalType": "string",
-                "name": "zoneId",
-                "type": "string"
-            },
-            {
-                "internalType": "string",
-                "name": "model",
-                "type": "string"
-            },
-            {
-                "internalType": "uint256",
-                "name": "registeredAt",
-                "type": "uint256"
-            },
-            {
-                "internalType": "bool",
-                "name": "isActive",
-                "type": "bool"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "_accountId",
-                "type": "address"
-            }
-        ],
-        "name": "getDrone",
-        "outputs": [
-            {
-                "components": [
-                    {
-                        "internalType": "string",
-                        "name": "cairnId",
-                        "type": "string"
-                    },
-                    {
-                        "internalType": "address",
-                        "name": "accountId",
-                        "type": "address"
-                    },
-                    {
-                        "internalType": "string",
-                        "name": "zoneId",
-                        "type": "string"
-                    },
-                    {
-                        "internalType": "string",
-                        "name": "model",
-                        "type": "string"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "registeredAt",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "bool",
-                        "name": "isActive",
-                        "type": "bool"
-                    }
-                ],
-                "internalType": "struct DroneRegistry.Drone",
-                "name": "",
-                "type": "tuple"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [],
-        "name": "getTotalDrones",
-        "outputs": [
-            {
-                "internalType": "uint256",
-                "name": "",
-                "type": "uint256"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    }
-];
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "string",
+				"name": "cairnId",
+				"type": "string"
+			},
+			{
+				"indexed": false,
+				"internalType": "string",
+				"name": "agentTopicId",
+				"type": "string"
+			}
+		],
+		"name": "AgentTopicUpdated",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "string",
+				"name": "cairnId",
+				"type": "string"
+			},
+			{
+				"indexed": false,
+				"internalType": "string",
+				"name": "hederaAccountId",
+				"type": "string"
+			}
+		],
+		"name": "DroneCredentialsUpdated",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "string",
+				"name": "cairnId",
+				"type": "string"
+			},
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "accountId",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "string",
+				"name": "hederaAccountId",
+				"type": "string"
+			},
+			{
+				"indexed": false,
+				"internalType": "string",
+				"name": "zoneId",
+				"type": "string"
+			}
+		],
+		"name": "DroneRegistered",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "accountId",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "bool",
+				"name": "isActive",
+				"type": "bool"
+			}
+		],
+		"name": "DroneStatusUpdated",
+		"type": "event"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "string",
+				"name": "_cairnId",
+				"type": "string"
+			},
+			{
+				"internalType": "address",
+				"name": "_accountId",
+				"type": "address"
+			},
+			{
+				"internalType": "string",
+				"name": "_zoneId",
+				"type": "string"
+			},
+			{
+				"internalType": "string",
+				"name": "_model",
+				"type": "string"
+			},
+			{
+				"internalType": "string",
+				"name": "_hederaAccountId",
+				"type": "string"
+			},
+			{
+				"internalType": "string",
+				"name": "_encryptedPrivateKey",
+				"type": "string"
+			}
+		],
+		"name": "registerDrone",
+		"outputs": [
+			{
+				"internalType": "bool",
+				"name": "",
+				"type": "bool"
+			}
+		],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "string",
+				"name": "_cairnId",
+				"type": "string"
+			},
+			{
+				"internalType": "string",
+				"name": "_agentTopicId",
+				"type": "string"
+			}
+		],
+		"name": "updateAgentTopic",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "string",
+				"name": "_cairnId",
+				"type": "string"
+			},
+			{
+				"internalType": "string",
+				"name": "_hederaAccountId",
+				"type": "string"
+			},
+			{
+				"internalType": "string",
+				"name": "_encryptedPrivateKey",
+				"type": "string"
+			}
+		],
+		"name": "updateDroneCredentials",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"name": "allDrones",
+		"outputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "string",
+				"name": "",
+				"type": "string"
+			}
+		],
+		"name": "cairnIdToAddress",
+		"outputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"name": "drones",
+		"outputs": [
+			{
+				"internalType": "string",
+				"name": "cairnId",
+				"type": "string"
+			},
+			{
+				"internalType": "address",
+				"name": "accountId",
+				"type": "address"
+			},
+			{
+				"internalType": "string",
+				"name": "zoneId",
+				"type": "string"
+			},
+			{
+				"internalType": "string",
+				"name": "model",
+				"type": "string"
+			},
+			{
+				"internalType": "string",
+				"name": "hederaAccountId",
+				"type": "string"
+			},
+			{
+				"internalType": "string",
+				"name": "encryptedPrivateKey",
+				"type": "string"
+			},
+			{
+				"internalType": "string",
+				"name": "agentTopicId",
+				"type": "string"
+			},
+			{
+				"internalType": "uint256",
+				"name": "registeredAt",
+				"type": "uint256"
+			},
+			{
+				"internalType": "bool",
+				"name": "isActive",
+				"type": "bool"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "getAllDrones",
+		"outputs": [
+			{
+				"components": [
+					{
+						"internalType": "string",
+						"name": "cairnId",
+						"type": "string"
+					},
+					{
+						"internalType": "address",
+						"name": "accountId",
+						"type": "address"
+					},
+					{
+						"internalType": "string",
+						"name": "zoneId",
+						"type": "string"
+					},
+					{
+						"internalType": "string",
+						"name": "model",
+						"type": "string"
+					},
+					{
+						"internalType": "string",
+						"name": "hederaAccountId",
+						"type": "string"
+					},
+					{
+						"internalType": "string",
+						"name": "encryptedPrivateKey",
+						"type": "string"
+					},
+					{
+						"internalType": "string",
+						"name": "agentTopicId",
+						"type": "string"
+					},
+					{
+						"internalType": "uint256",
+						"name": "registeredAt",
+						"type": "uint256"
+					},
+					{
+						"internalType": "bool",
+						"name": "isActive",
+						"type": "bool"
+					}
+				],
+				"internalType": "struct DroneRegistry.Drone[]",
+				"name": "",
+				"type": "tuple[]"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "_accountId",
+				"type": "address"
+			}
+		],
+		"name": "getDrone",
+		"outputs": [
+			{
+				"components": [
+					{
+						"internalType": "string",
+						"name": "cairnId",
+						"type": "string"
+					},
+					{
+						"internalType": "address",
+						"name": "accountId",
+						"type": "address"
+					},
+					{
+						"internalType": "string",
+						"name": "zoneId",
+						"type": "string"
+					},
+					{
+						"internalType": "string",
+						"name": "model",
+						"type": "string"
+					},
+					{
+						"internalType": "string",
+						"name": "hederaAccountId",
+						"type": "string"
+					},
+					{
+						"internalType": "string",
+						"name": "encryptedPrivateKey",
+						"type": "string"
+					},
+					{
+						"internalType": "string",
+						"name": "agentTopicId",
+						"type": "string"
+					},
+					{
+						"internalType": "uint256",
+						"name": "registeredAt",
+						"type": "uint256"
+					},
+					{
+						"internalType": "bool",
+						"name": "isActive",
+						"type": "bool"
+					}
+				],
+				"internalType": "struct DroneRegistry.Drone",
+				"name": "",
+				"type": "tuple"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "string",
+				"name": "_cairnId",
+				"type": "string"
+			}
+		],
+		"name": "getDroneByCAIRNId",
+		"outputs": [
+			{
+				"components": [
+					{
+						"internalType": "string",
+						"name": "cairnId",
+						"type": "string"
+					},
+					{
+						"internalType": "address",
+						"name": "accountId",
+						"type": "address"
+					},
+					{
+						"internalType": "string",
+						"name": "zoneId",
+						"type": "string"
+					},
+					{
+						"internalType": "string",
+						"name": "model",
+						"type": "string"
+					},
+					{
+						"internalType": "string",
+						"name": "hederaAccountId",
+						"type": "string"
+					},
+					{
+						"internalType": "string",
+						"name": "encryptedPrivateKey",
+						"type": "string"
+					},
+					{
+						"internalType": "string",
+						"name": "agentTopicId",
+						"type": "string"
+					},
+					{
+						"internalType": "uint256",
+						"name": "registeredAt",
+						"type": "uint256"
+					},
+					{
+						"internalType": "bool",
+						"name": "isActive",
+						"type": "bool"
+					}
+				],
+				"internalType": "struct DroneRegistry.Drone",
+				"name": "",
+				"type": "tuple"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "string",
+				"name": "_hederaAccountId",
+				"type": "string"
+			}
+		],
+		"name": "getDroneByHederaAccountId",
+		"outputs": [
+			{
+				"components": [
+					{
+						"internalType": "string",
+						"name": "cairnId",
+						"type": "string"
+					},
+					{
+						"internalType": "address",
+						"name": "accountId",
+						"type": "address"
+					},
+					{
+						"internalType": "string",
+						"name": "zoneId",
+						"type": "string"
+					},
+					{
+						"internalType": "string",
+						"name": "model",
+						"type": "string"
+					},
+					{
+						"internalType": "string",
+						"name": "hederaAccountId",
+						"type": "string"
+					},
+					{
+						"internalType": "string",
+						"name": "encryptedPrivateKey",
+						"type": "string"
+					},
+					{
+						"internalType": "string",
+						"name": "agentTopicId",
+						"type": "string"
+					},
+					{
+						"internalType": "uint256",
+						"name": "registeredAt",
+						"type": "uint256"
+					},
+					{
+						"internalType": "bool",
+						"name": "isActive",
+						"type": "bool"
+					}
+				],
+				"internalType": "struct DroneRegistry.Drone",
+				"name": "",
+				"type": "tuple"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "getTotalDrones",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "string",
+				"name": "",
+				"type": "string"
+			}
+		],
+		"name": "hederaAccountIdToCairnAddress",
+		"outputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	}
+] as const;
 
 export const DRONE_EVIDENCE_VAULT_ABI = [
   

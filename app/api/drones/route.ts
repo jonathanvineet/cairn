@@ -1,9 +1,37 @@
 import { NextRequest } from "next/server";
 import { ethers } from "ethers";
 import { DRONE_REGISTRY_ADDRESS, DRONE_REGISTRY_ABI } from "@/lib/contracts";
-import { db } from "@/lib/db";
 
 const HEDERA_TESTNET_RPC = "https://testnet.hashio.io/api";
+
+// Retry logic for transient RPC errors
+async function fetchDroneWithRetry(
+  contract: ethers.Contract,
+  index: number,
+  maxRetries: number = 2
+): Promise<string | null> {
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      const droneAddress: string = await contract.allDrones(index);
+      return droneAddress;
+    } catch (err: any) {
+      // Retry on 502 or timeout errors
+      if (
+        err.message?.includes("502") ||
+        err.message?.includes("timeout") ||
+        err.code === "SERVER_ERROR"
+      ) {
+        if (attempt < maxRetries - 1) {
+          // Wait before retry
+          await new Promise((resolve) => setTimeout(resolve, 100 * (attempt + 1)));
+          continue;
+        }
+      }
+      throw err;
+    }
+  }
+  return null;
+}
 
 export async function GET(req: NextRequest) {
   try {
@@ -19,32 +47,27 @@ export async function GET(req: NextRequest) {
 
     for (let i = 0; i < count; i++) {
       try {
-        const droneAddress: string = await contract.allDrones(i);
+        const droneAddress = await fetchDroneWithRetry(contract, i);
+        if (!droneAddress) continue;
+        
         if (seenAddresses.has(droneAddress.toLowerCase())) continue;
         seenAddresses.add(droneAddress.toLowerCase());
 
         const droneData = await contract.getDrone(droneAddress);
 
-        // Merge with local DB data to get location info and updated zone assignment
-        const localDrone = await db.drones.findByEvmAddress(droneAddress);
+        // Normalize cairnId - trim whitespace as blockchain may return padded strings
+        const normalizedCairnId = (droneData.cairnId || '').trim();
 
         drones.push({
-          cairnDroneId: droneData.cairnId,
+          cairnDroneId: normalizedCairnId,
           evmAddress: droneAddress,
           model: droneData.model || "Unknown Model",
-          // Prioritize local DB zone assignment (updated by boundary API) over blockchain
-          assignedZoneId: localDrone?.assignedZoneId || droneData.zoneId || "UNASSIGNED",
+          assignedZoneId: droneData.zoneId || "UNASSIGNED",
           status: droneData.isActive ? "ACTIVE" : "INACTIVE",
           registeredAt: new Date(Number(droneData.registeredAt) * 1000).toISOString(),
-          // Add location data from local DB
-          registrationLat: localDrone?.registrationLat,
-          registrationLng: localDrone?.registrationLng,
-          // AI Agent fields from local DB
-          agentTopicId: localDrone?.agentTopicId || null,
-          agentManifestSequence: localDrone?.agentManifestSequence || null,
-          isAgent: !!localDrone?.agentTopicId,
-          // Hedera account for balance lookup
-          hederaAccountId: localDrone?.hederaAccountId || null,
+          // Hedera account and agent topic from blockchain
+          hederaAccountId: droneData.hederaAccountId || null,
+          agentTopicId: droneData.agentTopicId || null,
         });
       } catch (err: any) {
         console.error(`  ❌ Error fetching drone at index ${i}:`, err.message);
@@ -57,6 +80,7 @@ export async function GET(req: NextRequest) {
     );
 
     console.log(`📊 Total drones returned: ${unique.length} (all from blockchain)`);
+    console.log(`   Drone IDs:`, unique.map(d => `${d.cairnDroneId}`).join(', '));
 
     return Response.json({ success: true, drones: unique, count: unique.length });
   } catch (error: any) {

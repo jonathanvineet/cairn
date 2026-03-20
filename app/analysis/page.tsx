@@ -136,10 +136,10 @@ export default function AnalysisPage() {
         </div>
       </header>
 
-      <div style={{ flex: 1, padding: 28, maxWidth: 1000, margin: "0 auto", width: "100%" }}>
-        <div className="anim-down d0" style={{ marginBottom: 22 }}>
-          <h2 style={{ fontSize: 19, fontWeight: 700 }}>Eliza Drone Selection</h2>
-          <p style={{ fontSize: 12, color: "var(--muted-fg)", marginTop: 3 }}>AI-powered optimal drone selection for your mission zone</p>
+      <div style={{ flex: 1, padding: 28, width: "100%", overflowY: "auto" }}>
+        <div className="anim-down d0" style={{ marginBottom: 22, paddingRight: 28 }}>
+          <h2 style={{ fontSize: 24, fontWeight: 700 }}>Eliza Drone Selection</h2>
+          <p style={{ fontSize: 13, color: "var(--muted-fg)", marginTop: 3 }}>AI-powered optimal drone selection for your mission zone</p>
         </div>
 
         {/* Zone Selection Card - shown before analysis */}
@@ -300,14 +300,20 @@ export default function AnalysisPage() {
                 <div style={{ display: "flex", gap: 10 }}>
                   <button className="btn btn-ghost" style={{ flex: 1, fontSize: 11 }} onClick={runAnalysis}>RE-ANALYZE</button>
                   <Link href="/evidence" onClick={() => {
+                    // IMPORTANT: Only the AI-selected drone can submit evidence
+                    // This ensures single drone accountability for each patrol mission
+                    // Include agentTopicId so we can use drone's agent credentials for submission
                     const droneData = JSON.stringify({
                       cairnDroneId: results.analysis[0].drone?.cairnDroneId,
                       evmAddress: results.analysis[0].drone?.evmAddress,
+                      agentTopicId: results.analysis[0].drone?.agentTopicId,
                       location: results.analysis[0].drone?.location,
                       batteryLevel: results.analysis[0].drone?.batteryLevel,
                       health: results.analysis[0].drone?.health,
                       score: results.analysis[0].score,
-                      reason: results.analysis[0].reason
+                      reason: results.analysis[0].reason,
+                      selectedAt: new Date().toISOString(), // Timestamp for audit trail
+                      analysisRank: 1 // Top ranked drone from Eliza analysis
                     });
                     sessionStorage.setItem("selectedDrone", droneData);
                   }} style={{ flex: 1 }}>
@@ -329,9 +335,9 @@ export default function AnalysisPage() {
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
                       <div className="ptrack" style={{ width: 60 }}>
-                        <div className="pfill" style={{ width: `${item.score}%` }} />
+                        <div className="pfill" style={{ width: `${Math.min(item.score, 100)}%` }} />
                       </div>
-                      <span style={{ fontSize: 11, fontWeight: 700, minWidth: 32, textAlign: "right" }}>{Math.round(item.score)}</span>
+                      <span style={{ fontSize: 11, fontWeight: 700, minWidth: 32, textAlign: "right" }}>{Math.min(Math.round(item.score), 100)}</span>
                     </div>
                   </div>
                 ))}
