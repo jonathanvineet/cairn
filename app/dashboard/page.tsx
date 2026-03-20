@@ -35,6 +35,12 @@ export default function DashboardPage() {
     dataRate: 2.4,
   });
   const [copied, setCopied] = useState(false);
+  const [missions] = useState([
+    { id: "PATROL-001", zone: "Z-001", status: "COMPLETED", time: "2h ago", hash: "0x7a2c9f4e..." },
+    { id: "PATROL-002", zone: "Z-002", status: "COMPLETED", time: "4h ago", hash: "0x3b5d8e1a..." },
+    { id: "PATROL-003", zone: "Z-003", status: "IN_PROGRESS", time: "12m ago", hash: "0x6f1c2b9d..." },
+  ]);
+  const [evidenceCount] = useState(47);
 
   useEffect(() => {
     if (!connected) {
@@ -189,9 +195,9 @@ export default function DashboardPage() {
               <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 14, marginBottom: 22 }}>
                 {[
                   { l: "REGISTERED DRONES", v: drones.length,  sub: `${drones.filter(d => d.status === "ACTIVE").length} active now` },
-                  { l: "TOTAL MISSIONS",    v: 0,               sub: "across all zones" },
+                  { l: "TOTAL MISSIONS",    v: missions.length,               sub: "across all zones" },
                   { l: "ACTIVE ZONES",      v: zones.length,    sub: `${drones.filter(d => d.assignedZoneId !== "UNASSIGNED").length} drones assigned` },
-                  { l: "EVIDENCE HASHES",  v: 0,               sub: "on-chain" },
+                  { l: "EVIDENCE HASHES",  v: evidenceCount,               sub: "on-chain" },
                 ].map((s, i) => (
                   <div key={i} className="card card-offset anim-up" style={{ padding: 18, animationDelay: `${i * 70 + 100}ms` }}>
                     <div style={{ fontSize: 10, color: "var(--muted-fg)", letterSpacing: ".08em", marginBottom: 8 }}>{s.l}</div>
@@ -241,7 +247,14 @@ export default function DashboardPage() {
                     <tr>{["MISSION ID", "ZONE", "STATUS", "TIME"].map(h => <th key={h}>{h}</th>)}</tr>
                   </thead>
                   <tbody>
-                    <tr><td colSpan={4} style={{ textAlign: "center", color: "var(--muted-fg)", fontSize: 12, padding: 24 }}>No missions yet</td></tr>
+                    {missions.map(m => (
+                      <tr key={m.id}>
+                        <td style={{ fontFamily: "monospace", fontSize: 11, color: "var(--fg)" }}>{m.id}</td>
+                        <td>{m.zone}</td>
+                        <td><span style={{ padding: "3px 8px", background: m.status === "COMPLETED" ? "var(--fg)" : "rgba(34, 197, 94, 0.2)", color: m.status === "COMPLETED" ? "var(--bg)" : "#22c55e", fontSize: 10, borderRadius: "3px", fontWeight: 600 }}>{m.status}</span></td>
+                        <td style={{ color: "var(--muted-fg)" }}>{m.time}</td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
