@@ -372,7 +372,7 @@ export async function POST(req: Request) {
                 },
                 explorerLinks: {
                     accountCreation: `https://testnet.mirrornode.hedera.com/#/transaction/${contractTransactionId}`,
-                    ...(testReturnTxId && { testTransfer: `https://testnet.mirrornode.hedera.com/#/transaction/${testReturnTxId}` })
+                    ...(testReturnTxId ? { testTransfer: `https://testnet.mirrornode.hedera.com/#/transaction/${testReturnTxId}` } : {})
                 }
             });
         }
