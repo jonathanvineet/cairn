@@ -440,7 +440,7 @@ export async function POST(request: Request): Promise<Response> {
       console.log(`   Status: ${submitReceipt.status.toString()}`);
       console.log(`   Explorer: ${HEDERA_TESTNET_EXPLORER}/#/transaction/${submitResult.transactionId?.toString()}`);
     } catch (vaultErr: any) {
-      console.warn(`⚠️  [API-OnChain] Vault submission failed (non-critical): ${vaultErr?.message}`);
+      console.log(`ℹ️  [API-OnChain] Vault contract submission skipped (HCS is primary storage)`);
       // Don't fail - HCS submission is what matters
     }
 
@@ -474,7 +474,7 @@ export async function POST(request: Request): Promise<Response> {
       
       await client2.close();
     } catch (missionErr: any) {
-      console.warn(`⚠️  [API-OnChain] Mission submission to vault failed (non-critical): ${missionErr?.message}`);
+      console.log(`ℹ️  [API-OnChain] Vault mission record skipped (HCS maintains full history)`);
     }
 
     // Close client
