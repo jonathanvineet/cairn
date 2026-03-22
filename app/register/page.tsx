@@ -458,7 +458,7 @@ export default function RegisterDronePage() {
               <div>
                 <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: ".09em", marginBottom: 18 }}>DEPLOYMENT LOCATION</div>
                 <div style={{ height: 280, border: "1px solid var(--border)", borderRadius: "var(--radius)", overflow: "hidden", background: "var(--card)" }}>
-                  <LocationPicker onLocationSelect={handleLocationSelect} initialLocation={currentLocation} />
+                  <LocationPicker onLocationSelect={handleLocationSelect} initialLocation={currentLocation || undefined} />
                 </div>
               </div>
             )}
