@@ -302,7 +302,7 @@ cairn/
 | Contract | Address | Purpose |
 |----------|---------|---------|
 | **DroneRegistry** | `0x5CE1B45F7af14D864146C16D6E1b168Ae599cFCf` | Registers and tracks all drone metadata |
-| **BoundaryZoneRegistry** | `0xeEFfE09953FDCB844Ff69B67e46E8474B70f0E69` | Manages mission boundary zones |
+| **BoundaryZoneRegistry** | `0x2e6F40553B4C66591152F82eA6a611269A0D6A84` | Manages mission boundary zones |
 | **DroneEvidenceRegistry** | TBD | Records patrol evidence on-chain |
 
 ### DroneRegistry Contract
@@ -907,7 +907,7 @@ NEXT_PUBLIC_HEDERA_RPC_URL=https://testnet.hashio.io/api
 
 # Smart Contract Addresses (Testnet)
 NEXT_PUBLIC_DRONE_REGISTRY_ADDRESS=0x5CE1B45F7af14D864146C16D6E1b168Ae599cFCf
-NEXT_PUBLIC_BOUNDARY_ZONE_REGISTRY_ADDRESS=0xeEFfE09953FDCB844Ff69B67e46E8474B70f0E69
+NEXT_PUBLIC_BOUNDARY_ZONE_REGISTRY_ADDRESS=0x2e6F40553B4C66591152F82eA6a611269A0D6A84
 
 # Wallet Configuration
 NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=your_project_id_here
@@ -1838,7 +1838,7 @@ HEDERA_TESTNET_RPC=https://testnet.hashio.io/api
 MIRROR_NODE_URL=https://testnet.mirrornode.hedera.com/api/v1
 
 DRONE_REGISTRY_ADDRESS=0x5CE1B45F7af14D864146C16D6E1b168Ae599cFCf
-BOUNDARY_ZONE_REGISTRY_ADDRESS=0xeEFfE09953FDCB844Ff69B67e46E8474B70f0E69
+BOUNDARY_ZONE_REGISTRY_ADDRESS=0x2e6F40553B4C66591152F82eA6a611269A0D6A84
 
 NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID=...
 ```

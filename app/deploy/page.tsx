@@ -97,8 +97,10 @@ export default function DeployPage() {
       const coordsBytes = ethers.toUtf8Bytes(coordsStr);
       addLog(`Creating boundary zone "${zoneId}"...`);
       const zoneTx = new ContractExecuteTransaction()
-        .setContractId(ContractId.fromEvmAddress(0, 0, BOUNDARY_ZONE_REGISTRY_ADDRESS)).setGas(500000)
+        .setContractId(ContractId.fromEvmAddress(0, 0, BOUNDARY_ZONE_REGISTRY_ADDRESS))
+        .setGas(3000000)
         .setFunction("createBoundaryZone", new ContractFunctionParameters().addBytes32(ethers.getBytes(zoneIdBytes32)).addBytes(coordsBytes));
+      addLog(`Gas limit set to: 3000000, Coords bytes length: ${coordsBytes.length}`);
       const txResult = await signAndExecuteTransaction(zoneTx);
       if (!txResult || !txResult.transactionId) throw new Error("Transaction failed");
       addLog(`✓ Zone saved on-chain! TX: ${txResult.transactionId.toString()}`);
