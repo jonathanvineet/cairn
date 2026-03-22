@@ -29,8 +29,9 @@ export default function EvidencePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [logs, setLogs] = useState<string[]>([]);
-  const [evidenceHash, setEvidenceHash] = useState<string>("");
-  const [imageData, setImageData] = useState<{ path: string; hash: string } | null>(null);
+  const [ipfsHash, setIpfsHash] = useState<string>("");
+  const [imageUrl, setImageUrl] = useState<string>("");
+  const [transactionId, setTransactionId] = useState<string>("");
   const [mounted, setMounted] = useState(false);
 
   const addLog = (msg: string) => {
@@ -210,18 +211,20 @@ export default function EvidencePage() {
 
       console.log('✅ Transaction successful:', result);
       
-      const txId = result.transactionId || result.hash || "confirmed";
-      addLog(`✓ [${drone.cairnDroneId}] Evidence submitted! TX: ${txId}`);
+      const txId = result.transactionId || result.hcsTransaction || "confirmed";
+      addLog(`✓ [${drone.cairnDroneId}] Evidence submitted! Transaction: ${txId?.substring(0, 20)}...`);
       addLog(`📍 [${drone.cairnDroneId}] Location: ${drone.location.lat.toFixed(4)}°, ${drone.location.lng.toFixed(4)}°`);
-      addLog(`🖼️ [${drone.cairnDroneId}] Evidence Hash: ${result.hash?.substring(0, 16)}...`);
+      addLog(`🔗 [${drone.cairnDroneId}] Blockchain Transaction: ${txId?.substring(0, 20)}...`);
       addLog(`✅ [${drone.cairnDroneId}] Evidence secured on-chain!`);
       
       // Store evidence data for display
-      setEvidenceHash(result.hash || "");
-      setImageData({
-        path: "C:\\Users\\hp\\Documents\\broken-metallic-fence.jpg",
-        hash: result.hash || ""
-      });
+      setTransactionId(txId); // Show transaction ID instead
+      setIpfsHash(result.ipfsHash || "");
+      // Use real image if available via IPFS, otherwise use sample
+      const imageUrlValue = result.ipfsHash 
+        ? `https://gateway.pinata.cloud/ipfs/${result.ipfsHash}`
+        : `/evidence-samples/broken-metallic-fence.jpg`;
+      setImageUrl(imageUrlValue);
 
       // Mission complete - no modal, just stay on evidence page
     } catch (error: any) {
@@ -448,59 +451,85 @@ export default function EvidencePage() {
           </div>
 
           {/* Evidence Display - shown after successful submission */}
-          {submitted && evidenceHash && imageData && (
+          {submitted && transactionId && (
             <div className="card card-offset anim-scale" style={{ padding: 24 }}>
               <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".09em", marginBottom: 16, textTransform: "uppercase", color: "var(--muted-fg)" }}>
                 ✅ EVIDENCE SUBMITTED
               </div>
 
-              {/* Image Information */}
+              {/* Transaction ID Link to HashScan */}
               <div style={{ backgroundColor: "var(--muted)", padding: 16, borderRadius: "var(--radius)", marginBottom: 16, borderLeft: "3px solid var(--fg)" }}>
                 <div style={{ fontSize: 9, color: "var(--muted-fg)", fontWeight: 600, textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 6 }}>
-                  📸 IMAGE FILE
+                  🔗 BLOCKCHAIN TRANSACTION
                 </div>
-                <div style={{ fontSize: 11, fontWeight: 600, color: "var(--fg)", fontFamily: "monospace", wordBreak: "break-all", marginBottom: 8 }}>
-                  {imageData.path}
-                </div>
+                <a 
+                  href={`https://hashscan.io/testnet/transaction/${transactionId}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: "var(--fg)",
+                    fontFamily: "monospace",
+                    wordBreak: "break-all",
+                    marginBottom: 8,
+                    textDecoration: "none",
+                    borderBottom: "2px solid var(--fg)",
+                    cursor: "pointer"
+                  }}
+                >
+                  {transactionId} ↗
+                </a>
               </div>
 
               {/* Image Preview */}
-              <div style={{ backgroundColor: "var(--card)", padding: 16, borderRadius: "var(--radius)", marginBottom: 16, border: "1px solid var(--border)", textAlign: "center" }}>
-                <div style={{ fontSize: 9, color: "var(--muted-fg)", fontWeight: 600, textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 12 }}>
-                  📷 EVIDENCE PREVIEW
+              {imageUrl && (
+                <div style={{ backgroundColor: "var(--card)", padding: 16, borderRadius: "var(--radius)", marginBottom: 16, border: "1px solid var(--border)", textAlign: "center" }}>
+                  <div style={{ fontSize: 9, color: "var(--muted-fg)", fontWeight: 600, textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 12 }}>
+                    📷 EVIDENCE PREVIEW
+                  </div>
+                  <img
+                    src={imageUrl}
+                    alt="Patrol Evidence"
+                    style={{
+                      width: "100%",
+                      maxHeight: 240,
+                      borderRadius: "var(--radius)",
+                      objectFit: "cover",
+                      border: "2px solid var(--border)"
+                    }}
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = "/evidence-samples/broken-metallic-fence.jpg";
+                    }}
+                  />
                 </div>
-                <img
-                  src="/evidence-samples/broken-metallic-fence.jpg"
-                  alt="Broken Metallic Fence Evidence"
-                  style={{
-                    width: "100%",
-                    maxHeight: 240,
-                    borderRadius: "var(--radius)",
-                    objectFit: "cover",
-                    border: "2px solid var(--border)"
-                  }}
-                />
-              </div>
+              )}
 
-              {/* Hash Value */}
-              <div style={{ backgroundColor: "var(--card)", padding: 16, borderRadius: "var(--radius)", marginBottom: 16, border: "1px solid var(--border)" }}>
-                <div style={{ fontSize: 9, color: "var(--muted-fg)", fontWeight: 600, textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 6 }}>
-                  🔐 SUBMITTED HASH (bytes32)
+              {/* IPFS Hash if available */}
+              {ipfsHash && (
+                <div style={{ backgroundColor: "var(--card)", padding: 16, borderRadius: "var(--radius)", marginBottom: 16, border: "1px solid var(--border)" }}>
+                  <div style={{ fontSize: 9, color: "var(--muted-fg)", fontWeight: 600, textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 6 }}>
+                    📦 IPFS HASH
+                  </div>
+                  <a 
+                    href={`https://gateway.pinata.cloud/ipfs/${ipfsHash}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      fontSize: 10,
+                      fontFamily: "monospace",
+                      color: "var(--fg)",
+                      wordBreak: "break-all",
+                      lineHeight: 1.6,
+                      fontWeight: 500,
+                      textDecoration: "none",
+                      borderBottom: "1px solid var(--fg)"
+                    }}
+                  >
+                    {ipfsHash} ↗
+                  </a>
                 </div>
-                <div style={{ fontSize: 10, fontFamily: "monospace", color: "var(--fg)", wordBreak: "break-all", lineHeight: 1.6, fontWeight: 500 }}>
-                  {evidenceHash}
-                </div>
-              </div>
-
-              {/* Short Hash */}
-              <div style={{ backgroundColor: "var(--card)", padding: 12, borderRadius: "var(--radius)", border: "1px dashed var(--border)", textAlign: "center" }}>
-                <div style={{ fontSize: 9, color: "var(--muted-fg)", fontWeight: 600, textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 6 }}>
-                  HASH REFERENCE
-                </div>
-                <div style={{ fontSize: 12, fontFamily: "monospace", color: "var(--fg)", fontWeight: 700 }}>
-                  {evidenceHash.substring(0, 18)}...{evidenceHash.substring(-16)}
-                </div>
-              </div>
+              )}
 
               {/* Action Buttons */}
               <div style={{ display: "flex", gap: 10, marginTop: 16 }}>

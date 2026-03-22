@@ -15,6 +15,59 @@ import { ethers } from "ethers";
 const DRONE_EVIDENCE_VAULT_ADDRESS = "0x4873df8de78955b758F0b81808c4c01aA52A382A";
 const HEDERA_TESTNET_EXPLORER = "https://testnet.mirrornode.hedera.com";
 
+// Real IPFS implementation
+async function uploadToIPFS(imageBuffer: Buffer, fileName: string): Promise<{ ipfsHash: string; ipfsUrl: string } | null> {
+  try {
+    const pinataJwt = process.env.PINATA_JWT;
+    
+    if (!pinataJwt) {
+      console.warn("⚠️  PINATA_JWT not configured - skipping IPFS upload");
+      return null;
+    }
+
+    const formData = new FormData();
+    const uint8Array = new Uint8Array(imageBuffer);
+    const blob = new Blob([uint8Array], { type: "image/jpeg" });
+    formData.append("file", blob, fileName);
+
+    const metadata = {
+      name: fileName,
+      keyvalues: {
+        type: "drone-evidence",
+        timestamp: new Date().toISOString(),
+      },
+    };
+    formData.append("pinataMetadata", JSON.stringify(metadata));
+
+    console.log("📤 [IPFS] Uploading image to Pinata IPFS...");
+
+    const response = await fetch("https://api.pinata.cloud/pinning/pinFileToIPFS", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${pinataJwt}`,
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      console.warn(`⚠️  [IPFS] Pinata upload failed: ${error.error?.details || error.error}`);
+      return null;
+    }
+
+    const data = await response.json();
+    const ipfsHash = data.IpfsHash;
+    const ipfsUrl = `https://gateway.pinata.cloud/ipfs/${ipfsHash}`;
+
+    console.log(`✅ [IPFS] Image uploaded successfully: ${ipfsHash}`);
+
+    return { ipfsHash, ipfsUrl };
+  } catch (error: any) {
+    console.warn(`⚠️  [IPFS] Upload failed: ${error.message}`);
+    return null;
+  }
+}
+
 interface EvidenceSubmissionPayload {
   droneId: string;
   zoneId: string;
@@ -214,7 +267,27 @@ export async function POST(request: Request): Promise<Response> {
       console.log(`   ⚠️  No encrypted key available - will submit to vault contract only`);
     }
 
-    // STEP 3: Determine which topic to use for evidence
+    // STEP 3: Upload evidence image to IPFS FIRST (before any blockchain submissions)
+    console.log(`\n📸 [IPFS] Uploading evidence image to Pinata IPFS...`);
+    let ipfsHash: string | undefined;
+    try {
+      const sampleImagePath = "./public/evidence-samples/broken-metallic-fence.jpg";
+      const fs = await import("fs/promises");
+      const imageBuffer = await fs.readFile(sampleImagePath);
+      const ipfsResult = await uploadToIPFS(imageBuffer, `evidence-${droneId}-${Date.now()}.jpg`);
+      if (ipfsResult) {
+        ipfsHash = ipfsResult.ipfsHash;
+        console.log(`✅ [IPFS] Image uploaded to IPFS: ${ipfsHash}`);
+      } else {
+        console.warn(`⚠️  [IPFS] Upload failed, continuing without IPFS hash`);
+        ipfsHash = undefined;
+      }
+    } catch (ipfsErr: any) {
+      console.warn(`⚠️  [IPFS] Image upload error: ${ipfsErr.message}`);
+      ipfsHash = undefined;
+    }
+
+    // STEP 4: Determine which topic to use for evidence
     console.log(`\n📊 [API-OnChain] STEP 3: Determine HCS topic for evidence submission`);
     let evidenceTopicId: string = droneData.agentTopicId || '';
     let topicSource = 'drone-registered-topic';
@@ -242,13 +315,13 @@ export async function POST(request: Request): Promise<Response> {
     }
 
     // Generate evidence hash and payload
-    console.log(`\n📊 [API-OnChain] STEP 4: Generate evidence hash`);
+    console.log(`\n📊 [API-OnChain] STEP 5: Generate evidence hash`);
     const mockImagePath = "C:\\Users\\hp\\Documents\\broken-metallic-fence.jpg";
     const hashHex = ethers.id(mockImagePath);
     const hashBytes32 = ethers.getBytes(hashHex);
     console.log(`✅ [API-OnChain] Evidence hash: ${hashHex.substring(0, 16)}...`);
 
-    // STEP 5: Submit evidence to HCS using drone's key (if available)
+    // STEP 6: Submit evidence to HCS using drone's key (if available)
     console.log(`\n📤 [API-OnChain] STEP 5: Submit evidence to HCS (if drone signature available)`);
     console.log(`   Topic: ${evidenceTopicId}`);
     console.log(`   Topic Source: ${topicSource}`);
@@ -267,9 +340,10 @@ export async function POST(request: Request): Promise<Response> {
           zoneId,
           evidenceHash: hashHex,
           timestamp: new Date().toISOString(),
-          ipfsCid: "QmXxxx...mock-cid",
+          ipfsCid: ipfsHash || "ipfs-upload-failed",
           status: "submitted",
-          contractSource: "blockchain"
+          contractSource: "blockchain",
+          transactionId: "", // Will be filled after transaction is executed
         };
 
         const payloadJson = JSON.stringify(evidencePayload);
@@ -300,7 +374,7 @@ export async function POST(request: Request): Promise<Response> {
       console.log(`   Will submit directly to vault contract instead`);
     }
 
-    // STEP 6: Register drone on vault
+    // STEP 7: Register drone on vault
     console.log(`\n🔐 [API-OnChain] STEP 5: Register drone on vault contract`);
     try {
       const registerTx = new ContractExecuteTransaction()
@@ -322,7 +396,26 @@ export async function POST(request: Request): Promise<Response> {
       }
     }
 
-    // STEP 6: Submit evidence image hash to vault contract (CRITICAL)
+    // Upload evidence image to IPFS FIRST before submitting to contract
+    console.log(`\n📸 [IPFS] Uploading evidence image to Pinata IPFS before contract submission...`);
+    try {
+      const sampleImagePath = "./public/evidence-samples/broken-metallic-fence.jpg";
+      const fs = await import("fs/promises");
+      const imageBuffer = await fs.readFile(sampleImagePath);
+      const ipfsResult = await uploadToIPFS(imageBuffer, `evidence-${droneId}-${Date.now()}.jpg`);
+      if (ipfsResult) {
+        ipfsHash = ipfsResult.ipfsHash;
+        console.log(`✅ [IPFS] Image uploaded to IPFS: ${ipfsHash}`);
+      } else {
+        console.warn(`⚠️  [IPFS] Upload failed, continuing without IPFS hash`);
+        ipfsHash = undefined;
+      }
+    } catch (ipfsErr: any) {
+      console.warn(`⚠️  [IPFS] Image upload error: ${ipfsErr.message}`);
+      ipfsHash = undefined;
+    }
+
+    // STEP 8: Submit evidence image hash to vault contract (CRITICAL)
     console.log(`\n📋 [API-OnChain] STEP 6: Submit evidence image hash to vault contract (CRITICAL)`);
     let evidenceId: number | null = null;
     try {
@@ -335,7 +428,7 @@ export async function POST(request: Request): Promise<Response> {
             .addString(droneId)
             .addString(zoneId)
             .addBytes32(hashBytes32)
-            .addString("QmXxxx...mock-ipfs-cid") // Mock IPFS CID for image
+            .addString(ipfsHash || "no-ipfs-available") // Use real IPFS hash or indicate unavailable
         );
 
       await submitTx.freezeWith(client);
@@ -351,7 +444,7 @@ export async function POST(request: Request): Promise<Response> {
       // Don't fail - HCS submission is what matters
     }
 
-    // STEP 6.5: Submit mission to vault contract for permanent record
+    // STEP 8.5: Submit mission to vault contract for permanent record
     console.log(`\n📋 [API-OnChain] STEP 6.5: Submit mission to vault contract (permanent record)`);
     try {
       const client2 = Client.forTestnet().setOperator(AccountId.fromString(operatorId), PrivateKey.fromStringECDSA(operatorKey.startsWith('0x') ? operatorKey.slice(2) : operatorKey));
@@ -387,7 +480,7 @@ export async function POST(request: Request): Promise<Response> {
     // Close client
     await client.close();
 
-    // STEP 7: Query mission history from HCS topic
+    // STEP 9: Query mission history from HCS topic
     console.log(`\n📋 [API-OnChain] STEP 7: Query drone mission history from HCS`);
     let missionHistory: any[] = [];
     try {
@@ -439,6 +532,8 @@ export async function POST(request: Request): Promise<Response> {
     console.log(`   HCS TX: ${topicTxId}`);
     console.log(`   Status: SUBMITTED ✅`);
     
+    // IPFS upload was already handled earlier in the submission process
+    
     const result: TransactionResult = {
       success: true,
       transactionId: topicTxId || undefined,
@@ -449,12 +544,14 @@ export async function POST(request: Request): Promise<Response> {
       ...result,
       evidenceTopic: evidenceTopicId,
       topicSource: topicSource,
+      ipfsHash, // Include IPFS hash if available
       missionLogs: {
         drone: droneId,
         zone: zoneId,
         evidenceHash: hashHex,
         topic: evidenceTopicId,
         hcsTransaction: topicTxId,
+        ipfsHash, // Include in logs
         timestamp: new Date().toISOString(),
         status: "SUBMITTED"
       },

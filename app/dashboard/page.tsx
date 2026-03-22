@@ -474,7 +474,45 @@ export default function DashboardPage() {
                             <td style={{ fontSize: 11 }}>{m.zoneId}</td>
                             <td style={{ fontSize: 11 }}>{m.droneId}</td>
                             <td><span style={{ padding: "2px 8px", borderRadius: 4, background: "rgba(34, 197, 94, 0.1)", color: "#22c55e", fontSize: 10, fontWeight: 600 }}>SUBMITTED</span></td>
-                            <td style={{ fontFamily: "monospace", fontSize: 10, maxWidth: "120px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={m.hash}>{m.hash?.substring(0, 16) || "N/A"}...</td>
+                            <td>
+                              {m.transactionId ? (
+                                <a 
+                                  href={`https://hashscan.io/testnet/transaction/${m.transactionId}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  style={{ 
+                                    fontFamily: "monospace", 
+                                    fontSize: 10, 
+                                    color: "var(--fg)",
+                                    textDecoration: "none",
+                                    borderBottom: "1px solid var(--fg)",
+                                    cursor: "pointer"
+                                  }} 
+                                  title={m.transactionId}
+                                >
+                                  {m.transactionId.substring(0, 12)}... ↗
+                                </a>
+                              ) : m.topicId ? (
+                                <a 
+                                  href={`https://hashscan.io/testnet/topic/${m.topicId}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  style={{ 
+                                    fontFamily: "monospace", 
+                                    fontSize: 10, 
+                                    color: "var(--fg)",
+                                    textDecoration: "none",
+                                    borderBottom: "1px solid var(--fg)",
+                                    cursor: "pointer"
+                                  }} 
+                                  title={m.topicId}
+                                >
+                                  {m.topicId.substring(0, 12)}... ↗
+                                </a>
+                              ) : (
+                                <span style={{ fontFamily: "monospace", fontSize: 10, maxWidth: "120px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={m.hash}>{m.hash?.substring(0, 16) || "N/A"}...</span>
+                              )}
+                            </td>
                             <td style={{ fontSize: 11, color: "var(--muted-fg)", minWidth: "140px" }}>{new Date(m.timestamp).toLocaleString()}</td>
                           </tr>
                         ))

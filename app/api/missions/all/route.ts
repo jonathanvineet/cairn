@@ -21,6 +21,7 @@ interface Mission {
   timestamp: string;
   hash: string;
   topicId: string;
+  transactionId?: string;
   status: string;
 }
 
@@ -66,6 +67,7 @@ export async function GET() {
           timestamp: new Date(Number(mission.timestamp) * 1000).toISOString(),
           hash: mission.hash,
           topicId: mission.topicId,
+          transactionId: mission.transactionId || undefined,
           status: mission.status,
         };
 
@@ -175,6 +177,7 @@ export async function GET() {
                     timestamp: new Date(msg.consensus_timestamp * 1000).toISOString(),
                     hash: messageObj.hash || "",
                     topicId: drone.topicId,
+                    transactionId: msg.transaction_id || undefined,
                     status: "submitted",
                   });
                   missionId++;
