@@ -106,7 +106,7 @@ async function queryMissionHistory(droneId: string) {
     console.log(`   Total Submissions: ${evidenceIds.length}`);
     const verified = (
       await Promise.all(
-        evidenceIds.map((id) => contract.getEvidenceImage(id))
+        evidenceIds.map((id: ethers.BigNumberish) => contract.getEvidenceImage(id))
       )
     ).filter((e) => e.verified).length;
     console.log(`   Verified: ${verified}`);

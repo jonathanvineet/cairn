@@ -18,8 +18,8 @@ import {
   ContractFunctionParameters,
   ContractId,
 } from "@hiero-ledger/sdk";
-import { encrypt } from "@/lib/encryption";
-import { DRONE_REGISTRY_ADDRESS } from "@/lib/contracts";
+import { encrypt } from "../lib/encryption";
+import { DRONE_REGISTRY_ADDRESS } from "../lib/contracts";
 
 async function reregisterDroneWithCredentials() {
   const args = process.argv.slice(2);
