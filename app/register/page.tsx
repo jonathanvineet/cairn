@@ -145,41 +145,221 @@ export default function RegisterDronePage() {
   // ── SUCCESS SCREEN ──
   if (registrationComplete && registeredDroneData) {
     return (
-      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }} className="grid-bg scanlines">
-        <div className="card card-offset anim-scale" style={{ maxWidth: 720, width: "100%", padding: 32 }}>
-          <div style={{ width: 56, height: 56, borderRadius: "50%", border: "2px solid var(--fg)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 18px", fontSize: 22, fontWeight: 700 }}>✓</div>
-          <div style={{ textAlign: "center", marginBottom: 24 }}>
-            <div style={{ fontSize: 18, fontWeight: 700, letterSpacing: "-.01em", marginBottom: 5 }}>Drone registered.</div>
-            <div style={{ fontSize: 12, color: "var(--muted-fg)" }}>{registeredDroneData.cairnDroneId} is now live on Hedera Testnet</div>
+      <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", background: "linear-gradient(135deg, var(--bg) 0%, rgba(0,0,0,0.02) 100%)" }}>
+        
+        {/* header */}
+        <header className="page-header">
+          <div className="page-header-left">
+            <Link href="/dashboard" style={{ textDecoration: "none" }}>
+              <button className="back-btn">← CAIRN</button>
+            </Link>
+            <span className="header-divider">|</span>
+            <span className="header-subtitle">REGISTRATION SUCCESS</span>
           </div>
-          
-          {/* Transaction Logs */}
-          <div style={{ marginBottom: 24, maxHeight: 300, overflow: "auto" }}>
-            <TransactionLog 
-              entries={transactionLogs}
-              title="REGISTRATION TRANSACTIONS"
-              maxHeight="280px"
-            />
+          <div className="page-header-right">
+            <div className="live-dot" />
+            <span className="network-label">HEDERA TESTNET</span>
           </div>
+        </header>
 
-          {/* Core Data */}
-          {[
-            { l: "HEDERA ACCOUNT", v: registeredDroneData.hederaAccountId },
-            { l: "MODEL",          v: registeredDroneData.model },
-            ...(registeredDroneData.agentTopicId ? [{ l: "AGENT TOPIC", v: registeredDroneData.agentTopicId }] : []),
-          ].map(r => (
-            <div key={r.l} style={{ marginBottom: 10 }}>
-              <div className="lbl">{r.l}</div>
-              <div style={{ border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: "8px 12px", fontSize: 11, color: "var(--muted-fg)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ fontFamily: "monospace", fontSize: 10, wordBreak: "break-all" }}>{r.v}</span>
-                <button onClick={() => navigator.clipboard.writeText(r.v)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--muted-fg)", fontSize: 13, marginLeft: 8 }}>⎘</button>
+        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "32px 28px" }}>
+          <div style={{ maxWidth: 700, width: "100%" }}>
+            
+            {/* Success Icon */}
+            <div className="anim-scale" style={{ display: "flex", justifyContent: "center", marginBottom: 38 }}>
+              <div style={{
+                width: 88,
+                height: 88,
+                borderRadius: "50%",
+                border: "2px solid var(--fg)",
+                background: "var(--bg)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 44,
+                fontWeight: 700,
+                color: "var(--fg)"
+              }}>
+                ✓
               </div>
             </div>
-          ))}
-          
-          <div style={{ display: "flex", gap: 10, marginTop: 22 }}>
-            <Link href="/dashboard" style={{ flex: 1 }}><button className="btn btn-ghost" style={{ width: "100%" }}>DASHBOARD</button></Link>
-            <Link href="/deploy" style={{ flex: 1 }}><button className="btn btn-primary" style={{ width: "100%" }}>DEPLOY →</button></Link>
+
+            {/* Main Content */}
+            <div style={{ textAlign: "center", marginBottom: 42 }} className="anim-up d0">
+              <h1 style={{ fontSize: 32, fontWeight: 700, letterSpacing: "-.01em", marginBottom: 10, color: "var(--fg)" }}>Drone Registered</h1>
+              <p style={{ fontSize: 14, color: "var(--muted-fg)", lineHeight: 1.7, marginBottom: 6 }}>
+                {registeredDroneData.cairnDroneId} is now live on Hedera Testnet
+              </p>
+              <p style={{ fontSize: 12, color: "var(--border)", letterSpacing: ".05em" }}>
+                READY FOR DEPLOYMENT & SURVEILLANCE MISSIONS
+              </p>
+            </div>
+
+            {/* Key Details Grid */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 18 }} className="anim-up d1">
+              {[
+                { 
+                  icon: "🔗", 
+                  label: "Hedera Account", 
+                  value: registeredDroneData.hederaAccountId,
+                  mono: true
+                },
+                { 
+                  icon: "🛩️", 
+                  label: "Model", 
+                  value: registeredDroneData.model,
+                  mono: false
+                },
+              ].map((item, i) => (
+                <div key={i} style={{
+                  border: "1px solid var(--border)",
+                  borderRadius: "var(--radius)",
+                  padding: "18px",
+                  background: "var(--card)",
+                  display: "flex",
+                  flexDirection: "column",
+                  transition: "all 0.2s",
+                  cursor: "default"
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = "var(--fg)";
+                  e.currentTarget.style.background = "var(--muted)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = "var(--border)";
+                  e.currentTarget.style.background = "var(--card)";
+                }}>
+                  <div style={{ fontSize: 24, marginBottom: 10 }}>{item.icon}</div>
+                  <div style={{ fontSize: 9, color: "var(--muted-fg)", fontWeight: 700, letterSpacing: ".09em", marginBottom: 8 }}>
+                    {item.label.toUpperCase()}
+                  </div>
+                  <div style={{ 
+                    fontSize: 12, 
+                    fontWeight: 600,
+                    fontFamily: item.mono ? "monospace" : "inherit",
+                    color: "var(--fg)",
+                    wordBreak: "break-all",
+                    lineHeight: 1.5
+                  }}>
+                    {item.value}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Agent Topic if available */}
+            {registeredDroneData.agentTopicId && (
+              <div style={{
+                border: "1px solid var(--fg)",
+                borderRadius: "var(--radius)",
+                padding: "18px",
+                background: "var(--muted)",
+                marginBottom: 24,
+                transition: "all 0.2s"
+              }} 
+              className="anim-up d2"
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "var(--card)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "var(--muted)";
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+                  <span style={{ fontSize: 20 }}>🤖</span>
+                  <div style={{ fontSize: 9, color: "var(--muted-fg)", fontWeight: 700, letterSpacing: ".09em" }}>
+                    AGENT TOPIC ID
+                  </div>
+                </div>
+                <div style={{ 
+                  fontSize: 12, 
+                  fontFamily: "monospace",
+                  color: "var(--fg)",
+                  wordBreak: "break-all",
+                  fontWeight: 600,
+                  letterSpacing: ".03em"
+                }}>
+                  {registeredDroneData.agentTopicId}
+                </div>
+              </div>
+            )}
+
+            {/* Transaction Log */}
+            <div style={{ marginBottom: 28 }} className="anim-up d3">
+              <div style={{ marginBottom: 12 }}>
+                <h3 style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".09em", color: "var(--fg)", textTransform: "uppercase" }}>
+                  TRANSACTION HISTORY
+                </h3>
+              </div>
+              <div style={{ maxHeight: 280, overflow: "auto", border: "1px solid var(--border)", borderRadius: "var(--radius)", background: "var(--card)" }}>
+                <TransactionLog 
+                  entries={transactionLogs}
+                  title=""
+                  maxHeight="280px"
+                />
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 11 }} className="anim-up d4">
+              <Link href="/dashboard" style={{ textDecoration: "none" }}>
+                <button style={{
+                  width: "100%",
+                  padding: "16px 18px",
+                  border: "1px solid var(--border)",
+                  borderRadius: "var(--radius)",
+                  background: "var(--bg)",
+                  color: "var(--fg)",
+                  fontSize: 11,
+                  fontWeight: 700,
+                  letterSpacing: ".09em",
+                  cursor: "pointer",
+                  transition: "all 0.2s ease",
+                  fontFamily: "inherit",
+                  textTransform: "uppercase"
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = "var(--muted)";
+                  e.currentTarget.style.borderColor = "var(--fg)";
+                  e.currentTarget.style.transform = "translateY(-1px)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = "var(--bg)";
+                  e.currentTarget.style.borderColor = "var(--border)";
+                  e.currentTarget.style.transform = "translateY(0)";
+                }}
+                >
+                  ← DASHBOARD
+                </button>
+              </Link>
+              <Link href="/deploy" style={{ textDecoration: "none" }}>
+                <button style={{
+                  width: "100%",
+                  padding: "16px 18px",
+                  border: "1px solid var(--fg)",
+                  borderRadius: "var(--radius)",
+                  background: "var(--fg)",
+                  color: "var(--bg)",
+                  fontSize: 11,
+                  fontWeight: 700,
+                  letterSpacing: ".09em",
+                  cursor: "pointer",
+                  transition: "all 0.2s ease",
+                  fontFamily: "inherit",
+                  textTransform: "uppercase"
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.opacity = "0.85";
+                  e.currentTarget.style.transform = "translateY(-1px)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.opacity = "1";
+                  e.currentTarget.style.transform = "translateY(0)";
+                }}
+                >
+                  DEPLOY MISSION →
+                </button>
+              </Link>
+            </div>
           </div>
         </div>
       </div>
@@ -277,14 +457,9 @@ export default function RegisterDronePage() {
             {step === 2 && (
               <div>
                 <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: ".09em", marginBottom: 18 }}>DEPLOYMENT LOCATION</div>
-                <div style={{ height: 280, border: "1px solid var(--border)", borderRadius: "var(--radius)", overflow: "hidden", marginBottom: 12 }}>
-                  <LocationPicker onLocationSelect={handleLocationSelect} />
+                <div style={{ height: 280, border: "1px solid var(--border)", borderRadius: "var(--radius)", overflow: "hidden", background: "var(--card)" }}>
+                  <LocationPicker onLocationSelect={handleLocationSelect} initialLocation={currentLocation || undefined} />
                 </div>
-                {currentLocation && (
-                  <div style={{ padding: "8px 12px", border: "1px solid var(--border)", borderRadius: "var(--radius)", fontSize: 11, color: "var(--muted-fg)", background: "var(--muted)" }}>
-                    📍 {currentLocation.lat.toFixed(6)}, {currentLocation.lng.toFixed(6)}
-                  </div>
-                )}
               </div>
             )}
 
@@ -309,8 +484,8 @@ export default function RegisterDronePage() {
               </div>
             )}
 
-            {/* back / next */}
-            <div style={{ display: "flex", justifyContent: "space-between", marginTop: 24 }}>
+              {/* back / next */}
+            <div style={{ display: "flex", gap: 10, justifyContent: "space-between", marginTop: 24 }}>
               <button className="btn btn-ghost" onClick={() => setStep(s => Math.max(0, s - 1))} disabled={step === 0} style={{ opacity: step === 0 ? .3 : 1 }}>← BACK</button>
               {step < 3
                 ? <button className="btn btn-primary" onClick={() => setStep(s => s + 1)}>NEXT →</button>

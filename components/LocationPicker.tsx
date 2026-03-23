@@ -34,12 +34,12 @@ function SearchResults({ results, onSelect, isSearching }: { results: NominatimR
       overflow: "hidden"
     }}>
       {isSearching && (
-        <div style={{ padding: "12px 14px", fontSize: 11, color: "var(--muted-fg)", textAlign: "center", borderBottom: "1px solid var(--border)" }}>
+        <div style={{ padding: "14px", fontSize: 11, color: "var(--muted-fg)", textAlign: "center", borderBottom: "1px solid var(--border)", fontWeight: 600 }}>
           ⟳ SEARCHING...
         </div>
       )}
       <div style={{
-        maxHeight: "140px",
+        maxHeight: "160px",
         overflowY: "auto"
       }}>
         {results.map((result, idx) => (
@@ -47,7 +47,7 @@ function SearchResults({ results, onSelect, isSearching }: { results: NominatimR
             key={idx}
             onClick={() => onSelect(result)}
             style={{
-              padding: "10px 14px",
+              padding: "12px 14px",
               background: "var(--card)",
               cursor: "pointer",
               transition: "all 0.15s",
@@ -61,10 +61,10 @@ function SearchResults({ results, onSelect, isSearching }: { results: NominatimR
               e.currentTarget.style.background = "var(--card)";
             }}
           >
-            <div style={{ fontWeight: 500, color: "var(--fg)", marginBottom: 3 }}>
+            <div style={{ fontWeight: 700, color: "var(--fg)", marginBottom: 4, fontSize: 10, letterSpacing: ".06em" }}>
               {result.type.toUpperCase()}
             </div>
-            <div style={{ color: "var(--muted-fg)", fontSize: 9, lineHeight: 1.4 }}>
+            <div style={{ color: "var(--muted-fg)", fontSize: 10, lineHeight: 1.5 }}>
               {result.display_name}
             </div>
           </div>
@@ -79,39 +79,43 @@ function LocationInfo({ location }: { location: { lat: number; lng: number; addr
   if (!location) {
     return (
       <div style={{
-        padding: "12px 14px",
+        padding: "16px 14px",
         border: "1px dashed var(--border)",
         borderRadius: "var(--radius)",
         background: "var(--muted)",
         fontSize: 11,
         color: "var(--muted-fg)",
-        textAlign: "center"
+        textAlign: "center",
+        fontWeight: 500
       }}>
-        Select a location to continue
+        ⟳ Select a location to continue
       </div>
     );
   }
 
   return (
     <div style={{
-      padding: "12px 14px",
-      border: "1px solid var(--border)",
+      padding: "14px",
+      border: "2px solid var(--fg)",
       borderRadius: "var(--radius)",
-      background: "var(--muted)",
-      fontSize: 11
+      background: "var(--muted)"
     }}>
-      <div style={{ color: "var(--muted-fg)", marginBottom: 8, display: "flex", alignItems: "center", gap: 6, fontSize: 10, fontWeight: 500, textTransform: "uppercase", letterSpacing: ".05em" }}>
-        <span>✓</span>
-        <span>Location confirmed</span>
-      </div>
-      <div style={{ fontSize: 10, color: "var(--fg)", fontFamily: "monospace", letterSpacing: ".08em", marginBottom: 8, fontWeight: 500 }}>
-        {location.lat.toFixed(5)}° · {location.lng.toFixed(5)}°
-      </div>
-      {location.address && (
-        <div style={{ fontSize: 9, color: "var(--muted-fg)", lineHeight: 1.5 }}>
-          {location.address}
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+        <div style={{ fontSize: 16, marginTop: 2 }}>✓</div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 10, color: "var(--muted-fg)", fontWeight: 700, letterSpacing: ".08em", marginBottom: 6 }}>
+            LOCATION CONFIRMED
+          </div>
+          <div style={{ fontSize: 12, color: "var(--fg)", fontFamily: "monospace", fontWeight: 600, marginBottom: 8, letterSpacing: ".05em" }}>
+            {location.lat.toFixed(5)}° · {location.lng.toFixed(5)}°
+          </div>
+          {location.address && (
+            <div style={{ fontSize: 10, color: "var(--muted-fg)", lineHeight: 1.6 }}>
+              {location.address}
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }
@@ -377,11 +381,12 @@ export function LocationPicker({ onLocationSelect, initialLocation, disabled }: 
 
   return (
     <>
-      <div style={{ display: "flex", flexDirection: "column", height: "100%", gap: 14 }}>
+      <div style={{ display: "flex", flexDirection: "column", height: "100%", gap: 0, padding: "16px" }}>
+        
         {/* Search Section */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <label style={{ fontSize: 9, color: "var(--muted-fg)", fontWeight: 600, textTransform: "uppercase", letterSpacing: ".08em" }}>
-            🔍 Search Place
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 16 }}>
+          <label style={{ fontSize: 10, color: "var(--muted-fg)", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".09em" }}>
+            🔍 Search Location
           </label>
           <input
             type="text"
@@ -393,69 +398,89 @@ export function LocationPicker({ onLocationSelect, initialLocation, disabled }: 
               searchPlaces(e.target.value);
             }}
             disabled={disabled}
-            style={{ width: "100%" }}
+            style={{ width: "100%", padding: "11px 13px", fontSize: "11px" }}
           />
         </div>
 
-        {/* Search Results */}
+        {/* Search Results - Dropdown */}
         {(searchResults.length > 0 || isSearching) && (
-          <SearchResults results={searchResults} onSelect={selectPlace} isSearching={isSearching} />
+          <div style={{ marginBottom: 12, maxHeight: 160, overflow: "auto" }}>
+            <SearchResults results={searchResults} onSelect={selectPlace} isSearching={isSearching} />
+          </div>
         )}
 
         {/* Action Buttons Section */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
           <button
             onClick={() => setIsMapModalOpen(true)}
-            className="btn btn-ghost"
             disabled={disabled}
             style={{ 
-              width: "100%",
-              fontSize: 10,
-              padding: "11px 14px",
+              fontSize: 11,
+              padding: "13px 12px",
               textAlign: "center",
               border: "1px solid var(--border)",
-              fontWeight: 500,
-              transition: "all 0.15s"
+              borderRadius: "var(--radius)",
+              fontWeight: 700,
+              transition: "all 0.2s",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 7,
+              background: "var(--bg)",
+              color: "var(--fg)",
+              cursor: "pointer",
+              fontFamily: "inherit",
+              letterSpacing: ".06em"
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.background = "var(--muted)";
               e.currentTarget.style.borderColor = "var(--fg)";
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.background = "transparent";
+              e.currentTarget.style.background = "var(--bg)";
               e.currentTarget.style.borderColor = "var(--border)";
             }}
           >
-            📍 SELECT FROM MAP
+            <span style={{ fontSize: 14 }}>📍</span>
+            <span>MAP</span>
           </button>
 
           <button
-            className="btn btn-ghost"
             onClick={getCurrentLocation}
             disabled={isGettingLocation || disabled}
             style={{ 
-              width: "100%",
-              fontSize: 10, 
-              padding: "11px 14px",
+              fontSize: 11, 
+              padding: "13px 12px",
               textAlign: "center",
               border: "1px solid var(--border)",
-              fontWeight: 500,
-              transition: "all 0.15s"
+              borderRadius: "var(--radius)",
+              fontWeight: 700,
+              transition: "all 0.2s",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 7,
+              background: "var(--bg)",
+              color: "var(--fg)",
+              cursor: "pointer",
+              fontFamily: "inherit",
+              letterSpacing: ".06em"
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.background = "var(--muted)";
               e.currentTarget.style.borderColor = "var(--fg)";
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.background = "transparent";
+              e.currentTarget.style.background = "var(--bg)";
               e.currentTarget.style.borderColor = "var(--border)";
             }}
           >
-            {isGettingLocation ? `⟳ GETTING GPS...` : `🛰️  USE MY LOCATION`}
+            <span style={{ fontSize: 14 }}>🛰️</span>
+            <span>{isGettingLocation ? "GPS..." : "GPS"}</span>
           </button>
         </div>
 
-        {/* Location Info */}
+        {/* Location Info - Full Width */}
         <LocationInfo location={location} />
       </div>
 
